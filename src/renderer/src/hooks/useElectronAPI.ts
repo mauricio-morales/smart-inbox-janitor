@@ -18,7 +18,27 @@ import type {
  * 
  * @returns Object with typed methods for interacting with Electron main process
  */
-export function useElectronAPI() {
+export function useElectronAPI(): {
+  listEmails: (options?: ListOptions) => Promise<any>
+  getEmail: (emailId: string, options?: GetEmailOptions) => Promise<any>
+  batchModifyEmails: (request: BatchModifyRequest) => Promise<any>
+  deleteEmail: (emailId: string) => Promise<void>
+  searchEmails: (query: string, options?: any) => Promise<any>
+  getFolders: () => Promise<any[]>
+  reportSpam: (emailIds: string[]) => Promise<any>
+  reportPhishing: (emailIds: string[]) => Promise<any>
+  batchDeleteEmails: (request: BatchDeleteRequest) => Promise<any>
+  getUserRules: (userId: string) => Promise<UserRules>
+  updateUserRules: (userId: string, rules: UserRules) => Promise<void>
+  getEmailMetadata: (emailIds: string[]) => Promise<any>
+  setEmailMetadata: (emailId: string, metadata: any) => Promise<void>
+  classifyEmails: (input: ClassifyInput) => Promise<any>
+  getConfig: () => Promise<AppConfig>
+  updateConfig: (config: AppConfig) => Promise<void>
+  healthCheck: () => Promise<any>
+  initialize: () => Promise<void>
+  shutdown: () => Promise<void>
+} {
   // Get the Electron API from the global window object
   const api: ElectronAPI = window.electronAPI
 

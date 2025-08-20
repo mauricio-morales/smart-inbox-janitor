@@ -5,7 +5,9 @@ import type {
   ClassifyInput,
   ClassifyOutput,
   UsageStatistics,
-  CostEstimation
+  CostEstimation,
+  LLMProviderConfig,
+  ValidationResult
 } from '@shared/types'
 import { 
   createErrorResult,
@@ -23,7 +25,7 @@ export class OpenAIProviderStub implements LLMProvider {
   readonly name = 'openai-stub'
   readonly version = '0.1.0'
 
-  async initialize(_config: any): Promise<Result<void>> {
+  async initialize(_config: LLMProviderConfig): Promise<Result<void>> {
     console.warn('OpenAIProvider.initialize called - stub implementation')
     return createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
@@ -53,11 +55,16 @@ export class OpenAIProviderStub implements LLMProvider {
     )
   }
 
-  getConfig(): Readonly<any> {
-    return {}
+  getConfig(): Readonly<LLMProviderConfig> {
+    return {
+      provider: 'openai',
+      apiKey: '',
+      model: 'gpt-4',
+      maxTokens: 1000
+    } as const
   }
 
-  async init(_auth: any): Promise<Result<void>> {
+  async init(_auth: Record<string, string>): Promise<Result<void>> {
     console.warn('OpenAIProvider.init called - stub implementation')
     return createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
@@ -67,7 +74,7 @@ export class OpenAIProviderStub implements LLMProvider {
     )
   }
 
-  async validateContent(_input: any): Promise<Result<any>> {
+  async validateContent(_input: Record<string, unknown>): Promise<Result<ValidationResult>> {
     console.warn('OpenAIProvider.validateContent called - stub implementation')
     return createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
@@ -77,7 +84,7 @@ export class OpenAIProviderStub implements LLMProvider {
     )
   }
 
-  async explainClassification(_input: any): Promise<Result<string>> {
+  async explainClassification(_input: Record<string, unknown>): Promise<Result<string>> {
     console.warn('OpenAIProvider.explainClassification called - stub implementation')
     return createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
@@ -87,7 +94,7 @@ export class OpenAIProviderStub implements LLMProvider {
     )
   }
 
-  async getUsageStats(): Promise<Result<any>> {
+  async getUsageStats(): Promise<Result<UsageStatistics>> {
     console.warn('OpenAIProvider.getUsageStats called - stub implementation')
     return createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
@@ -97,7 +104,7 @@ export class OpenAIProviderStub implements LLMProvider {
     )
   }
 
-  async testConnection(): Promise<Result<any>> {
+  async testConnection(): Promise<Result<Record<string, unknown>>> {
     console.warn('OpenAIProvider.testConnection called - stub implementation')
     return createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
@@ -118,7 +125,7 @@ export class OpenAIProviderStub implements LLMProvider {
     )
   }
 
-  async suggestSearchQueries(_context: any): Promise<Result<string[]>> {
+  async suggestSearchQueries(_context: Record<string, unknown>): Promise<Result<string[]>> {
     console.warn('OpenAIProvider.suggestSearchQueries called - stub implementation')
     return createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
@@ -128,7 +135,7 @@ export class OpenAIProviderStub implements LLMProvider {
     )
   }
 
-  async groupForBulk(input: any): Promise<Result<any>> {
+  async groupForBulk(input: Record<string, unknown>): Promise<Result<Record<string, unknown>>> {
     console.warn('OpenAIProvider.groupForBulk called - stub implementation')
     return createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
@@ -148,7 +155,7 @@ export class OpenAIProviderStub implements LLMProvider {
     )
   }
 
-  async estimateCost(_operation: any): Promise<Result<CostEstimation>> {
+  async estimateCost(_operation: Record<string, unknown>): Promise<Result<CostEstimation>> {
     console.warn(`OpenAIProvider.estimateCost called - stub implementation`)
     return createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {

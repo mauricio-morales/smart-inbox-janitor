@@ -13,7 +13,9 @@ import type {
   SearchResult,
   EmailFolder,
   ConnectionOptions,
-  ConnectionInfo
+  ConnectionInfo,
+  EmailProviderConfig,
+  AccountInfo
 } from '@shared/types'
 import { 
   createErrorResult,
@@ -31,7 +33,7 @@ export class GmailProviderStub implements EmailProvider {
   readonly name = 'gmail-stub'
   readonly version = '0.1.0'
 
-  async initialize(_config: any): Promise<Result<void>> {
+  async initialize(_config: EmailProviderConfig): Promise<Result<void>> {
     console.warn('GmailProvider.initialize called - stub implementation')
     return createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
@@ -61,8 +63,13 @@ export class GmailProviderStub implements EmailProvider {
     )
   }
 
-  getConfig(): Readonly<any> {
-    return {}
+  getConfig(): Readonly<EmailProviderConfig> {
+    return {
+      provider: 'gmail',
+      clientId: '',
+      clientSecret: '',
+      redirectUri: ''
+    } as const
   }
 
   async connect(_options?: ConnectionOptions): Promise<Result<ConnectionInfo>> {
@@ -182,7 +189,7 @@ export class GmailProviderStub implements EmailProvider {
     )
   }
 
-  async getAccountInfo(): Promise<Result<any>> {
+  async getAccountInfo(): Promise<Result<AccountInfo>> {
     console.warn('GmailProvider.getAccountInfo called - stub implementation')
     return createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {

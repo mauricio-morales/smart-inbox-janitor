@@ -7,7 +7,8 @@ import type {
   ClassificationHistoryItem,
   ProcessingState,
   ActionQueueItem,
-  AppConfig
+  AppConfig,
+  StorageProviderConfig
 } from '@shared/types'
 import { 
   createErrorResult,
@@ -25,7 +26,7 @@ export class SQLiteProviderStub implements StorageProvider {
   readonly name = 'sqlite-stub'
   readonly version = '0.1.0'
 
-  async initialize(_config: any): Promise<Result<void>> {
+  async initialize(_config: StorageProviderConfig): Promise<Result<void>> {
     console.warn('SQLiteProvider.initialize called - stub implementation')
     return createErrorResult(
       new ConfigurationError('SQLite provider not implemented yet', {
@@ -98,7 +99,7 @@ export class SQLiteProviderStub implements StorageProvider {
     )
   }
 
-  async bulkSetEmailMetadata(entries: Array<{id: string, metadata: EmailMetadata}>): Promise<Result<any>> {
+  async bulkSetEmailMetadata(entries: Array<{id: string, metadata: EmailMetadata}>): Promise<Result<void>> {
     console.warn(`SQLiteProvider.bulkSetEmailMetadata called with ${entries.length} entries - stub implementation`)
     return createErrorResult(
       new ConfigurationError('SQLite provider not implemented yet', {
@@ -109,7 +110,7 @@ export class SQLiteProviderStub implements StorageProvider {
     )
   }
 
-  async getClassificationHistory(filters?: any): Promise<Result<ClassificationHistoryItem[]>> {
+  async getClassificationHistory(filters?: Record<string, unknown>): Promise<Result<ClassificationHistoryItem[]>> {
     console.warn('SQLiteProvider.getClassificationHistory called - stub implementation')
     return createErrorResult(
       new ConfigurationError('SQLite provider not implemented yet', {
@@ -169,7 +170,7 @@ export class SQLiteProviderStub implements StorageProvider {
     )
   }
 
-  async updateActionStatus(actionId: string, status: any): Promise<Result<void>> {
+  async updateActionStatus(actionId: string, status: string): Promise<Result<void>> {
     console.warn(`SQLiteProvider.updateActionStatus called with actionId: ${actionId} - stub implementation`)
     return createErrorResult(
       new ConfigurationError('SQLite provider not implemented yet', {

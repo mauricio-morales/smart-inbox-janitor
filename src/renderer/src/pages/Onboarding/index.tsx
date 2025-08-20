@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Paper,
@@ -18,7 +18,6 @@ import {
 import {
   Email as EmailIcon,
   Psychology as PsychologyIcon,
-  Security as SecurityIcon,
   CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -43,7 +42,7 @@ const steps = [
   },
 ];
 
-export function Onboarding(): JSX.Element {
+export function Onboarding(): React.JSX.Element {
   const navigate = useNavigate();
   const api = useElectronAPI();
 
@@ -148,7 +147,7 @@ export function Onboarding(): JSX.Element {
     }
   };
 
-  const getStepContent = (step: number): JSX.Element => {
+  const getStepContent = (step: number): React.JSX.Element => {
     switch (step) {
       case 0:
         return (
@@ -338,7 +337,7 @@ export function Onboarding(): JSX.Element {
                 </Typography>
               </StepLabel>
               <StepContent>
-                {error && (
+                {error !== null && (
                   <Alert severity="warning" sx={{ mb: 2 }}>
                     {error}
                   </Alert>
