@@ -8,7 +8,7 @@
  * @module EmailTypes
  */
 
-import { BaseProvider, Result, TimeoutOptions, RetryOptions } from './base.types.js';
+import { BaseProvider, Result, TimeoutOptions } from './base.types.js';
 import { GmailProviderConfig, IMAPProviderConfig } from './config.types.js';
 
 /**

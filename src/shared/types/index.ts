@@ -64,7 +64,6 @@ export type {
   SQLiteStorageConfig,
   IndexedDBStorageConfig,
   AppConfig,
-  EmailProviderConfig,
   LLMProviderConfig,
   StorageProviderConfig,
   UserPreferences,
@@ -85,12 +84,23 @@ export type {
   ContactInfo,
   UnsubscribeMethod,
   DateRange,
-  TimeRange,
+  ListOptions,
+  GetEmailOptions,
+  ListEmailsResult,
+  BatchModifyRequest,
+  BatchDeleteRequest,
+  BatchOperationResult,
+  SearchOptions,
+  SearchResult,
+  ConnectionOptions,
+  ConnectionInfo,
+  AccountInfo,
 } from './email.types.js';
 
 // Storage provider types
 export type {
   StorageProvider,
+  StoredAppConfig,
   UserRules,
   EmailMetadata,
   EmailClassification,

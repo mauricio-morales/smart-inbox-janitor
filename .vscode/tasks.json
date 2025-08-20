@@ -1,0 +1,118 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "🔍 Full CI/CD Check",
+      "detail": "Run complete local validation matching GitHub Actions CI",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "ci:check"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "problemMatcher": [
+        "$tsc",
+        "$eslint-stylish"
+      ]
+    },
+    {
+      "label": "🧪 Code Quality Check",
+      "detail": "Run linting, type checking, and formatting validation",
+      "type": "shell", 
+      "command": "npm",
+      "args": ["run", "ci:quality"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [
+        "$tsc",
+        "$eslint-stylish"
+      ]
+    },
+    {
+      "label": "🏗️ Build All Targets",
+      "detail": "Build for all platforms (matching CI matrix)",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "ci:build"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🔐 Security Audit",
+      "detail": "Run dependency and security audits",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "ci:security"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "📦 Package Check", 
+      "detail": "Validate package.json and dependencies",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "ci:package"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🧽 Clean & Fresh Install",
+      "detail": "Clean node_modules and reinstall (CI fresh environment)",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "ci:clean"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "⚡ Quick Check",
+      "detail": "Fast validation - lint, type-check, build",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "ci:quick"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": [
+        "$tsc",
+        "$eslint-stylish"
+      ]
+    }
+  ]
+}

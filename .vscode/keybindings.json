@@ -1,0 +1,42 @@
+[
+  {
+    "key": "ctrl+shift+c",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🔍 Full CI/CD Check",
+    "when": "!inDebugMode"
+  },
+  {
+    "key": "ctrl+shift+q",
+    "command": "workbench.action.tasks.runTask", 
+    "args": "⚡ Quick Check",
+    "when": "!inDebugMode"
+  },
+  {
+    "key": "ctrl+shift+b",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🏗️ Build All Targets",
+    "when": "!inDebugMode"
+  },
+  {
+    "key": "ctrl+shift+t",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🧪 Code Quality Check", 
+    "when": "!inDebugMode"
+  },
+  {
+    "key": "ctrl+shift+s",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🔐 Security Audit",
+    "when": "!inDebugMode"
+  },
+  {
+    "key": "f5",
+    "command": "workbench.action.debug.start",
+    "when": "debuggersAvailable && !inDebugMode"
+  },
+  {
+    "key": "ctrl+f5",
+    "command": "workbench.action.debug.run",
+    "when": "debuggersAvailable && !inDebugMode"
+  }
+]

@@ -36,6 +36,9 @@
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": false,
     
+    /* JSX */
+    "jsx": "react-jsx",
+    
     /* Path mapping */
     "baseUrl": ".",
     "paths": {
