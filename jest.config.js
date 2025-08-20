@@ -20,8 +20,8 @@ module.exports = {
     }]
   },
   
-  // Module resolution
-  moduleNameMapping: {
+  // Module resolution - Fixed with correct Jest property name
+  moduleNameMapper: {
     '^@shared/(.*)$': '<rootDir>/src/shared/$1',
     '^@providers/(.*)$': '<rootDir>/src/providers/$1',
     '^@tests/(.*)$': '<rootDir>/__tests__/$1'

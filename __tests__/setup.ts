@@ -24,10 +24,9 @@ afterEach(() => {
   console.error = originalConsoleError;
 });
 
-// Global test utilities for interface validation
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace jest {
+// Global test utilities for interface validation - made ambient
+declare module '@jest/types' {
+  namespace Global {
     interface Matchers<R> {
       toBeValidResult(): R;
       toBeValidProviderInterface(): R;

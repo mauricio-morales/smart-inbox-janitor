@@ -1,0 +1,85 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🚀 Launch Electron App",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "outputCapture": "std",
+      "console": "integratedTerminal",
+      "presentation": {
+        "hidden": false,
+        "group": "debug",
+        "order": 1
+      }
+    },
+    {
+      "name": "🔧 Debug Main Process",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/dist-electron/main/index.js",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "runtimeArgs": [
+        "--enable-logging"
+      ],
+      "env": {
+        "NODE_ENV": "development",
+        "ELECTRON_IS_DEV": "1"
+      },
+      "presentation": {
+        "hidden": false,
+        "group": "debug",
+        "order": 2
+      }
+    },
+    {
+      "name": "🌐 Debug Renderer Process",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/src/renderer",
+      "sourceMaps": true,
+      "presentation": {
+        "hidden": false,
+        "group": "debug", 
+        "order": 3
+      }
+    },
+    {
+      "name": "🧪 Run Tests with Debug",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": ["--runInBand"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "presentation": {
+        "hidden": false,
+        "group": "test",
+        "order": 1
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "🔍 Debug Full App",
+      "configurations": [
+        "🔧 Debug Main Process",
+        "🌐 Debug Renderer Process"
+      ],
+      "presentation": {
+        "hidden": false,
+        "group": "compound",
+        "order": 1
+      }
+    }
+  ]
+}
