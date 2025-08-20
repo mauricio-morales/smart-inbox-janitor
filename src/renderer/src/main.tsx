@@ -21,7 +21,7 @@ const theme = createTheme({
   },
   components: {
     // Customize Material-UI components for Electron
-    MuiCssBaseline: {
+    'MuiCssBaseline': {
       styleOverrides: {
         body: {
           // Prevent text selection in Electron
@@ -45,7 +45,7 @@ const queryClient = new QueryClient({
       // Reduce network requests since we're using IPC
       staleTime: 5 * 60 * 1000, // 5 minutes
       gcTime: 10 * 60 * 1000, // 10 minutes
-      retry: (failureCount, error) => {
+      retry: (failureCount: number, error: unknown): boolean => {
         // Don't retry on authentication errors
         if (error && typeof error === 'object' && 'code' in error) {
           const errorCode = (error as any).code;

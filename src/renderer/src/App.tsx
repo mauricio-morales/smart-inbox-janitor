@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { Dashboard } from './pages/Dashboard';
@@ -24,10 +24,10 @@ function App(): JSX.Element {
 
   // Initialize the application
   useEffect(() => {
-    const initializeApp = async () => {
+    const initializeApp = async (): Promise<void> => {
       try {
         // Check if Electron API is available
-        if (!window.electronAPI) {
+        if (window.electronAPI === undefined) {
           throw new Error('Electron API not available');
         }
 
@@ -37,7 +37,7 @@ function App(): JSX.Element {
         let onboardingComplete = false;
         if (configResult.success) {
           // Check if basic configuration is complete
-          onboardingComplete = configResult.data?.onboardingComplete || false;
+          onboardingComplete = configResult.data?.onboardingComplete ?? false;
         }
 
         setAppState({
@@ -57,7 +57,7 @@ function App(): JSX.Element {
       }
     };
 
-    initializeApp();
+    void initializeApp();
   }, []);
 
   // Show loading state during initialization
@@ -80,7 +80,7 @@ function App(): JSX.Element {
   }
 
   // Show error state if initialization failed
-  if (appState.error) {
+  if (appState.error !== null) {
     return (
       <Box
         display="flex"

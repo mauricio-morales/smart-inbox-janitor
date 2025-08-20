@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -32,7 +32,7 @@ interface SettingsState {
   openaiApiKey: string;
 }
 
-export function Settings(): JSX.Element {
+export function Settings(): React.JSX.Element {
   const api = useElectronAPI();
   const [settings, setSettings] = useState<SettingsState>({
     autoProcessing: false,
@@ -106,7 +106,7 @@ export function Settings(): JSX.Element {
       }
 
       setSuccess(`${provider} connection successful!`);
-    } catch (err) {
+    } catch {
       setError(`${provider} connection failed (expected with stub providers)`);
     }
   };
@@ -124,13 +124,13 @@ export function Settings(): JSX.Element {
       </Box>
 
       {/* Status Messages */}
-      {error && (
+      {error !== null && (
         <Alert severity="warning" sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
 
-      {success && (
+      {success !== null && (
         <Alert severity="success" sx={{ mb: 3 }}>
           {success}
         </Alert>

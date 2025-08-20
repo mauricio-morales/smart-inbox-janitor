@@ -55,7 +55,7 @@ export function createMainWindow(): BrowserWindow {
   });
 
   // Load the app - development server or built files
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+  if (is.dev && process.env['ELECTRON_RENDERER_URL'] !== undefined) {
     void mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
   } else {
     void mainWindow.loadFile(join(__dirname, '../renderer/index.html'));

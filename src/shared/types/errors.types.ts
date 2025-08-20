@@ -165,8 +165,8 @@ export class GmailError extends BaseProviderError {
     this.googleReason = googleReason;
   }
   
-  static fromGoogleError(error: any): GmailError {
-    const baseDetails = { originalError: error.message };
+  static fromGoogleError(error: { code?: number; reason?: string; message?: string }): GmailError {
+    const baseDetails = { originalError: error.message ?? 'Unknown error' };
     
     if (error.code === 401) {
       return new GmailError(

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -26,7 +26,7 @@ interface DashboardStats {
   cleanedEmails: number;
 }
 
-export function Dashboard(): JSX.Element {
+export function Dashboard(): React.JSX.Element {
   const api = useElectronAPI();
   const [stats, setStats] = useState<DashboardStats>({
     totalEmails: 0,
@@ -48,7 +48,7 @@ export function Dashboard(): JSX.Element {
 
       // Try to get basic stats from storage
       // Note: These are stub implementations, so they will return "not implemented" errors
-      const configResult = await api.getConfig();
+      await api.getConfig();
 
       // For now, show mock data since providers are stubs
       setStats({
@@ -95,7 +95,7 @@ export function Dashboard(): JSX.Element {
       </Box>
 
       {/* Error Alert */}
-      {error && (
+      {error !== null && (
         <Alert severity="info" sx={{ mb: 3 }}>
           {error}
         </Alert>
