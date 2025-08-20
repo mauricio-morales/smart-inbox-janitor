@@ -1,0 +1,83 @@
+{
+  "name": "smart-inbox-janitor",
+  "version": "0.1.0",
+  "description": "AI-powered email triage assistant for Gmail with provider-agnostic architecture",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "build:win": "npm run build && electron-builder --win",
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:linux": "npm run build && electron-builder --linux",
+    "type-check": "tsc --noEmit",
+    "check-types": "tsc --noEmit --strict",
+    "lint": "eslint src --ext .ts,.tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write src/**/*.{ts,tsx}",
+    "format:check": "prettier --check src/**/*.{ts,tsx}",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage --watchAll=false",
+    "test:types": "jest __tests__/types/",
+    "test:schemas": "jest __tests__/schemas/",
+    "test:factories": "jest __tests__/factories/"
+  },
+  "keywords": [
+    "email",
+    "gmail",
+    "ai",
+    "triage",
+    "electron",
+    "typescript",
+    "inbox",
+    "automation"
+  ],
+  "author": "Smart Inbox Janitor Contributors",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.30",
+    "@typescript-eslint/eslint-plugin": "^7.3.1",
+    "@typescript-eslint/parser": "^7.3.1",
+    "electron": "^29.1.4",
+    "electron-builder": "^24.13.3",
+    "electron-vite": "^2.0.0",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.5",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.4.2",
+    "vite": "^5.1.6"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "googleapis": "^133.0.0",
+    "keytar": "^7.9.0",
+    "openai": "^4.28.4",
+    "zod": "^3.22.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "build": {
+    "appId": "com.smartinboxjanitor.app",
+    "productName": "Smart Inbox Janitor",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
