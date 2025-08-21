@@ -476,3 +476,39 @@ export function getErrorSeverity(error: ProviderError): ErrorSeverity {
   
   return ErrorSeverity.MEDIUM;
 }
+
+/**
+ * Security-related error for authentication, authorization, and security violations
+ */
+export class SecurityError extends BaseProviderError {
+  readonly code = 'SECURITY_ERROR';
+  
+  constructor(message: string, context?: Record<string, unknown>) {
+    super(message, context);
+    this.name = 'SecurityError';
+  }
+}
+
+/**
+ * Cryptographic operation error for encryption, decryption, and key management
+ */
+export class CryptoError extends BaseProviderError {
+  readonly code = 'CRYPTO_ERROR';
+  
+  constructor(message: string, context?: Record<string, unknown>) {
+    super(message, context);
+    this.name = 'CryptoError';
+  }
+}
+
+/**
+ * Storage-related error for database operations and data persistence
+ */
+export class StorageError extends BaseProviderError {
+  readonly code = 'STORAGE_ERROR';
+  
+  constructor(message: string, context?: Record<string, unknown>) {
+    super(message, context);
+    this.name = 'StorageError';
+  }
+}
