@@ -4,12 +4,12 @@ import { createMainWindow } from './window';
 import { setupIPC } from './ipc';
 import { GmailProviderStub } from '@providers/email/gmail/GmailProvider';
 import { OpenAIProviderStub } from '@providers/llm/openai/OpenAIProvider';
-import { SQLiteProviderStub } from '@providers/storage/sqlite/SQLiteProvider';
+import { SQLiteProvider } from '@providers/storage/sqlite/SQLiteProvider';
 
 // Initialize provider stubs - will be replaced with real implementations later
 const emailProvider = new GmailProviderStub();
 const llmProvider = new OpenAIProviderStub();
-const storageProvider = new SQLiteProviderStub();
+const storageProvider = new SQLiteProvider();
 
 // This method will be called when Electron has finished initialization
 void app.whenReady().then(async () => {
@@ -39,9 +39,9 @@ void app.whenReady().then(async () => {
   // Initialize providers after window is created
   try {
     // Note: These are stub implementations that will return "not implemented" errors
-    await emailProvider.initialize({});
-    await llmProvider.initialize({});
-    await storageProvider.initialize({});
+    await emailProvider.initialize({ type: 'gmail', config: { auth: { clientId: '', clientSecret: '', redirectUri: '', scopes: [] } } });
+    await llmProvider.initialize({ type: 'openai', config: { apiKey: '', model: 'gpt-4o-mini' } });
+    await storageProvider.initialize({ type: 'sqlite', config: { databasePath: './data/app.db' } });
   } catch (error) {
     console.warn('Provider initialization failed (expected for stubs):', error);
   }

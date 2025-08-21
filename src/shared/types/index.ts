@@ -39,6 +39,9 @@ export {
   ValidationError,
   TimeoutError,
   CancellationError,
+  SecurityError,
+  CryptoError,
+  StorageError,
   isRetryableError,
   isRateLimitError,
   isAuthenticationError,
@@ -138,3 +141,26 @@ export type {
   RuleTestResult,
   RuleAnalytics,
 } from './rules.types.js';
+
+// Security types
+export type {
+  SecureCredential,
+  SecurityAuditEvent,
+  SecurityEventType,
+  SecurityConfig,
+  SecurityLevel,
+  CredentialStorageOptions,
+  RotationPolicy,
+  SecurityValidationResult,
+  SecurityValidationDetails,
+  EncryptionKeyMetadata,
+  KeyDerivationMethod,
+  KeyUsageStats,
+  TokenRefreshRequest,
+  TokenRefreshResponse,
+  SecureStorageStatus,
+  StorageHealthStatus,
+  SecurityConfigSummary,
+  RecoveryInfo,
+  CredentialBackup,
+} from './security.types.js';
