@@ -127,9 +127,9 @@ export function Layout({ children }: LayoutProps): React.JSX.Element {
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
-            ['& .MuiDrawer-paper']: { 
-              'boxSizing': 'border-box', 
-              'width': DRAWER_WIDTH 
+            ['& .MuiDrawer-paper']: {
+              boxSizing: 'border-box',
+              width: DRAWER_WIDTH,
             },
           }}
         >
@@ -146,9 +146,9 @@ export function Layout({ children }: LayoutProps): React.JSX.Element {
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            ['& .MuiDrawer-paper']: { 
-              'boxSizing': 'border-box', 
-              'width': DRAWER_WIDTH 
+            ['& .MuiDrawer-paper']: {
+              boxSizing: 'border-box',
+              width: DRAWER_WIDTH,
             },
           }}
           open

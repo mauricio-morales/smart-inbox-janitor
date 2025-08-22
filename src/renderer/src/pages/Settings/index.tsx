@@ -205,7 +205,13 @@ export function Settings(): React.JSX.Element {
                 </Typography>
               </CardContent>
               <CardActions>
-                <Button size="small" onClick={() => { void testConnection('gmail'); }} disabled={loading}>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    void testConnection('gmail');
+                  }}
+                  disabled={loading}
+                >
                   Test Connection
                 </Button>
                 <Button size="small" disabled>
@@ -236,7 +242,13 @@ export function Settings(): React.JSX.Element {
                 />
               </CardContent>
               <CardActions>
-                <Button size="small" onClick={() => { void testConnection('openai'); }} disabled={loading}>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    void testConnection('openai');
+                  }}
+                  disabled={loading}
+                >
                   Test Connection
                 </Button>
               </CardActions>
@@ -271,7 +283,9 @@ export function Settings(): React.JSX.Element {
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
-            onClick={() => { void loadSettings(); }}
+            onClick={() => {
+              void loadSettings();
+            }}
             disabled={loading}
           >
             Reset
@@ -279,7 +293,9 @@ export function Settings(): React.JSX.Element {
           <Button
             variant="contained"
             startIcon={<SaveIcon />}
-            onClick={() => { void saveSettings(); }}
+            onClick={() => {
+              void saveSettings();
+            }}
             disabled={saving || loading}
           >
             Save Settings

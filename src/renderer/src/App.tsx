@@ -27,11 +27,29 @@ function App(): React.JSX.Element {
     const initializeApp = async (): Promise<void> => {
       try {
         // Check if Electron API is available
-        if (typeof globalThis === 'undefined' || !('window' in globalThis) || (globalThis as typeof globalThis & { window: { electronAPI?: unknown } }).window.electronAPI == null) {
+        if (
+          typeof globalThis === 'undefined' ||
+          !('window' in globalThis) ||
+          (globalThis as typeof globalThis & { window: { electronAPI?: unknown } }).window
+            .electronAPI == null
+        ) {
           throw new Error('Electron API not available');
         }
 
-        const windowObj = (globalThis as typeof globalThis & { window: { electronAPI: { storage: { getConfig(): Promise<{ success: boolean; data?: { onboardingComplete?: boolean } }> } } } }).window;
+        const windowObj = (
+          globalThis as typeof globalThis & {
+            window: {
+              electronAPI: {
+                storage: {
+                  getConfig(): Promise<{
+                    success: boolean;
+                    data?: { onboardingComplete?: boolean };
+                  }>;
+                };
+              };
+            };
+          }
+        ).window;
         // Get app configuration to check onboarding status
         const configResult = await windowObj.electronAPI.storage.getConfig();
 
