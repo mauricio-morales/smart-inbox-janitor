@@ -113,6 +113,36 @@
         "$tsc",
         "$eslint-stylish"
       ]
+    },
+    {
+      "label": "📱 Build macOS App",
+      "detail": "Build macOS .app bundle in dist-electron folder",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "build:mac"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🚀 Run macOS App",
+      "detail": "Launch the built macOS application",
+      "type": "shell",
+      "command": "open",
+      "args": ["${workspaceFolder}/dist-electron/mac/Smart Inbox Janitor.app"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "dependsOrder": "sequence",
+      "dependsOn": "📱 Build macOS App"
     }
   ]
 }

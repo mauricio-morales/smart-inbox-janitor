@@ -221,7 +221,7 @@ export const EmailBodySchema = z.object({
   encoding: z.string().optional(),
   sizeBytes: z.number().int().nonnegative().optional(),
 }).refine(
-  (data) => data.text || data.html,
+  (data) => Boolean(data.text) || Boolean(data.html),
   {
     message: 'Either text or html body is required',
     path: ['text'],

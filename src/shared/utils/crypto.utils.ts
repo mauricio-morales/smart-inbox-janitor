@@ -8,8 +8,7 @@
  */
 
 import { randomBytes, createCipheriv, createDecipheriv, pbkdf2Sync } from 'crypto';
-import { Result, createSuccessResult, createErrorResult } from '@shared/types';
-import { CryptoError } from '@shared/types';
+import { Result, createSuccessResult, createErrorResult, CryptoError } from '@shared/types';
 import * as os from 'os';
 
 /**
@@ -68,17 +67,17 @@ export class CryptoUtils {
    * @param options - Key derivation options
    * @returns Result containing encrypted data or error
    */
-  static async encryptData(
+  static encryptData(
     data: string,
     keyId: string,
     options: KeyDerivationOptions = {}
-  ): Promise<Result<EncryptedData>> {
+  ): Result<EncryptedData> {
     try {
       // Generate secure random IV
       const iv = randomBytes(CryptoUtils.IV_LENGTH);
       
       // Derive encryption key automatically (no user passwords)
-      const key = await CryptoUtils.deriveKey(keyId, options);
+      const key = CryptoUtils.deriveKey(keyId, options);
       
       // Create cipher with additional authenticated data
       const cipher = createCipheriv(CryptoUtils.ALGORITHM, key, iv);
@@ -120,11 +119,11 @@ export class CryptoUtils {
    * @param options - Key derivation options
    * @returns Result containing decrypted plaintext or error
    */
-  static async decryptData(
+  static decryptData(
     encryptedData: EncryptedData,
     keyId: string,
     options: KeyDerivationOptions = {}
-  ): Promise<Result<string>> {
+  ): Result<string> {
     try {
       // Validate algorithm compatibility
       if (encryptedData.algorithm !== CryptoUtils.ALGORITHM) {
@@ -139,7 +138,7 @@ export class CryptoUtils {
       }
       
       // Derive the same encryption key
-      const key = await CryptoUtils.deriveKey(keyId, options);
+      const key = CryptoUtils.deriveKey(keyId, options);
       
       // Parse components from base64
       const iv = Buffer.from(encryptedData.iv, 'base64');
@@ -187,10 +186,10 @@ export class CryptoUtils {
    * @param options - Key derivation configuration
    * @returns Derived encryption key
    */
-  private static async deriveKey(
+  private static deriveKey(
     keyId: string,
     options: KeyDerivationOptions = {}
-  ): Promise<Buffer> {
+  ): Buffer {
     const {
       salt = CryptoUtils.generateDeterministicSalt(keyId),
       iterations = CryptoUtils.DEFAULT_ITERATIONS,
@@ -238,7 +237,7 @@ export class CryptoUtils {
         os.type(),
         process.version
       ].join(':');
-    } catch (error) {
+    } catch {
       // Fallback if user info is not available
       return [
         os.hostname(),
@@ -256,7 +255,7 @@ export class CryptoUtils {
    * @param length - Number of bytes to generate
    * @returns Promise resolving to random bytes
    */
-  static async generateRandomBytes(length: number): Promise<Buffer> {
+  static generateRandomBytes(length: number): Buffer {
     return randomBytes(length);
   }
 
@@ -302,7 +301,7 @@ export class CryptoUtils {
    * @returns True if valid encrypted data structure
    */
   static isValidEncryptedData(data: unknown): data is EncryptedData {
-    if (!data || typeof data !== 'object') {
+    if (data == null || typeof data !== 'object') {
       return false;
     }
 
@@ -323,7 +322,14 @@ export class CryptoUtils {
    * 
    * @returns Algorithm metadata
    */
-  static getAlgorithmInfo() {
+  static getAlgorithmInfo(): {
+    algorithm: string;
+    keyLength: number;
+    ivLength: number;
+    tagLength: number;
+    defaultIterations: number;
+    aadIdentifier: string;
+  } {
     return {
       algorithm: CryptoUtils.ALGORITHM,
       keyLength: CryptoUtils.KEY_LENGTH,

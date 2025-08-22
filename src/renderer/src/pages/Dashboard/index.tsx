@@ -38,7 +38,7 @@ export function Dashboard(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadDashboardData();
+    void loadDashboardData();
   }, []);
 
   const loadDashboardData = async (): Promise<void> => {
@@ -57,8 +57,8 @@ export function Dashboard(): React.JSX.Element {
         dangerousEmails: 127,
         cleanedEmails: 2890,
       });
-    } catch (err) {
-      console.warn('Dashboard data loading failed (expected with stub providers):', err);
+    } catch {
+      // Dashboard data loading failed (expected with stub providers)
       setError('Providers not yet implemented - showing demo data');
 
       // Show demo data even when providers fail
@@ -74,9 +74,11 @@ export function Dashboard(): React.JSX.Element {
   };
 
   const handleStartProcessing = (): void => {
-    console.log('Start email processing clicked');
+    // Start email processing clicked
     // TODO: Implement email processing workflow
-    alert('Email processing will be implemented when providers are ready!');
+    if (typeof globalThis !== 'undefined' && 'alert' in globalThis && typeof (globalThis as typeof globalThis & { alert: (message: string) => void }).alert === 'function') {
+      (globalThis as typeof globalThis & { alert: (message: string) => void }).alert('Email processing will be implemented when providers are ready!');
+    }
   };
 
   const progressPercentage =

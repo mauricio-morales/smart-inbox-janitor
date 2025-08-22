@@ -38,5 +38,11 @@
     "key": "ctrl+f5",
     "command": "workbench.action.debug.run",
     "when": "debuggersAvailable && !inDebugMode"
+  },
+  {
+    "key": "ctrl+shift+r",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🚀 Run macOS App",
+    "when": "!inDebugMode"
   }
 ]
