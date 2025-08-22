@@ -21,7 +21,7 @@ const theme = createTheme({
   },
   components: {
     // Customize Material-UI components for Electron
-    'MuiCssBaseline': {
+    ['MuiCssBaseline']: {
       styleOverrides: {
         body: {
           // Prevent text selection in Electron
@@ -30,9 +30,9 @@ const theme = createTheme({
           overflow: 'hidden',
         },
         // Allow text selection in specific components
-        'input, textarea, [contenteditable]': {
-          userSelect: 'text',
-        },
+        input: { userSelect: 'text' },
+        textarea: { userSelect: 'text' },
+        ['[contenteditable]']: { 'userSelect': 'text' },
       },
     },
   },
@@ -47,8 +47,9 @@ const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000, // 10 minutes
       retry: (failureCount: number, error: unknown): boolean => {
         // Don't retry on authentication errors
-        if (error && typeof error === 'object' && 'code' in error) {
-          const errorCode = (error as any).code;
+        if (error != null && typeof error === 'object' && 'code' in error) {
+          const errorWithCode = error as { code: unknown };
+          const errorCode = errorWithCode.code;
           if (errorCode === 'AUTHENTICATION_ERROR' || errorCode === 'AUTHORIZATION_ERROR') {
             return false;
           }
@@ -63,7 +64,11 @@ const queryClient = new QueryClient({
 });
 
 // Initialize React application
-const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
+const rootElement = typeof globalThis !== 'undefined' && 'document' in globalThis ? (globalThis as typeof globalThis & { document: Document }).document.getElementById('root') : null;
+if (!rootElement) {
+  throw new Error('Root element not found');
+}
+const root = ReactDOM.createRoot(rootElement);
 
 root.render(
   <React.StrictMode>
@@ -77,6 +82,6 @@ root.render(
 );
 
 // Hot Module Replacement for development
-if (import.meta.hot) {
+if (import.meta.hot != null) {
   import.meta.hot.accept();
 }

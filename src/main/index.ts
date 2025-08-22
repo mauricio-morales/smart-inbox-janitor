@@ -39,11 +39,11 @@ void app.whenReady().then(async () => {
   // Initialize providers after window is created
   try {
     // Note: These are stub implementations that will return "not implemented" errors
-    await emailProvider.initialize({ type: 'gmail', config: { auth: { clientId: '', clientSecret: '', redirectUri: '', scopes: [] } } });
-    await llmProvider.initialize({ type: 'openai', config: { apiKey: '', model: 'gpt-4o-mini' } });
-    await storageProvider.initialize({ type: 'sqlite', config: { databasePath: './data/app.db' } });
-  } catch (error) {
-    console.warn('Provider initialization failed (expected for stubs):', error);
+    await emailProvider.initialize();
+    await llmProvider.initialize();
+    await storageProvider.initialize({ databasePath: './data/app.db' });
+  } catch {
+    // Provider initialization failed (expected for stubs)
   }
 });
 

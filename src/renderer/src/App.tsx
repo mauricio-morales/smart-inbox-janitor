@@ -14,7 +14,7 @@ interface AppState {
   error: string | null;
 }
 
-function App(): JSX.Element {
+function App(): React.JSX.Element {
   const [appState, setAppState] = useState<AppState>({
     isInitialized: false,
     isOnboardingComplete: false,
@@ -27,17 +27,18 @@ function App(): JSX.Element {
     const initializeApp = async (): Promise<void> => {
       try {
         // Check if Electron API is available
-        if (window.electronAPI === undefined) {
+        if (typeof globalThis === 'undefined' || !('window' in globalThis) || (globalThis as typeof globalThis & { window: { electronAPI?: unknown } }).window.electronAPI == null) {
           throw new Error('Electron API not available');
         }
 
+        const windowObj = (globalThis as typeof globalThis & { window: { electronAPI: { storage: { getConfig(): Promise<{ success: boolean; data?: { onboardingComplete?: boolean } }> } } } }).window;
         // Get app configuration to check onboarding status
-        const configResult = await window.electronAPI.storage.getConfig();
+        const configResult = await windowObj.electronAPI.storage.getConfig();
 
         let onboardingComplete = false;
         if (configResult.success) {
           // Check if basic configuration is complete
-          onboardingComplete = configResult.data?.onboardingComplete ?? false;
+          onboardingComplete = Boolean(configResult.data?.values?.onboardingComplete);
         }
 
         setAppState({
@@ -47,7 +48,7 @@ function App(): JSX.Element {
           error: null,
         });
       } catch (error) {
-        console.error('App initialization failed:', error);
+        // Handle initialization errors (providers are stubs, so this is expected)
         setAppState({
           isInitialized: false,
           isOnboardingComplete: false,

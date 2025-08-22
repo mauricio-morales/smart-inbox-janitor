@@ -8,6 +8,9 @@
  * @module TokenRotationService
  */
 
+/* eslint-env node */
+/* global setInterval, clearInterval */
+
 import {
   Result,
   createSuccessResult,
@@ -62,9 +65,9 @@ export interface RotationStatus {
  * - Integration with SecureStorageManager
  */
 export class TokenRotationService {
-  private secureStorageManager: SecureStorageManager;
+  private readonly secureStorageManager: SecureStorageManager;
   private config: TokenRotationConfig;
-  private rotationTimer: NodeJS.Timeout | null = null;
+  private rotationTimer: ReturnType<typeof setInterval> | null = null;
   private rotationStatus: RotationStatus;
   private initialized = false;
 
@@ -124,8 +127,8 @@ export class TokenRotationService {
       await this.checkAndRotateTokens();
 
       // Set up periodic rotation check
-      this.rotationTimer = setInterval(async () => {
-        await this.checkAndRotateTokens();
+      this.rotationTimer = setInterval(() => {
+        void this.checkAndRotateTokens();
       }, this.config.rotationIntervalMs);
 
       this.rotationStatus.active = true;
@@ -145,7 +148,7 @@ export class TokenRotationService {
    * 
    * @returns Result indicating scheduler stop success or failure
    */
-  async stopRotationScheduler(): Promise<Result<void>> {
+  stopRotationScheduler(): Result<void> {
     try {
       if (this.rotationTimer) {
         clearInterval(this.rotationTimer);
@@ -235,9 +238,12 @@ export class TokenRotationService {
       };
 
       // Restart scheduler if configuration changed and service is active
-      if (this.rotationStatus.active) {
-        await this.stopRotationScheduler();
-        await this.startRotationScheduler();
+      if (this.rotationStatus.active === true) {
+        this.stopRotationScheduler();
+        const startResult = await this.startRotationScheduler();
+        if (!startResult.success) {
+          return startResult;
+        }
       }
 
       return createSuccessResult(undefined);
@@ -254,9 +260,9 @@ export class TokenRotationService {
    * 
    * @returns Result indicating shutdown success or failure
    */
-  async shutdown(): Promise<Result<void>> {
+  shutdown(): Result<void> {
     try {
-      await this.stopRotationScheduler();
+      this.stopRotationScheduler();
       
       this.rotationStatus = {
         active: false,
@@ -286,14 +292,14 @@ export class TokenRotationService {
       // Update last rotation timestamp on successful check
       this.rotationStatus.lastRotation = new Date();
       this.rotationStatus.failedAttempts = 0;
-    } catch (error) {
+    } catch {
       this.rotationStatus.failedAttempts++;
-      console.warn('Token rotation check failed:', error);
+      // Token rotation check failed - incrementing failed attempts
       
       // Implement exponential backoff for failures
       if (this.rotationStatus.failedAttempts >= this.config.maxRetryAttempts) {
-        console.error('Maximum rotation retry attempts reached, stopping scheduler');
-        await this.stopRotationScheduler();
+        // Maximum rotation retry attempts reached, stopping scheduler
+        this.stopRotationScheduler();
       }
     }
   }
@@ -314,8 +320,8 @@ export class TokenRotationService {
 
     // Check if tokens expire within the buffer period
     if (expirationTime <= bufferTime) {
-      console.log('Gmail tokens expiring soon, initiating rotation');
-      await this.rotateProviderTokens('gmail');
+      // Gmail tokens expiring soon, initiating rotation
+      void this.rotateProviderTokens('gmail');
     }
   }
 
@@ -332,7 +338,7 @@ export class TokenRotationService {
       }
 
       const currentTokens = tokensResult.data;
-      if (!currentTokens.refreshToken) {
+      if (currentTokens.refreshToken === undefined || currentTokens.refreshToken === null || currentTokens.refreshToken === '') {
         return createErrorResult(
           new SecurityError('No refresh token available for Gmail token rotation')
         );
@@ -342,12 +348,12 @@ export class TokenRotationService {
       const refreshRequest: TokenRefreshRequest = {
         provider: 'gmail',
         refreshToken: currentTokens.refreshToken,
-        scopes: currentTokens.scope?.split(' ') || [],
+        scopes: currentTokens.scope?.split(' ') ?? [],
         forceRefresh: true
       };
 
       // Perform token refresh (placeholder implementation)
-      const refreshResult = await this.performTokenRefresh(refreshRequest);
+      const refreshResult = this.performTokenRefresh(refreshRequest);
       if (!refreshResult.success) {
         return createErrorResult(refreshResult.error);
       }
@@ -355,9 +361,9 @@ export class TokenRotationService {
       // Create new token structure
       const newTokens: GmailTokens = {
         accessToken: refreshResult.data.accessToken,
-        refreshToken: refreshResult.data.refreshToken || currentTokens.refreshToken,
+        refreshToken: refreshResult.data.refreshToken ?? currentTokens.refreshToken,
         expiryDate: refreshResult.data.expiresAt.getTime(),
-        scope: refreshResult.data.scope || currentTokens.scope,
+        scope: refreshResult.data.scope ?? currentTokens.scope,
         tokenType: refreshResult.data.tokenType
       };
 
@@ -383,7 +389,7 @@ export class TokenRotationService {
    * @param request - Token refresh request
    * @returns Result containing new tokens
    */
-  private async performTokenRefresh(request: TokenRefreshRequest): Promise<Result<TokenRefreshResponse>> {
+  private performTokenRefresh(request: TokenRefreshRequest): Result<TokenRefreshResponse> {
     try {
       // Placeholder implementation for token refresh
       // In a real implementation, this would make HTTP requests to Google OAuth endpoints

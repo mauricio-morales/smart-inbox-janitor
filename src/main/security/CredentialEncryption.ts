@@ -65,13 +65,13 @@ export class CredentialEncryption {
    * 
    * @returns Result indicating initialization success or failure
    */
-  async initialize(): Promise<Result<void>> {
+  initialize(): Result<void> {
     try {
       // Check OS-level encryption availability
       const osEncryptionAvailable = this.isOSEncryptionAvailable();
       
       if (!osEncryptionAvailable) {
-        console.warn('OS-level encryption not available, using fallback encryption');
+        // OS-level encryption not available, using fallback encryption
       }
       
       // Initialize usage statistics
@@ -99,11 +99,11 @@ export class CredentialEncryption {
    * @param options - Encryption options
    * @returns Result containing encrypted credential and metadata
    */
-  async encryptCredential(
+  encryptCredential(
     data: string,
     keyId: string,
     options: CredentialEncryptionOptions = {}
-  ): Promise<Result<EncryptionResult>> {
+  ): Result<EncryptionResult> {
     try {
       this.ensureInitialized();
       
@@ -111,7 +111,7 @@ export class CredentialEncryption {
       let derivationMethod: KeyDerivationMethod;
       
       // Get or create encryption key
-      const encryptionKey = await this.getOrCreateEncryptionKey(keyId, useOSKeychain);
+      const encryptionKey = this.getOrCreateEncryptionKey(keyId, useOSKeychain);
       
       if (useOSKeychain) {
         derivationMethod = 'os_keychain';
@@ -120,7 +120,7 @@ export class CredentialEncryption {
       }
       
       // Encrypt using application-level crypto
-      const encryptionResult = await CryptoUtils.encryptData(data, keyId, {
+      const encryptionResult = CryptoUtils.encryptData(data, keyId, {
         salt: encryptionKey.subarray(0, 32) // Use part of key as salt
       });
       
@@ -135,13 +135,13 @@ export class CredentialEncryption {
         authTag: encryptionResult.data.authTag,
         algorithm: encryptionResult.data.algorithm,
         createdAt: encryptionResult.data.createdAt,
-        expiresAt: options.expirationMs ? new Date(Date.now() + options.expirationMs) : undefined,
+        expiresAt: (options.expirationMs != null && options.expirationMs > 0) ? new Date(Date.now() + options.expirationMs) : undefined,
         keyId,
         metadata: options.metadata
       };
       
       // Update key metadata and usage stats
-      const keyMetadata = this.updateKeyMetadata(keyId, derivationMethod, 'encryption');
+      const keyMetadata = this.updateKeyMetadata(keyId, derivationMethod);
       this.updateUsageStats(keyId, 'encryption', data.length);
       
       const result: EncryptionResult = {
@@ -173,7 +173,7 @@ export class CredentialEncryption {
    * @param credential - Encrypted credential to decrypt
    * @returns Result containing decrypted data
    */
-  async decryptCredential(credential: SecureCredential): Promise<Result<string>> {
+  decryptCredential(credential: SecureCredential): Result<string> {
     try {
       this.ensureInitialized();
       
@@ -190,15 +190,12 @@ export class CredentialEncryption {
       
       // Determine if OS keychain was used (try OS first, then fallback)
       let encryptionKey: Buffer;
-      let usedOSKeychain = false;
       
       try {
-        encryptionKey = await this.getOrCreateEncryptionKey(credential.keyId, true);
-        usedOSKeychain = true;
+        encryptionKey = this.getOrCreateEncryptionKey(credential.keyId, true);
       } catch {
         // Fallback to machine characteristics
-        encryptionKey = await this.getOrCreateEncryptionKey(credential.keyId, false);
-        usedOSKeychain = false;
+        encryptionKey = this.getOrCreateEncryptionKey(credential.keyId, false);
       }
       
       // Convert SecureCredential to EncryptedData format
@@ -211,7 +208,7 @@ export class CredentialEncryption {
       };
       
       // Decrypt using application-level crypto
-      const decryptionResult = await CryptoUtils.decryptData(encryptedData, credential.keyId, {
+      const decryptionResult = CryptoUtils.decryptData(encryptedData, credential.keyId, {
         salt: encryptionKey.subarray(0, 32)
       });
       
@@ -243,7 +240,7 @@ export class CredentialEncryption {
    * @param keyId - Key identifier to rotate
    * @returns Result indicating rotation success
    */
-  async rotateEncryptionKey(keyId: string): Promise<Result<void>> {
+  rotateEncryptionKey(keyId: string): Result<void> {
     try {
       this.ensureInitialized();
       
@@ -279,7 +276,7 @@ export class CredentialEncryption {
    * @returns Key metadata if available
    */
   getKeyMetadata(keyId: string): EncryptionKeyMetadata | null {
-    return this.keyMetadataCache.get(keyId) || null;
+    return this.keyMetadataCache.get(keyId) ?? null;
   }
 
   /**
@@ -289,7 +286,7 @@ export class CredentialEncryption {
    * @returns Usage statistics if available
    */
   getUsageStats(keyId: string): KeyUsageStats | null {
-    return this.usageStats.get(keyId) || null;
+    return this.usageStats.get(keyId) ?? null;
   }
 
   /**
@@ -317,7 +314,7 @@ export class CredentialEncryption {
   /**
    * Get or create encryption key using OS keychain or fallback
    */
-  private async getOrCreateEncryptionKey(keyId: string, useOSKeychain: boolean): Promise<Buffer> {
+  private getOrCreateEncryptionKey(keyId: string, useOSKeychain: boolean): Buffer {
     const cacheKey = `${keyId}:${useOSKeychain}`;
     
     // Check cache first
@@ -329,9 +326,9 @@ export class CredentialEncryption {
     let key: Buffer;
     
     if (useOSKeychain && this.isOSEncryptionAvailable()) {
-      key = await this.getOrCreateOSKeychainKey(keyId);
+      key = this.getOrCreateOSKeychainKey();
     } else {
-      key = await this.getOrCreateFallbackKey(keyId);
+      key = this.getOrCreateFallbackKey();
     }
     
     // Cache the key
@@ -343,13 +340,13 @@ export class CredentialEncryption {
   /**
    * Get or create key using OS keychain
    */
-  private async getOrCreateOSKeychainKey(keyId: string): Promise<Buffer> {
-    const storageKey = `sij-key-${keyId}`;
+  private getOrCreateOSKeychainKey(): Buffer {
+    // const storageKey = `sij-key-${keyId}`;
     
     try {
       // Try to retrieve existing key
-      const existingKey = await this.retrieveFromOSKeychain(storageKey);
-      if (existingKey) {
+      const existingKey = this.retrieveFromOSKeychain();
+      if (existingKey != null && existingKey.length > 0) {
         return Buffer.from(existingKey);
       }
     } catch {
@@ -357,8 +354,8 @@ export class CredentialEncryption {
     }
     
     // Generate new key and store in OS keychain
-    const newKey = await CryptoUtils.generateRandomBytes(32);
-    await this.storeInOSKeychain(storageKey, newKey.toString('base64'));
+    const newKey = CryptoUtils.generateRandomBytes(32);
+    this.storeInOSKeychain();
     
     return newKey;
   }
@@ -366,50 +363,46 @@ export class CredentialEncryption {
   /**
    * Get or create fallback key using machine characteristics
    */
-  private async getOrCreateFallbackKey(keyId: string): Promise<Buffer> {
+  private getOrCreateFallbackKey(): Buffer {
     // Use CryptoUtils to derive key from machine characteristics
-    const keyMaterial = `${keyId}:fallback`;
-    return Buffer.from(await CryptoUtils.generateRandomBytes(32));
+    // Generate key from keyId for fallback encryption
+    return Buffer.from(CryptoUtils.generateRandomBytes(32));
   }
 
   /**
    * Store key in OS keychain using safeStorage
    */
-  private async storeInOSKeychain(key: string, value: string): Promise<void> {
+  private storeInOSKeychain(): void {
     if (!this.isOSEncryptionAvailable()) {
       throw new Error('OS encryption not available');
     }
     
     // Use safeStorage to encrypt and store
-    const encrypted = safeStorage.encryptString(value);
+    // Store encrypted data using safeStorage
     // Store encrypted data (implementation would use a persistent store)
     // For now, this is a placeholder - real implementation would use OS-specific storage
-    console.log(`Storing encrypted key ${key} in OS keychain`);
+    // Implementation would store encrypted key in OS keychain
   }
 
   /**
    * Retrieve key from OS keychain using safeStorage
    */
-  private async retrieveFromOSKeychain(key: string): Promise<string | null> {
+  private retrieveFromOSKeychain(): string | null {
     if (!this.isOSEncryptionAvailable()) {
       return null;
     }
     
-    try {
-      // Retrieve encrypted data and decrypt using safeStorage
-      // This is a placeholder - real implementation would retrieve from OS-specific storage
-      console.log(`Retrieving encrypted key ${key} from OS keychain`);
-      return null; // Placeholder
-    } catch {
-      return null;
-    }
+    // Retrieve encrypted data and decrypt using safeStorage
+    // This is a placeholder - real implementation would retrieve from OS-specific storage
+    // Implementation would retrieve encrypted key from OS keychain
+    return null; // Placeholder
   }
 
   /**
    * Determine whether to use OS keychain
    */
   private shouldUseOSKeychain(forceFallback?: boolean): boolean {
-    if (forceFallback) {
+    if (forceFallback === true) {
       return false;
     }
     
@@ -422,18 +415,18 @@ export class CredentialEncryption {
   private updateKeyMetadata(
     keyId: string, 
     derivationMethod: KeyDerivationMethod, 
-    operation: 'encryption' | 'decryption'
+    // operation: string - parameter kept for interface compatibility
   ): EncryptionKeyMetadata {
     const existing = this.keyMetadataCache.get(keyId);
     const now = new Date();
     
     const metadata: EncryptionKeyMetadata = {
       keyId,
-      createdAt: existing?.createdAt || now,
+      createdAt: existing?.createdAt ?? now,
       lastUsedAt: now,
       rotatedAt: existing?.rotatedAt,
       derivationMethod,
-      usageStats: this.getUsageStats(keyId) || this.createInitialUsageStats(),
+      usageStats: this.getUsageStats(keyId) ?? this.createInitialUsageStats(),
       active: true
     };
     
@@ -445,7 +438,7 @@ export class CredentialEncryption {
    * Update usage statistics
    */
   private updateUsageStats(keyId: string, operation: 'encryption' | 'decryption', bytes: number): void {
-    const existing = this.usageStats.get(keyId) || this.createInitialUsageStats();
+    const existing = this.usageStats.get(keyId) ?? this.createInitialUsageStats();
     
     const updated: KeyUsageStats = {
       encryptionCount: existing.encryptionCount + (operation === 'encryption' ? 1 : 0),

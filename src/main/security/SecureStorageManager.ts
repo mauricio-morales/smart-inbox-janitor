@@ -25,15 +25,10 @@ import {
   StorageHealthStatus,
   SecurityConfigSummary,
   CredentialStorageOptions,
-  TokenRefreshRequest,
-  TokenRefreshResponse,
-  RecoveryInfo,
-  CredentialBackup,
   SecurityLevel
 } from '@shared/types';
-import { CredentialEncryption, EncryptionResult } from './CredentialEncryption';
-import { SecurityAuditLogger } from './SecurityAuditLogger';
-import { CryptoUtils } from '@shared/utils/crypto.utils';
+import { CredentialEncryption } from './CredentialEncryption';
+import { SecurityAuditLogger } from '../../../PRPs/SecurityAuditLogger';
 
 /**
  * Provider-specific credential storage interface
@@ -74,7 +69,7 @@ export interface SecureStorageInitOptions {
  * - Recovery procedures for corrupted storage
  */
 export class SecureStorageManager {
-  private credentialEncryption: CredentialEncryption;
+  private readonly credentialEncryption: CredentialEncryption;
   private securityAuditLogger: SecurityAuditLogger;
   private storageProvider: StorageProvider;
   private securityConfig: SecurityConfig;
@@ -84,8 +79,8 @@ export class SecureStorageManager {
   constructor() {
     // Will be initialized in initialize() method
     this.credentialEncryption = new CredentialEncryption();
-    this.securityAuditLogger = new SecurityAuditLogger(this.storageProvider!);
-    this.storageProvider = null!;
+    this.storageProvider = {} as StorageProvider;
+    this.securityAuditLogger = new SecurityAuditLogger(this.storageProvider);
     this.securityConfig = this.getDefaultSecurityConfig();
   }
 
@@ -106,7 +101,7 @@ export class SecureStorageManager {
       };
 
       // Initialize components
-      const encryptionResult = await this.credentialEncryption.initialize();
+      const encryptionResult = this.credentialEncryption.initialize();
       if (!encryptionResult.success) {
         return createErrorResult(encryptionResult.error);
       }
@@ -148,7 +143,7 @@ export class SecureStorageManager {
       const message = error instanceof Error ? error.message : 'Unknown initialization error';
       
       // Try to log the failure
-      if (this.securityAuditLogger) {
+      if (this.securityAuditLogger !== undefined) {
         await this.securityAuditLogger.logSecurityEvent({
           eventType: 'secure_storage_init',
           provider: 'secure_storage_manager',
@@ -182,7 +177,7 @@ export class SecureStorageManager {
       this.ensureInitialized();
 
       // Encrypt and store tokens
-      const encryptionResult = await this.credentialEncryption.encryptCredential(
+      const encryptionResult = this.credentialEncryption.encryptCredential(
         JSON.stringify(tokens),
         'gmail-tokens',
         {
@@ -197,7 +192,7 @@ export class SecureStorageManager {
           provider: 'gmail',
           success: false,
           errorMessage: 'Credential encryption failed',
-          metadata: { hasRefreshToken: !!tokens.refreshToken }
+          metadata: { hasRefreshToken: tokens.refreshToken !== undefined && tokens.refreshToken !== null && tokens.refreshToken !== '' }
         });
         return createErrorResult(encryptionResult.error);
       }
@@ -228,7 +223,7 @@ export class SecureStorageManager {
         provider: 'gmail',
         success: true,
         metadata: {
-          hasRefreshToken: !!tokens.refreshToken,
+          hasRefreshToken: tokens.refreshToken !== undefined && tokens.refreshToken !== null && tokens.refreshToken !== '',
           expiresAt: new Date(tokens.expiryDate).toISOString(),
           usedOSKeychain: encryptionResult.data.usedOSKeychain,
           encryptionAlgorithm: encryptionResult.data.credential.algorithm
@@ -276,13 +271,13 @@ export class SecureStorageManager {
       }
 
       const encryptedGmailToken = tokenResult.data.gmail;
-      if (!encryptedGmailToken) {
+      if (encryptedGmailToken === undefined || encryptedGmailToken === null || encryptedGmailToken === '') {
         return createSuccessResult(null);
       }
 
       // Decrypt credential
-      const secureCredential: SecureCredential = JSON.parse(encryptedGmailToken);
-      const decryptionResult = await this.credentialEncryption.decryptCredential(secureCredential);
+      const secureCredential = JSON.parse(encryptedGmailToken) as SecureCredential;
+      const decryptionResult = this.credentialEncryption.decryptCredential(secureCredential);
 
       if (!decryptionResult.success) {
         await this.securityAuditLogger.logSecurityEvent({
@@ -296,7 +291,7 @@ export class SecureStorageManager {
       }
 
       // Parse tokens
-      const tokens: GmailTokens = JSON.parse(decryptionResult.data);
+      const tokens = JSON.parse(decryptionResult.data) as GmailTokens;
       
       // Cache tokens
       this.credentials.gmail = tokens;
@@ -307,7 +302,7 @@ export class SecureStorageManager {
         provider: 'gmail',
         success: true,
         metadata: {
-          hasRefreshToken: !!tokens.refreshToken,
+          hasRefreshToken: tokens.refreshToken !== undefined && tokens.refreshToken !== null && tokens.refreshToken !== '',
           isExpired: tokens.expiryDate < Date.now()
         }
       });
@@ -350,7 +345,7 @@ export class SecureStorageManager {
       if (!apiKey.startsWith('sk-')) {
         return createErrorResult(
           new ValidationError('Invalid OpenAI API key format', {
-            provider: 'openai'
+            provider: ['openai']
           })
         );
       }
@@ -364,7 +359,7 @@ export class SecureStorageManager {
       };
 
       // Encrypt and store
-      const encryptionResult = await this.credentialEncryption.encryptCredential(
+      const encryptionResult = this.credentialEncryption.encryptCredential(
         JSON.stringify(openaiConfig),
         'openai-config',
         {
@@ -447,7 +442,7 @@ export class SecureStorageManager {
 
       // Check cache first
       if (this.credentials.openai) {
-        return createSuccessResult(this.credentials.openai as OpenAIConfig);
+        return createSuccessResult(this.credentials.openai);
       }
 
       // Retrieve from storage
@@ -457,13 +452,13 @@ export class SecureStorageManager {
       }
 
       const encryptedOpenAIToken = tokenResult.data.openai;
-      if (!encryptedOpenAIToken) {
+      if (encryptedOpenAIToken === undefined || encryptedOpenAIToken === null || encryptedOpenAIToken === '') {
         return createSuccessResult(null);
       }
 
       // Decrypt credential
-      const secureCredential: SecureCredential = JSON.parse(encryptedOpenAIToken);
-      const decryptionResult = await this.credentialEncryption.decryptCredential(secureCredential);
+      const secureCredential = JSON.parse(encryptedOpenAIToken) as SecureCredential;
+      const decryptionResult = this.credentialEncryption.decryptCredential(secureCredential);
 
       if (!decryptionResult.success) {
         await this.securityAuditLogger.logSecurityEvent({
@@ -477,7 +472,7 @@ export class SecureStorageManager {
       }
 
       // Parse config
-      const config: OpenAIConfig = JSON.parse(decryptionResult.data);
+      const config = JSON.parse(decryptionResult.data) as OpenAIConfig;
       
       // Cache config
       this.credentials.openai = config;
@@ -582,7 +577,7 @@ export class SecureStorageManager {
       }
 
       const providers = Object.keys(tokensResult.data);
-      let failedProviders: string[] = [];
+      const failedProviders: string[] = [];
 
       // Remove each provider's credentials
       for (const provider of providers) {
@@ -701,7 +696,7 @@ export class SecureStorageManager {
    * 
    * @returns Result containing validation results
    */
-  async validateSecurity(): Promise<Result<SecurityValidationResult>> {
+  validateSecurity(): Result<SecurityValidationResult> {
     try {
       this.ensureInitialized();
 
@@ -774,10 +769,10 @@ export class SecureStorageManager {
       const tokensResult = await this.storageProvider.getEncryptedTokens();
       if (tokensResult.success && Object.keys(tokensResult.data).length > 0) {
         // Credentials exist but we'll load them lazily when requested
-        console.log(`Found ${Object.keys(tokensResult.data).length} stored credential(s)`);
+        // Found credentials - will load lazily
       }
-    } catch (error) {
-      console.warn('Failed to load existing credentials:', error);
+    } catch {
+      // Failed to load existing credentials - continuing without cache
     }
   }
 

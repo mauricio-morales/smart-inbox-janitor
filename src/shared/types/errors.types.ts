@@ -201,7 +201,7 @@ export class GmailError extends BaseProviderError {
       );
     }
     
-    if (error.code >= 500) {
+    if (error.code != null && error.code >= 500) {
       return new GmailError(
         'GMAIL_SERVER_ERROR',
         'Gmail server error. Please try again.',
@@ -214,7 +214,7 @@ export class GmailError extends BaseProviderError {
     
     return new GmailError(
       'GMAIL_UNKNOWN_ERROR',
-      error.message || 'Unknown Gmail API error',
+      error.message ?? 'Unknown Gmail API error',
       false,
       error.code,
       error.reason,
@@ -304,8 +304,8 @@ export class OpenAIError extends BaseProviderError {
     this.openaiCode = openaiCode;
   }
   
-  static fromOpenAIError(error: any): OpenAIError {
-    const baseDetails = { originalError: error.message };
+  static fromOpenAIError(error: { type?: string; code?: string; message?: string }): OpenAIError {
+    const baseDetails = { originalError: error.message ?? 'Unknown OpenAI error' };
     
     if (error.type === 'insufficient_quota') {
       return new OpenAIError(
@@ -353,7 +353,7 @@ export class OpenAIError extends BaseProviderError {
     
     return new OpenAIError(
       'OPENAI_UNKNOWN_ERROR',
-      error.message || 'Unknown OpenAI API error',
+      error.message ?? 'Unknown OpenAI API error',
       false,
       error.type,
       error.code,
@@ -481,11 +481,8 @@ export function getErrorSeverity(error: ProviderError): ErrorSeverity {
  * Security-related error for authentication, authorization, and security violations
  */
 export class SecurityError extends BaseProviderError {
-  readonly code = 'SECURITY_ERROR';
-  
   constructor(message: string, context?: Record<string, unknown>) {
-    super(message, context);
-    this.name = 'SecurityError';
+    super('SECURITY_ERROR', message, false, context);
   }
 }
 
@@ -493,11 +490,8 @@ export class SecurityError extends BaseProviderError {
  * Cryptographic operation error for encryption, decryption, and key management
  */
 export class CryptoError extends BaseProviderError {
-  readonly code = 'CRYPTO_ERROR';
-  
   constructor(message: string, context?: Record<string, unknown>) {
-    super(message, context);
-    this.name = 'CryptoError';
+    super('CRYPTO_ERROR', message, false, context);
   }
 }
 
@@ -505,10 +499,7 @@ export class CryptoError extends BaseProviderError {
  * Storage-related error for database operations and data persistence
  */
 export class StorageError extends BaseProviderError {
-  readonly code = 'STORAGE_ERROR';
-  
   constructor(message: string, context?: Record<string, unknown>) {
-    super(message, context);
-    this.name = 'StorageError';
+    super('STORAGE_ERROR', message, false, context);
   }
 }

@@ -1,15 +1,20 @@
-import type {
-  LLMProvider,
-  Result,
-  HealthStatus,
-  ClassifyInput,
-  ClassifyOutput,
-  UsageStatistics,
-  CostEstimation,
-  LLMProviderConfig,
-  ValidationResult
-} from '@shared/types'
-import { 
+import {
+  type LLMProvider,
+  type Result,
+  type HealthStatus,
+  type ClassifyInput,
+  type ClassifyOutput,
+  type UsageStatistics,
+  type CostEstimation,
+  type GroupingInput,
+  type GroupOutput,
+  type ContentValidationInput,
+  type ContentValidationResult,
+  type ExplanationInput,
+  type ClassificationExplanation,
+  type ConnectionTestResult,
+  type CostEstimationInput,
+  type OpenAIConfig,
   createErrorResult,
   ConfigurationError 
 } from '@shared/types'
@@ -21,158 +26,159 @@ import {
  * for all operations. It serves as a foundation for the real OpenAI provider
  * implementation while allowing the application scaffold to compile and run.
  */
-export class OpenAIProviderStub implements LLMProvider {
+export class OpenAIProviderStub implements LLMProvider<OpenAIConfig> {
   readonly name = 'openai-stub'
   readonly version = '0.1.0'
 
-  async initialize(_config: LLMProviderConfig): Promise<Result<void>> {
-    console.warn('OpenAIProvider.initialize called - stub implementation')
-    return createErrorResult(
+  initialize(): Promise<Result<void>> {
+    // OpenAIProvider.initialize called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'initialize'
       })
-    )
+    ))
   }
 
-  async healthCheck(): Promise<Result<HealthStatus>> {
-    console.warn('OpenAIProvider.healthCheck called - stub implementation')
-    return createErrorResult(
+  healthCheck(): Promise<Result<HealthStatus>> {
+    // OpenAIProvider.healthCheck called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'healthCheck'
       })
-    )
+    ))
   }
 
-  async shutdown(): Promise<Result<void>> {
-    console.warn('OpenAIProvider.shutdown called - stub implementation')
-    return createErrorResult(
+  shutdown(): Promise<Result<void>> {
+    // OpenAIProvider.shutdown called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'shutdown'
       })
-    )
+    ))
   }
 
-  getConfig(): Readonly<LLMProviderConfig> {
+  getConfig(): Readonly<OpenAIConfig> {
     return {
-      provider: 'openai',
       apiKey: '',
-      model: 'gpt-4',
-      maxTokens: 1000
+      model: 'gpt-4o-mini'
     } as const
   }
 
-  async init(_auth: Record<string, string>): Promise<Result<void>> {
-    console.warn('OpenAIProvider.init called - stub implementation')
-    return createErrorResult(
+  init(): Promise<Result<void>> {
+    // OpenAIProvider.init called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'init'
       })
-    )
+    ))
   }
 
-  async validateContent(_input: Record<string, unknown>): Promise<Result<ValidationResult>> {
-    console.warn('OpenAIProvider.validateContent called - stub implementation')
-    return createErrorResult(
+  validateContent(content: ContentValidationInput): Promise<Result<ContentValidationResult>> {
+    void content; // Mark parameter as intentionally unused
+    // OpenAIProvider.validateContent called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'validateContent'
       })
-    )
+    ))
   }
 
-  async explainClassification(_input: Record<string, unknown>): Promise<Result<string>> {
-    console.warn('OpenAIProvider.explainClassification called - stub implementation')
-    return createErrorResult(
+  explainClassification(input: ExplanationInput): Promise<Result<ClassificationExplanation>> {
+    void input; // Mark parameter as intentionally unused
+    // OpenAIProvider.explainClassification called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'explainClassification'
       })
-    )
+    ))
   }
 
-  async getUsageStats(): Promise<Result<UsageStatistics>> {
-    console.warn('OpenAIProvider.getUsageStats called - stub implementation')
-    return createErrorResult(
+  getUsageStats(): Promise<Result<UsageStatistics>> {
+    // OpenAIProvider.getUsageStats called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'getUsageStats'
       })
-    )
+    ))
   }
 
-  async testConnection(): Promise<Result<Record<string, unknown>>> {
-    console.warn('OpenAIProvider.testConnection called - stub implementation')
-    return createErrorResult(
+  testConnection(): Promise<Result<ConnectionTestResult>> {
+    // OpenAIProvider.testConnection called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'testConnection'
       })
-    )
+    ))
   }
 
-  async classifyEmails(_input: ClassifyInput): Promise<Result<ClassifyOutput>> {
-    console.warn(`OpenAIProvider.classifyEmails called - stub implementation`)
-    return createErrorResult(
+  classifyEmails(input: ClassifyInput): Promise<Result<ClassifyOutput>> {
+    // OpenAIProvider.classifyEmails called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'classifyEmails',
         emailCount: input.emails.length
       })
-    )
+    ))
   }
 
-  async suggestSearchQueries(_context: Record<string, unknown>): Promise<Result<string[]>> {
-    console.warn('OpenAIProvider.suggestSearchQueries called - stub implementation')
-    return createErrorResult(
+  suggestSearchQueries(): Promise<Result<string[]>> {
+    // OpenAIProvider.suggestSearchQueries called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'suggestSearchQueries'
       })
-    )
+    ))
   }
 
-  async groupForBulk(input: Record<string, unknown>): Promise<Result<Record<string, unknown>>> {
-    console.warn('OpenAIProvider.groupForBulk called - stub implementation')
-    return createErrorResult(
+  groupForBulk(input: GroupingInput): Promise<Result<GroupOutput>> {
+    void input; // Mark parameter as intentionally unused
+    // OpenAIProvider.groupForBulk called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'groupForBulk'
       })
-    )
+    ))
   }
 
-  async getUsageStatistics(): Promise<Result<UsageStatistics>> {
-    console.warn('OpenAIProvider.getUsageStatistics called - stub implementation')
-    return createErrorResult(
+  getUsageStatistics(): Promise<Result<UsageStatistics>> {
+    // OpenAIProvider.getUsageStatistics called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'getUsageStatistics'
       })
-    )
+    ))
   }
 
-  async estimateCost(_operation: Record<string, unknown>): Promise<Result<CostEstimation>> {
-    console.warn(`OpenAIProvider.estimateCost called - stub implementation`)
-    return createErrorResult(
+  estimateCost(operation: CostEstimationInput): Promise<Result<CostEstimation>> {
+    void operation; // Mark parameter as intentionally unused
+    // OpenAIProvider.estimateCost called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
-        method: 'estimateCost',
-        emailCount: input.emails.length
+        method: 'estimateCost'
       })
-    )
+    ))
   }
 
-  async validateConfiguration(): Promise<Result<boolean>> {
-    console.warn('OpenAIProvider.validateConfiguration called - stub implementation')
-    return createErrorResult(
+  validateConfiguration(): Promise<Result<boolean>> {
+    // OpenAIProvider.validateConfiguration called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('OpenAI provider not implemented yet', {
         provider: 'openai',
         method: 'validateConfiguration'
       })
-    )
+    ))
   }
 }

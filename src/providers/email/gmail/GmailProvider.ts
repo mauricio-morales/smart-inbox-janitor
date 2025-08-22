@@ -1,23 +1,17 @@
-import type {
-  EmailProvider,
-  Result,
-  HealthStatus,
-  ListOptions,
-  GetEmailOptions,
-  ListEmailsResult,
-  EmailFull,
-  BatchModifyRequest,
-  BatchDeleteRequest,
-  BatchOperationResult,
-  SearchOptions,
-  SearchResult,
-  EmailFolder,
-  ConnectionOptions,
-  ConnectionInfo,
-  EmailProviderConfig,
-  AccountInfo
-} from '@shared/types'
-import { 
+import {
+  type EmailProvider,
+  type Result,
+  type HealthStatus,
+  type ListEmailsResult,
+  type EmailFull,
+  type BatchModifyRequest,
+  type BatchDeleteRequest,
+  type BatchOperationResult,
+  type SearchResult,
+  type EmailFolder,
+  type ConnectionInfo,
+  type AccountInfo,
+  type GmailProviderConfig,
   createErrorResult,
   ConfigurationError 
 } from '@shared/types'
@@ -29,173 +23,175 @@ import {
  * for all operations. It serves as a foundation for the real Gmail provider
  * implementation while allowing the application scaffold to compile and run.
  */
-export class GmailProviderStub implements EmailProvider {
+export class GmailProviderStub implements EmailProvider<GmailProviderConfig> {
   readonly name = 'gmail-stub'
   readonly version = '0.1.0'
 
-  async initialize(_config: EmailProviderConfig): Promise<Result<void>> {
-    console.warn('GmailProvider.initialize called - stub implementation')
-    return createErrorResult(
+  initialize(): Promise<Result<void>> {
+    // GmailProvider.initialize called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'initialize'
       })
-    )
+    ))
   }
 
-  async healthCheck(): Promise<Result<HealthStatus>> {
-    console.warn('GmailProvider.healthCheck called - stub implementation')
-    return createErrorResult(
+  healthCheck(): Promise<Result<HealthStatus>> {
+    // GmailProvider.healthCheck called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'healthCheck'
       })
-    )
+    ))
   }
 
-  async shutdown(): Promise<Result<void>> {
-    console.warn('GmailProvider.shutdown called - stub implementation')
-    return createErrorResult(
+  shutdown(): Promise<Result<void>> {
+    // GmailProvider.shutdown called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'shutdown'
       })
-    )
+    ))
   }
 
-  getConfig(): Readonly<EmailProviderConfig> {
+  getConfig(): Readonly<GmailProviderConfig> {
     return {
-      provider: 'gmail',
-      clientId: '',
-      clientSecret: '',
-      redirectUri: ''
+      auth: {
+        clientId: '',
+        clientSecret: '',
+        redirectUri: '',
+        scopes: []
+      }
     } as const
   }
 
-  async connect(_options?: ConnectionOptions): Promise<Result<ConnectionInfo>> {
-    console.warn('GmailProvider.connect called - stub implementation')
-    return createErrorResult(
+  connect(): Promise<Result<ConnectionInfo>> {
+    // GmailProvider.connect called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'connect'
       })
-    )
+    ))
   }
 
-  async disconnect(): Promise<Result<void>> {
-    console.warn('GmailProvider.disconnect called - stub implementation')
-    return createErrorResult(
+  disconnect(): Promise<Result<void>> {
+    // GmailProvider.disconnect called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'disconnect'
       })
-    )
+    ))
   }
 
-  async list(_options?: ListOptions): Promise<Result<ListEmailsResult>> {
-    console.warn('GmailProvider.list called - stub implementation')
-    return createErrorResult(
+  list(): Promise<Result<ListEmailsResult>> {
+    // GmailProvider.list called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'list'
       })
-    )
+    ))
   }
 
-  async get(emailId: string, _options?: GetEmailOptions): Promise<Result<EmailFull>> {
-    console.warn(`GmailProvider.get called with emailId: ${emailId} - stub implementation`)
-    return createErrorResult(
+  get(emailId: string): Promise<Result<EmailFull>> {
+    // GmailProvider.get called with emailId - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'get',
         emailId
       })
-    )
+    ))
   }
 
-  async batchModify(_request: BatchModifyRequest): Promise<Result<BatchOperationResult>> {
-    console.warn(`GmailProvider.batchModify called - stub implementation`)
-    return createErrorResult(
+  batchModify(request: BatchModifyRequest): Promise<Result<BatchOperationResult>> {
+    // GmailProvider.batchModify called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'batchModify',
-        emailCount: _request.emailIds.length
+        emailCount: request.emailIds.length
       })
-    )
+    ))
   }
 
-  async delete(emailId: string): Promise<Result<void>> {
-    console.warn(`GmailProvider.delete called with emailId: ${emailId} - stub implementation`)
-    return createErrorResult(
+  delete(emailId: string): Promise<Result<void>> {
+    // GmailProvider.delete called with emailId - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'delete',
         emailId
       })
-    )
+    ))
   }
 
-  async search(query: string, _options?: SearchOptions): Promise<Result<SearchResult>> {
-    console.warn(`GmailProvider.search called with query: ${query} - stub implementation`)
-    return createErrorResult(
+  search(query: string): Promise<Result<SearchResult>> {
+    // GmailProvider.search called with query - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'search',
         query
       })
-    )
+    ))
   }
 
-  async getFolders(): Promise<Result<EmailFolder[]>> {
-    console.warn('GmailProvider.getFolders called - stub implementation')
-    return createErrorResult(
+  getFolders(): Promise<Result<EmailFolder[]>> {
+    // GmailProvider.getFolders called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'getFolders'
       })
-    )
+    ))
   }
 
-  async reportSpam(emailIds: string[]): Promise<Result<BatchOperationResult>> {
-    console.warn(`GmailProvider.reportSpam called with ${emailIds.length} emails - stub implementation`)
-    return createErrorResult(
+  reportSpam(emailIds: string[]): Promise<Result<BatchOperationResult>> {
+    // GmailProvider.reportSpam called with emails - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'reportSpam',
         emailCount: emailIds.length
       })
-    )
+    ))
   }
 
-  async reportPhishing(emailIds: string[]): Promise<Result<BatchOperationResult>> {
-    console.warn(`GmailProvider.reportPhishing called with ${emailIds.length} emails - stub implementation`)
-    return createErrorResult(
+  reportPhishing(emailIds: string[]): Promise<Result<BatchOperationResult>> {
+    // GmailProvider.reportPhishing called with emails - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'reportPhishing',
         emailCount: emailIds.length
       })
-    )
+    ))
   }
 
-  async batchDelete(request: BatchDeleteRequest): Promise<Result<BatchOperationResult>> {
-    console.warn(`GmailProvider.batchDelete called with ${request.emailIds.length} emails - stub implementation`)
-    return createErrorResult(
+  batchDelete(request: BatchDeleteRequest): Promise<Result<BatchOperationResult>> {
+    // GmailProvider.batchDelete called with emails - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'batchDelete',
         emailCount: request.emailIds.length
       })
-    )
+    ))
   }
 
-  async getAccountInfo(): Promise<Result<AccountInfo>> {
-    console.warn('GmailProvider.getAccountInfo called - stub implementation')
-    return createErrorResult(
+  getAccountInfo(): Promise<Result<AccountInfo>> {
+    // GmailProvider.getAccountInfo called - stub implementation
+    return Promise.resolve(createErrorResult(
       new ConfigurationError('Gmail provider not implemented yet', {
         provider: 'gmail',
         method: 'getAccountInfo'
       })
-    )
+    ))
   }
 }
