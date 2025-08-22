@@ -105,7 +105,7 @@ export function Onboarding(): React.JSX.Element {
 
     // Try to test OpenAI connection (will fail with stub)
     setError('OpenAI provider not yet implemented - continuing with demo');
-    
+
     // Allow progression even with error for demo purposes
     const timeoutFn = globalThis.setTimeout;
     if (timeoutFn != null) {
@@ -132,7 +132,7 @@ export function Onboarding(): React.JSX.Element {
             dangerousEmailAlert: enableDangerousEmailAlerts,
             openaiApiKey: openaiApiKey.trim(),
           },
-        }
+        },
       });
 
       // Navigate to dashboard
@@ -216,7 +216,9 @@ export function Onboarding(): React.JSX.Element {
 
             <Button
               variant="contained"
-              onClick={() => { void handleGmailConnect(); }}
+              onClick={() => {
+                void handleGmailConnect();
+              }}
               disabled={loading}
               sx={{ mt: 2 }}
             >
@@ -301,7 +303,9 @@ export function Onboarding(): React.JSX.Element {
             <Box sx={{ mt: 3 }}>
               <Button
                 variant="contained"
-                onClick={() => { void handleCompleteOnboarding(); }}
+                onClick={() => {
+                  void handleCompleteOnboarding();
+                }}
                 disabled={loading}
                 size="large"
               >

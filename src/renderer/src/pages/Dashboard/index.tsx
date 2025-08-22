@@ -76,8 +76,15 @@ export function Dashboard(): React.JSX.Element {
   const handleStartProcessing = (): void => {
     // Start email processing clicked
     // TODO: Implement email processing workflow
-    if (typeof globalThis !== 'undefined' && 'alert' in globalThis && typeof (globalThis as typeof globalThis & { alert: (message: string) => void }).alert === 'function') {
-      (globalThis as typeof globalThis & { alert: (message: string) => void }).alert('Email processing will be implemented when providers are ready!');
+    if (
+      typeof globalThis !== 'undefined' &&
+      'alert' in globalThis &&
+      typeof (globalThis as typeof globalThis & { alert: (message: string) => void }).alert ===
+        'function'
+    ) {
+      (globalThis as typeof globalThis & { alert: (message: string) => void }).alert(
+        'Email processing will be implemented when providers are ready!'
+      );
     }
   };
 

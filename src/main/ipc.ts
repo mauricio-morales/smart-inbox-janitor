@@ -183,23 +183,26 @@ export function setupIPC(
     }
   });
 
-  ipcMain.handle('storage:setEmailMetadata', async (_, emailId: string, metadata: EmailMetadata) => {
-    try {
-      return await storageProvider.setEmailMetadata(emailId, metadata);
-    } catch (error) {
-      // console.error('Set email metadata error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
+  ipcMain.handle(
+    'storage:setEmailMetadata',
+    async (_, emailId: string, metadata: EmailMetadata) => {
+      try {
+        return await storageProvider.setEmailMetadata(emailId, metadata);
+      } catch (error) {
+        // console.error('Set email metadata error:', error);
+        return {
+          success: false,
+          error: {
+            code: 'IPC_ERROR',
+            message: error instanceof Error ? error.message : 'Unknown error',
+            retryable: false,
+            timestamp: new Date(),
+            details: {},
+          },
+        };
+      }
     }
-  });
+  );
 
   ipcMain.handle('storage:getConfig', async () => {
     try {

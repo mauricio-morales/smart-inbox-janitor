@@ -21,7 +21,10 @@ export interface ElectronAPI {
     get: (emailId: string, options?: GetEmailOptions) => Promise<ReturnType<EmailProvider['get']>>;
     batchModify: (request: BatchModifyRequest) => Promise<ReturnType<EmailProvider['batchModify']>>;
     batchDelete: (request: BatchDeleteRequest) => Promise<ReturnType<EmailProvider['batchDelete']>>;
-    search: (query: string, options?: SearchOptions) => Promise<ReturnType<EmailProvider['search']>>;
+    search: (
+      query: string,
+      options?: SearchOptions
+    ) => Promise<ReturnType<EmailProvider['search']>>;
     getFolders: () => Promise<ReturnType<EmailProvider['getFolders']>>;
   };
   storage: {

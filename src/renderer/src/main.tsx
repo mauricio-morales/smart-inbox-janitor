@@ -32,7 +32,7 @@ const theme = createTheme({
         // Allow text selection in specific components
         input: { userSelect: 'text' },
         textarea: { userSelect: 'text' },
-        ['[contenteditable]']: { 'userSelect': 'text' },
+        ['[contenteditable]']: { userSelect: 'text' },
       },
     },
   },
@@ -64,7 +64,10 @@ const queryClient = new QueryClient({
 });
 
 // Initialize React application
-const rootElement = typeof globalThis !== 'undefined' && 'document' in globalThis ? (globalThis as typeof globalThis & { document: Document }).document.getElementById('root') : null;
+const rootElement =
+  typeof globalThis !== 'undefined' && 'document' in globalThis
+    ? (globalThis as typeof globalThis & { document: Document }).document.getElementById('root')
+    : null;
 if (!rootElement) {
   throw new Error('Root element not found');
 }
