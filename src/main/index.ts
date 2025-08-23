@@ -1,15 +1,21 @@
 import { app, BrowserWindow } from 'electron';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
+import { config } from 'dotenv';
 import { createMainWindow } from './window';
 import { setupIPC } from './ipc';
-import { GmailProviderStub } from '@providers/email/gmail/GmailProvider';
-import { OpenAIProviderStub } from '@providers/llm/openai/OpenAIProvider';
-import { SQLiteProvider } from '@providers/storage/sqlite/SQLiteProvider';
 
-// Initialize provider stubs - will be replaced with real implementations later
-const emailProvider = new GmailProviderStub();
-const llmProvider = new OpenAIProviderStub();
+// Load environment variables
+config();
+import { GmailProvider } from '@providers/email/gmail/GmailProvider';
+import { OpenAIProvider } from '@providers/llm/openai/OpenAIProvider';
+import { SQLiteProvider } from '@providers/storage/sqlite/SQLiteProvider';
+import { SecureStorageManager } from './security/SecureStorageManager';
+
+// Initialize real provider implementations
+const emailProvider = new GmailProvider();
+const llmProvider = new OpenAIProvider();
 const storageProvider = new SQLiteProvider();
+const secureStorageManager = new SecureStorageManager();
 
 // This method will be called when Electron has finished initialization
 void app.whenReady().then(async () => {
@@ -23,7 +29,7 @@ void app.whenReady().then(async () => {
   });
 
   // Setup IPC handlers for provider operations
-  setupIPC(emailProvider, llmProvider, storageProvider);
+  setupIPC(emailProvider, llmProvider, storageProvider, secureStorageManager);
 
   // Create the main application window
   createMainWindow();
@@ -38,12 +44,12 @@ void app.whenReady().then(async () => {
 
   // Initialize providers after window is created
   try {
-    // Note: These are stub implementations that will return "not implemented" errors
-    await emailProvider.initialize();
-    await llmProvider.initialize();
     await storageProvider.initialize({ databasePath: './data/app.db' });
-  } catch {
-    // Provider initialization failed (expected for stubs)
+    // Note: Email and LLM providers will be initialized during OAuth flow
+  } catch (error) {
+    // Provider initialization failed - logged for debugging
+    // eslint-disable-next-line no-console
+    console.error('Provider initialization failed:', error);
   }
 });
 

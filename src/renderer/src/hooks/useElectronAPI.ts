@@ -45,6 +45,11 @@ export function useElectronAPI(): {
   healthCheck: () => Promise<{ status: string; timestamp: Date }>
   initialize: () => Promise<void>
   shutdown: () => Promise<void>
+  // OAuth methods
+  initiateGmailOAuth: () => Promise<any>
+  checkGmailConnection: () => Promise<any>
+  validateOpenAIKey: (apiKey: string) => Promise<any>
+  checkOpenAIConnection: () => Promise<any>
 } {
   // Get the Electron API from the global window object
   const api: ElectronAPI = (globalThis as typeof globalThis & { electronAPI: ElectronAPI }).electronAPI
@@ -160,6 +165,39 @@ export function useElectronAPI(): {
 
 
 
+  // OAuth operations
+  const initiateGmailOAuth = useCallback(async () => {
+    const result = await api.oauth.initiateGmailOAuth()
+    if (result.success) {
+      return result.data
+    }
+    throw new Error(result.error?.message || 'Failed to initiate Gmail OAuth')
+  }, [api])
+
+  const checkGmailConnection = useCallback(async () => {
+    const result = await api.oauth.checkGmailConnection()
+    if (result.success) {
+      return result.data
+    }
+    throw new Error(result.error?.message || 'Failed to check Gmail connection')
+  }, [api])
+
+  const validateOpenAIKey = useCallback(async (apiKey: string) => {
+    const result = await api.oauth.validateOpenAIKey(apiKey)
+    if (result.success) {
+      return result.data
+    }
+    throw new Error(result.error?.message || 'Failed to validate OpenAI key')
+  }, [api])
+
+  const checkOpenAIConnection = useCallback(async () => {
+    const result = await api.oauth.checkOpenAIConnection()
+    if (result.success) {
+      return result.data
+    }
+    throw new Error(result.error?.message || 'Failed to check OpenAI connection')
+  }, [api])
+
   return {
     // Email operations
     listEmails,
@@ -179,6 +217,12 @@ export function useElectronAPI(): {
 
     // LLM operations
     classifyEmails,
+
+    // OAuth operations
+    initiateGmailOAuth,
+    checkGmailConnection,
+    validateOpenAIKey,
+    checkOpenAIConnection,
 
     // Required API methods (stubs for interface compatibility)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
