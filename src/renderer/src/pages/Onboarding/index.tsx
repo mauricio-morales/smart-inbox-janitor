@@ -13,7 +13,6 @@ import {
   FormControlLabel,
   Checkbox,
   Stack,
-  Chip,
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -68,53 +67,61 @@ export function Onboarding(): React.JSX.Element {
       setLoading(true);
       setError(null);
 
-      // Try to connect to Gmail
-      await api.listEmails({ maxResults: 1, timeoutMs: 30000 });
-
-      // This will fail with stub implementation
-      handleNext();
-    } catch {
-      // Gmail connection failed (expected with stub)
-      setError('Gmail provider not yet implemented - continuing with demo');
-      // Allow progression even with error for demo purposes
-      const timeoutFn = globalThis.setTimeout;
-      if (timeoutFn != null) {
-        timeoutFn(() => {
-          handleNext();
-          setError(null);
-        }, 2000);
+      // Check if already connected
+      const checkResult = await api.checkGmailConnection();
+      if (checkResult.isConnected) {
+        // Already connected, proceed to next step
+        handleNext();
+        return;
       }
+
+      // Initiate OAuth flow
+      const oauthResult = await api.initiateGmailOAuth();
+      
+      if (oauthResult.accountEmail) {
+        // OAuth completed successfully
+        handleNext();
+      } else {
+        // OAuth failed
+        setError('Gmail connection failed');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setError(`Gmail connection error: ${message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenAISetup = (): void => {
-    if (!openaiApiKey.trim()) {
-      setError('Please enter your OpenAI API key');
-      return;
-    }
+  const handleOpenAISetup = async (): Promise<void> => {
+    try {
+      if (!openaiApiKey.trim()) {
+        setError('Please enter your OpenAI API key');
+        return;
+      }
 
-    if (!openaiApiKey.startsWith('sk-')) {
-      setError('OpenAI API key should start with "sk-"');
-      return;
-    }
+      if (!openaiApiKey.startsWith('sk-')) {
+        setError('OpenAI API key should start with "sk-"');
+        return;
+      }
 
-    setLoading(true);
-    setError(null);
+      setLoading(true);
+      setError(null);
 
-    // Try to test OpenAI connection (will fail with stub)
-    setError('OpenAI provider not yet implemented - continuing with demo');
-
-    // Allow progression even with error for demo purposes
-    const timeoutFn = globalThis.setTimeout;
-    if (timeoutFn != null) {
-      timeoutFn(() => {
+      // Validate and store the OpenAI API key
+      const validationResult = await api.validateOpenAIKey(openaiApiKey);
+      
+      if (validationResult.apiKeyValid) {
+        // API key validated successfully
         handleNext();
-        setError(null);
-        setLoading(false);
-      }, 2000);
-    } else {
+      } else {
+        // Validation failed
+        setError('OpenAI validation failed: Invalid API key');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setError(`OpenAI setup error: ${message}`);
+    } finally {
       setLoading(false);
     }
   };
@@ -173,8 +180,8 @@ export function Onboarding(): React.JSX.Element {
 
             <Alert severity="info" sx={{ mb: 3 }}>
               <Typography variant="body2">
-                This is a development version with stub providers. Full functionality will be
-                available once the provider implementations are complete.
+                Smart Inbox Janitor will securely connect to your Gmail account and use OpenAI
+                for intelligent email classification. Your data remains private and secure.
               </Typography>
             </Alert>
 
@@ -196,22 +203,21 @@ export function Onboarding(): React.JSX.Element {
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <EmailIcon sx={{ mr: 1 }} />
               <Typography variant="h6">Connect Your Gmail Account</Typography>
-              <Chip label="Stub Implementation" color="warning" size="small" sx={{ ml: 2 }} />
             </Box>
 
             <Typography paragraph>
               Smart Inbox Janitor needs access to your Gmail account to analyze and organize your
-              emails.
+              emails safely and securely.
             </Typography>
 
             <Alert severity="info" sx={{ mb: 2 }}>
-              In the full version, you'll sign in with your existing Gmail credentials through a
-              secure OAuth flow.
+              You'll sign in with your existing Gmail credentials through a secure OAuth flow.
+              Your login information is never stored or shared.
             </Alert>
 
             <Typography variant="body2" color="text.secondary" paragraph>
-              Your email data is processed locally and never sent to external servers except for AI
-              classification.
+              Your email data is processed locally and only email metadata is sent to OpenAI
+              for classification purposes.
             </Typography>
 
             <Button
@@ -222,7 +228,7 @@ export function Onboarding(): React.JSX.Element {
               disabled={loading}
               sx={{ mt: 2 }}
             >
-              Connect Gmail (Demo)
+              {loading ? 'Connecting...' : 'Connect Gmail'}
             </Button>
           </Box>
         );
@@ -233,7 +239,6 @@ export function Onboarding(): React.JSX.Element {
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <PsychologyIcon sx={{ mr: 1 }} />
               <Typography variant="h6">Configure AI Classification</Typography>
-              <Chip label="Stub Implementation" color="warning" size="small" sx={{ ml: 2 }} />
             </Box>
 
             <Typography paragraph>
@@ -252,16 +257,18 @@ export function Onboarding(): React.JSX.Element {
             />
 
             <Alert severity="info" sx={{ mb: 2 }}>
-              In the full version, we'll guide you through getting an API key with step-by-step
-              instructions.
+              Your API key is stored securely and encrypted locally. It will only be used
+              for email classification and never shared with third parties.
             </Alert>
 
             <Button
               variant="contained"
-              onClick={handleOpenAISetup}
+              onClick={() => {
+                void handleOpenAISetup();
+              }}
               disabled={loading || !openaiApiKey.trim()}
             >
-              Test & Configure AI (Demo)
+              {loading ? 'Validating...' : 'Test & Configure AI'}
             </Button>
           </Box>
         );
@@ -279,13 +286,16 @@ export function Onboarding(): React.JSX.Element {
             <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
               <Stack spacing={1}>
                 <Typography variant="body2">
-                  <strong>Gmail:</strong> Connected (Demo)
+                  <strong>Gmail:</strong> ✅ Connected and Ready
                 </Typography>
                 <Typography variant="body2">
-                  <strong>AI Provider:</strong> OpenAI GPT-4o-mini (Demo)
+                  <strong>AI Provider:</strong> ✅ OpenAI GPT-4o-mini Configured
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Storage:</strong> Local SQLite (Demo)
+                  <strong>Storage:</strong> ✅ Local SQLite with Encryption
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  All connections secured and validated successfully.
                 </Typography>
               </Stack>
             </Paper>

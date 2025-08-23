@@ -12,6 +12,7 @@ import type {
   SearchOptions,
   EmailMetadata,
   StoredAppConfig,
+  Result,
 } from '@shared/types';
 
 // Define the secure API interface that will be exposed to the renderer
@@ -52,6 +53,12 @@ export interface ElectronAPI {
     unmaximize: () => Promise<void>;
     isMaximized: () => Promise<boolean>;
   };
+  oauth: {
+    initiateGmailOAuth: () => Promise<Result<{ accountEmail?: string; connectedAt?: Date }>>;
+    checkGmailConnection: () => Promise<Result<{ isConnected: boolean; requiresAuth: boolean; accountEmail?: string; error?: string }>>;
+    validateOpenAIKey: (apiKey: string) => Promise<Result<{ apiKeyValid: boolean; modelAvailable?: boolean; responseTimeMs?: number; testedAt?: Date }>>;
+    checkOpenAIConnection: () => Promise<Result<{ isConnected: boolean; modelAvailable: boolean; error?: string }>>;
+  };
 }
 
 // Implement the secure API bridge
@@ -84,6 +91,12 @@ const api: ElectronAPI = {
     maximize: () => ipcRenderer.invoke('app:maximize'),
     unmaximize: () => ipcRenderer.invoke('app:unmaximize'),
     isMaximized: () => ipcRenderer.invoke('app:isMaximized'),
+  },
+  oauth: {
+    initiateGmailOAuth: () => ipcRenderer.invoke('gmail:initiate-oauth'),
+    checkGmailConnection: () => ipcRenderer.invoke('gmail:check-connection'),
+    validateOpenAIKey: (apiKey: string) => ipcRenderer.invoke('openai:validate-key', apiKey),
+    checkOpenAIConnection: () => ipcRenderer.invoke('openai:check-connection'),
   },
 };
 
