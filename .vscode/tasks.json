@@ -143,6 +143,29 @@
       "problemMatcher": [],
       "dependsOrder": "sequence",
       "dependsOn": "📱 Build macOS App"
+    },
+    {
+      "label": "🔥 Dev Mode",
+      "detail": "Start development server with hot reload",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "dev"],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
     }
   ]
 }

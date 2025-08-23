@@ -520,64 +520,80 @@ export function Onboarding(): React.JSX.Element {
     <Box
       sx={{
         minHeight: '100vh',
+        maxHeight: '100vh',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
         p: 2,
+        overflow: 'hidden',
       }}
     >
-      <Paper sx={{ maxWidth: 800, width: '100%', p: 4 }}>
+      <Paper 
+        sx={{ 
+          maxWidth: 800, 
+          width: '100%', 
+          p: 4,
+          maxHeight: '95vh',
+          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         <Typography variant="h4" align="center" gutterBottom>
           Smart Inbox Janitor Setup
         </Typography>
 
-        <Stepper activeStep={activeStep} orientation="vertical">
-          {steps.map((step, index) => (
-            <Step key={step.label}>
-              <StepLabel>
-                <Typography variant="h6">{step.label}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {step.description}
-                </Typography>
-              </StepLabel>
-              <StepContent>
-                {error !== null && (
-                  <Alert severity="warning" sx={{ mb: 2 }}>
-                    {error}
-                  </Alert>
-                )}
+        <Box sx={{ flex: 1, overflow: 'auto' }}>
+          <Stepper activeStep={activeStep} orientation="vertical">
+            {steps.map((step, index) => (
+              <Step key={step.label}>
+                <StepLabel>
+                  <Typography variant="h6">{step.label}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {step.description}
+                  </Typography>
+                </StepLabel>
+                <StepContent>
+                  {error !== null && (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      {error}
+                    </Alert>
+                  )}
 
-                {getStepContent(index)}
-
-                {index < steps.length - 1 && (
-                  <Box sx={{ mb: 2, mt: 2 }}>
-                    <Button
-                      disabled={(index === 0 && !agreedToTerms) || loading}
-                      onClick={() => {
-                        if (index === 1) {
-                          void handleGoogleCredentialsSetup();
-                        } else if (index === 2) {
-                          void handleGmailConnect();
-                        } else if (index === 3) {
-                          void handleOpenAISetup();
-                        } else {
-                          handleNext();
-                        }
-                      }}
-                      sx={{ mt: 1, mr: 1 }}
-                    >
-                      Continue
-                    </Button>
-                    <Button disabled={index === 0 || loading} onClick={handleBack} sx={{ mt: 1 }}>
-                      Back
-                    </Button>
+                  <Box sx={{ maxHeight: '60vh', overflow: 'auto', pr: 1 }}>
+                    {getStepContent(index)}
                   </Box>
-                )}
-              </StepContent>
-            </Step>
-          ))}
-        </Stepper>
+
+                  {index < steps.length - 1 && (
+                    <Box sx={{ mb: 2, mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                      <Button
+                        disabled={(index === 0 && !agreedToTerms) || loading}
+                        onClick={() => {
+                          if (index === 1) {
+                            void handleGoogleCredentialsSetup();
+                          } else if (index === 2) {
+                            void handleGmailConnect();
+                          } else if (index === 3) {
+                            void handleOpenAISetup();
+                          } else {
+                            handleNext();
+                          }
+                        }}
+                        sx={{ mt: 1, mr: 1 }}
+                      >
+                        Continue
+                      </Button>
+                      <Button disabled={index === 0 || loading} onClick={handleBack} sx={{ mt: 1 }}>
+                        Back
+                      </Button>
+                    </Box>
+                  )}
+                </StepContent>
+              </Step>
+            ))}
+          </Stepper>
+        </Box>
       </Paper>
     </Box>
   );

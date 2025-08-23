@@ -67,7 +67,9 @@ describe('OAuthWindow', () => {
       const result = oauthWindow.createOAuthWindow();
       
       expect(result.success).toBe(true);
-      expect(result.data).toBe(mockWindow);
+      if (result.success) {
+        expect(result.data).toBe(mockWindow);
+      }
       
       expect(MockBrowserWindow).toHaveBeenCalledWith({
         width: 500,
@@ -162,8 +164,10 @@ describe('OAuthWindow', () => {
       const result = oauthWindow.createOAuthWindow();
       
       expect(result.success).toBe(false);
-      expect(result.error).toBeInstanceOf(SecurityError);
-      expect(result.error.message).toContain('Failed to create OAuth window');
+      if (!result.success) {
+        expect(result.error).toBeInstanceOf(SecurityError);
+        expect(result.error.message).toContain('Failed to create OAuth window');
+      }
     });
   });
 
@@ -183,7 +187,7 @@ describe('OAuthWindow', () => {
             .find(([event]) => event === 'will-redirect')?.[1];
           
           if (redirectHandler) {
-            const mockEvent = { preventDefault: jest.fn() };
+            const mockEvent: { preventDefault: jest.Mock } = { preventDefault: jest.fn() };
             const callbackUrl = 'http://localhost:8080?code=test-code&state=test-state';
             redirectHandler(mockEvent, callbackUrl);
           }
@@ -198,10 +202,12 @@ describe('OAuthWindow', () => {
       const result = await resultPromise;
       
       expect(result.success).toBe(true);
-      expect(result.data).toMatchObject({
-        code: 'test-code',
-        state: 'test-state'
-      });
+      if (result.success) {
+        expect(result.data).toMatchObject({
+          code: 'test-code',
+          state: 'test-state'
+        });
+      }
       expect(mockWebContents.loadURL).toHaveBeenCalledWith(authUrl);
     });
 
@@ -211,8 +217,10 @@ describe('OAuthWindow', () => {
       const result = await oauthWindow.navigateAndWaitForCallback(invalidUrl);
       
       expect(result.success).toBe(false);
-      expect(result.error).toBeInstanceOf(SecurityError);
-      expect(result.error.message).toContain('Authorization URL must be Google domain');
+      if (!result.success) {
+        expect(result.error).toBeInstanceOf(SecurityError);
+        expect(result.error.message).toContain('Authorization URL must be Google domain');
+      }
     });
 
     it('should require HTTPS for auth URL', async () => {
@@ -221,8 +229,10 @@ describe('OAuthWindow', () => {
       const result = await oauthWindow.navigateAndWaitForCallback(httpUrl);
       
       expect(result.success).toBe(false);
-      expect(result.error).toBeInstanceOf(SecurityError);
-      expect(result.error.message).toContain('Authorization URL must use HTTPS');
+      if (!result.success) {
+        expect(result.error).toBeInstanceOf(SecurityError);
+        expect(result.error.message).toContain('Authorization URL must use HTTPS');
+      }
     });
 
     it('should timeout if callback takes too long', async () => {
@@ -239,8 +249,10 @@ describe('OAuthWindow', () => {
       const result = await resultPromise;
       
       expect(result.success).toBe(false);
-      expect(result.error).toBeInstanceOf(NetworkError);
-      expect(result.error.message).toContain('OAuth flow timed out');
+      if (!result.success) {
+        expect(result.error).toBeInstanceOf(NetworkError);
+        expect(result.error.message).toContain('OAuth flow timed out');
+      }
       
       jest.useRealTimers();
     });
@@ -263,8 +275,10 @@ describe('OAuthWindow', () => {
       const result = await oauthWindow.navigateAndWaitForCallback(authUrl);
       
       expect(result.success).toBe(false);
-      expect(result.error).toBeInstanceOf(ValidationError);
-      expect(result.error.message).toContain('OAuth window closed by user');
+      if (!result.success) {
+        expect(result.error).toBeInstanceOf(ValidationError);
+        expect(result.error.message).toContain('OAuth window closed by user');
+      }
     });
 
     it('should fail if window not available', async () => {
@@ -274,8 +288,10 @@ describe('OAuthWindow', () => {
       const result = await oauthWindow.navigateAndWaitForCallback('https://test.com');
       
       expect(result.success).toBe(false);
-      expect(result.error).toBeInstanceOf(SecurityError);
-      expect(result.error.message).toContain('OAuth window not available');
+      if (!result.success) {
+        expect(result.error).toBeInstanceOf(SecurityError);
+        expect(result.error.message).toContain('OAuth window not available');
+      }
     });
   });
 
@@ -286,12 +302,14 @@ describe('OAuthWindow', () => {
       const result = oauthWindow.handleCallback(callbackUrl);
       
       expect(result.success).toBe(true);
-      expect(result.data).toEqual({
-        code: 'auth-code',
-        state: 'csrf-state',
-        error: null,
-        errorDescription: undefined
-      });
+      if (result.success) {
+        expect(result.data).toEqual({
+          code: 'auth-code',
+          state: 'csrf-state',
+          error: null,
+          errorDescription: undefined
+        });
+      }
     });
 
     it('should parse OAuth error responses', () => {
@@ -300,8 +318,10 @@ describe('OAuthWindow', () => {
       const result = oauthWindow.handleCallback(errorUrl);
       
       expect(result.success).toBe(false);
-      expect(result.error).toBeInstanceOf(ValidationError);
-      expect(result.error.message).toContain('OAuth error: access_denied');
+      if (!result.success) {
+        expect(result.error).toBeInstanceOf(ValidationError);
+        expect(result.error.message).toContain('OAuth error: access_denied');
+      }
     });
 
     it('should validate redirect URI for security', () => {
@@ -310,8 +330,10 @@ describe('OAuthWindow', () => {
       const result = oauthWindow.handleCallback(maliciousUrl);
       
       expect(result.success).toBe(false);
-      expect(result.error).toBeInstanceOf(SecurityError);
-      expect(result.error.message).toContain('Invalid redirect URI');
+      if (!result.success) {
+        expect(result.error).toBeInstanceOf(SecurityError);
+        expect(result.error.message).toContain('Invalid redirect URI');
+      }
     });
 
     it('should fail with missing required parameters', () => {
@@ -320,8 +342,10 @@ describe('OAuthWindow', () => {
       const result = oauthWindow.handleCallback(incompleteUrl);
       
       expect(result.success).toBe(false);
-      expect(result.error).toBeInstanceOf(ValidationError);
-      expect(result.error.message).toContain('Missing required OAuth parameters');
+      if (!result.success) {
+        expect(result.error).toBeInstanceOf(ValidationError);
+        expect(result.error.message).toContain('Missing required OAuth parameters');
+      }
     });
 
     it('should handle malformed callback URLs', () => {
@@ -330,8 +354,10 @@ describe('OAuthWindow', () => {
       const result = oauthWindow.handleCallback(malformedUrl);
       
       expect(result.success).toBe(false);
-      expect(result.error).toBeInstanceOf(ValidationError);
-      expect(result.error.message).toContain('Failed to parse OAuth callback');
+      if (!result.success) {
+        expect(result.error).toBeInstanceOf(ValidationError);
+        expect(result.error.message).toContain('Failed to parse OAuth callback');
+      }
     });
   });
 

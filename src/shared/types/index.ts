@@ -26,6 +26,7 @@ export {
   isErrorResult,
   createSuccessResult,
   createErrorResult,
+  createProviderError,
 } from './base.types.js';
 
 // Error hierarchy and classes

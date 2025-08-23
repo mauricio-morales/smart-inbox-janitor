@@ -211,7 +211,7 @@ export class GmailOAuthManager {
       });
 
       // Validate token response
-      if (!tokens.access_token || tokens.access_token === null || tokens.access_token === '' || tokens.access_token.length === 0) {
+      if (tokens.access_token === null || tokens.access_token === undefined || tokens.access_token === '' || tokens.access_token.length === 0) {
         return createErrorResult(
           new AuthenticationError('No access token received from Google', {
             operation: 'exchangeCode',
@@ -298,7 +298,7 @@ export class GmailOAuthManager {
       // Refresh access token
       const { credentials } = await this.oauth2Client.refreshAccessToken();
 
-      if (!credentials.access_token || credentials.access_token === null || credentials.access_token === '' || credentials.access_token.length === 0) {
+      if (credentials.access_token === null || credentials.access_token === undefined || credentials.access_token === '' || credentials.access_token.length === 0) {
         return createErrorResult(
           new AuthenticationError('No access token received from refresh', {
             operation: 'refreshTokens',
