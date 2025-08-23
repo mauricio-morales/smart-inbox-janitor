@@ -50,13 +50,23 @@ function App(): React.JSX.Element {
             };
           }
         ).window;
-        // Get app configuration to check onboarding status
+        // Check both config and actual OAuth credentials
         const configResult = await windowObj.electronAPI.storage.getConfig();
+        const gmailConnectionResult = await windowObj.electronAPI.oauth.checkGmailConnection();
+        const openaiConnectionResult = await windowObj.electronAPI.oauth.checkOpenAIConnection();
 
         let onboardingComplete = false;
-        if (configResult.success) {
-          // Check if basic configuration is complete
-          onboardingComplete = Boolean(configResult.data?.values?.onboardingComplete);
+        if (configResult.success && gmailConnectionResult.success && openaiConnectionResult.success) {
+          // Check if onboarding was marked complete AND we have valid credentials
+          const configComplete = Boolean(configResult.data?.values?.onboardingComplete);
+          const gmailConnected = Boolean(gmailConnectionResult.data?.isConnected);
+          const openaiConfigured = Boolean(
+            (openaiConnectionResult.data as any)?.isConfigured || 
+            (openaiConnectionResult.data as any)?.modelAvailable
+          );
+          
+          // Only consider onboarding complete if all components are properly configured
+          onboardingComplete = configComplete && gmailConnected && openaiConfigured;
         }
 
         setAppState({

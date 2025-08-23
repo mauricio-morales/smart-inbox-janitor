@@ -53,8 +53,11 @@ export interface ElectronAPI {
     unmaximize: () => Promise<void>;
     isMaximized: () => Promise<boolean>;
   };
+  shell: {
+    openExternal: (url: string) => Promise<void>;
+  };
   oauth: {
-    initiateGmailOAuth: () => Promise<Result<{ accountEmail?: string; connectedAt?: Date }>>;
+    initiateGmailOAuth: (credentials?: { clientId: string; clientSecret: string }) => Promise<Result<{ accountEmail?: string; connectedAt?: Date }>>;
     checkGmailConnection: () => Promise<Result<{ isConnected: boolean; requiresAuth: boolean; accountEmail?: string; error?: string }>>;
     validateOpenAIKey: (apiKey: string) => Promise<Result<{ apiKeyValid: boolean; modelAvailable?: boolean; responseTimeMs?: number; testedAt?: Date }>>;
     checkOpenAIConnection: () => Promise<Result<{ isConnected: boolean; modelAvailable: boolean; error?: string }>>;
@@ -92,8 +95,12 @@ const api: ElectronAPI = {
     unmaximize: () => ipcRenderer.invoke('app:unmaximize'),
     isMaximized: () => ipcRenderer.invoke('app:isMaximized'),
   },
+  shell: {
+    openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
+  },
   oauth: {
-    initiateGmailOAuth: () => ipcRenderer.invoke('gmail:initiate-oauth'),
+    initiateGmailOAuth: (credentials?: { clientId: string; clientSecret: string }) => 
+      ipcRenderer.invoke('gmail:initiate-oauth', credentials),
     checkGmailConnection: () => ipcRenderer.invoke('gmail:check-connection'),
     validateOpenAIKey: (apiKey: string) => ipcRenderer.invoke('openai:validate-key', apiKey),
     checkOpenAIConnection: () => ipcRenderer.invoke('openai:check-connection'),
