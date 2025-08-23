@@ -19,6 +19,7 @@ import {
   type UsageStatistics,
   type CostEstimation,
   type GroupingInput,
+  type GroupingEmailInput,
   type GroupOutput,
   type ContentValidationInput,
   type ContentValidationResult,
@@ -584,10 +585,10 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
       this.ensureInitialized();
 
       // Simple grouping by sender domain and subject patterns
-      const groups = new Map<string, EmailSummary[]>();
+      const groups = new Map<string, GroupingEmailInput[]>();
       
       input.emails.forEach(email => {
-        const domain = this.extractDomain(email.from);
+        const domain = this.extractDomain(email.sender);
         const key = `${domain}-${this.normalizeSubject(email.subject)}`;
         
         if (!groups.has(key)) {
@@ -599,23 +600,28 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
       const groupSuggestions = Array.from(groups.entries())
         .filter(([_, emails]) => emails.length > 1)
         .map(([key, emails]) => ({
-          groupId: key,
-          emails: emails.map(e => e.id),
-          commonCharacteristics: [
-            `Same domain: ${this.extractDomain(emails[0].from)}`,
-            `Similar subject pattern`
-          ],
-          suggestedAction: this.inferActionFromEmails(emails),
-          confidence: 0.7
+          id: key,
+          name: `Group ${key}`,
+          emailIds: emails.map(e => e.id),
+          bulkKey: key,
+          rationale: `Same domain: ${this.extractDomain(emails[0].sender)}, Similar subject pattern`,
+          similarity: 0.7,
+          suggestedAction: this.inferActionFromEmails(emails)
         }));
+
+      const ungrouped = input.emails.filter(email => 
+        !groupSuggestions.some(group => group.emailIds.includes(email.id))
+      ).map(e => e.id);
 
       const output: GroupOutput = {
         groups: groupSuggestions,
-        totalGroups: groupSuggestions.length,
-        totalEmailsGrouped: groupSuggestions.reduce((sum, group) => sum + group.emails.length, 0),
-        ungroupedEmails: input.emails.filter(email => 
-          !groupSuggestions.some(group => group.emails.includes(email.id))
-        ).map(e => e.id)
+        ungrouped,
+        metadata: {
+          totalEmails: input.emails.length,
+          groupsCreated: groupSuggestions.length,
+          algorithm: 'simple-domain-subject',
+          processingTimeMs: 0
+        }
       };
 
       this.updateUsageStats('grouping', 1, 0, 0); // No tokens used for simple grouping
@@ -644,12 +650,14 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
       const cost = this.calculateCost(tokenEstimate, this.config?.model ?? 'gpt-4o-mini');
 
       const estimation: CostEstimation = {
-        estimatedTokens: tokenEstimate,
         estimatedCost: cost,
-        currency: 'USD',
-        model: this.config?.model ?? 'gpt-4o-mini',
-        operation: operation.operation,
-        itemCount: operation.itemCount ?? 1
+        breakdown: {
+          promptCost: cost * 0.7,  // Approximate split
+          completionCost: cost * 0.3,
+          additionalFees: 0,
+          totalCost: cost
+        },
+        confidence: 0.8
       };
 
       return createSuccessResult(estimation);
@@ -915,8 +923,8 @@ Provide detailed explanation as JSON:
 
   private estimateTokens(operation: CostEstimationInput): number {
     const baseTokens = 100; // Base prompt tokens
-    const perItemTokens = operation.operation === 'classification' ? 150 : 50;
-    return baseTokens + (perItemTokens * (operation.itemCount || 1));
+    const perItemTokens = operation.operation === 'classify_emails' ? 150 : 50;
+    return baseTokens + (perItemTokens * (operation.operationCount || 1));
   }
 
   private extractDomain(email: string): string {
@@ -934,8 +942,8 @@ Provide detailed explanation as JSON:
       .substring(0, 50);
   }
 
-  private inferActionFromEmails(emails: EmailSummary[]): EmailAction {
-    const from = emails[0].from.toLowerCase();
+  private inferActionFromEmails(emails: GroupingEmailInput[]): EmailAction {
+    const from = emails[0].sender.toLowerCase();
     
     if (from.includes('noreply') || from.includes('no-reply')) {
       return 'DELETE_ONLY';

@@ -259,7 +259,7 @@ export class OAuthWindow {
       }
 
       // Validate required parameters
-      if (!code || code === null || code.length === 0 || !state || state === null || state.length === 0) {
+      if (code === null || code === undefined || code.length === 0 || state === null || state === undefined || state.length === 0) {
         return createErrorResult(
           new ValidationError('Missing required OAuth parameters', {
             operation: 'handleCallback',

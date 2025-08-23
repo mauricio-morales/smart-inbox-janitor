@@ -236,3 +236,25 @@ export function createSuccessResult<T>(data: T): Result<T> {
 export function createErrorResult<T>(error: ProviderError): Result<T> {
   return { success: false, error };
 }
+
+/**
+ * Convert a standard Error object to a ProviderError
+ * 
+ * @param error - The Error object to convert
+ * @param code - Optional error code (defaults to 'UNKNOWN_ERROR')
+ * @param retryable - Whether the error is retryable (defaults to false)
+ * @returns ProviderError compatible object
+ */
+export function createProviderError(
+  error: Error, 
+  code = 'UNKNOWN_ERROR', 
+  retryable = false
+): ProviderError {
+  return {
+    code,
+    message: error.message,
+    retryable,
+    timestamp: new Date(),
+    details: { originalError: error.name }
+  };
+}

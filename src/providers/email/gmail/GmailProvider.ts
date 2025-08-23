@@ -375,7 +375,10 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       const query = this.buildGmailQuery(options);
 
       const listResult = await this.callWithErrorHandling(async () => {
-        return await this.gmail!.users.messages.list({
+        if (!this.gmail) {
+          throw new Error('Gmail API client not initialized');
+        }
+        return await this.gmail.users.messages.list({
           userId: 'me',
           q: query,
           maxResults,
