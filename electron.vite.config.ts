@@ -6,6 +6,7 @@ export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
     build: {
+      outDir: 'dist/main',
       rollupOptions: {
         external: ['better-sqlite3', 'keytar', 'googleapis']
       }
@@ -19,6 +20,9 @@ export default defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
+    build: {
+      outDir: 'dist/preload'
+    },
     resolve: {
       alias: {
         '@shared': resolve('src/shared'),
@@ -36,6 +40,7 @@ export default defineConfig({
     },
     plugins: [react()],
     build: {
+      outDir: 'dist/renderer',
       rollupOptions: {
         input: {
           main: resolve('src/renderer/index.html')

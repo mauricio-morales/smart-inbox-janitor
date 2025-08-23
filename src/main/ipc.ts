@@ -1,4 +1,4 @@
-import { ipcMain, app, BrowserWindow } from 'electron';
+import { ipcMain, app, BrowserWindow, shell } from 'electron';
 import type {
   EmailProvider,
   StorageProvider,
@@ -322,9 +322,32 @@ export function setupIPC(
     return window ? window.isMaximized() : false;
   });
 
-  // OAuth and Authentication operations
-  ipcMain.handle('gmail:initiate-oauth', async () => {
+  // Shell operations
+  ipcMain.handle('shell:openExternal', async (_, url: string) => {
     try {
+      await shell.openExternal(url);
+    } catch (error) {
+      // External URL open error logged internally
+      return {
+        success: false,
+        error: {
+          code: 'SHELL_ERROR',
+          message: error instanceof Error ? error.message : 'Failed to open URL',
+          retryable: false,
+          timestamp: new Date(),
+          details: { url },
+        },
+      };
+    }
+  });
+
+  // OAuth and Authentication operations
+  ipcMain.handle('gmail:initiate-oauth', async (_event, credentials?: { clientId: string; clientSecret: string }) => {
+    try {
+      // Use provided credentials if available
+      // TODO: Implement credential validation and temporary storage
+      console.log('OAuth initiate with credentials:', credentials ? 'provided' : 'none');
+      
       // Get Gmail provider's OAuth manager
       if (!(emailProvider instanceof GmailProvider)) {
         return {

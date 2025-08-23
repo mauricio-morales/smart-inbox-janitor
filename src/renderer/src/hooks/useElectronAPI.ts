@@ -46,7 +46,7 @@ export function useElectronAPI(): {
   initialize: () => Promise<void>
   shutdown: () => Promise<void>
   // OAuth methods
-  initiateGmailOAuth: () => Promise<any>
+  initiateGmailOAuth: (credentials?: { clientId: string; clientSecret: string }) => Promise<any>
   checkGmailConnection: () => Promise<any>
   validateOpenAIKey: (apiKey: string) => Promise<any>
   checkOpenAIConnection: () => Promise<any>
@@ -166,8 +166,8 @@ export function useElectronAPI(): {
 
 
   // OAuth operations
-  const initiateGmailOAuth = useCallback(async () => {
-    const result = await api.oauth.initiateGmailOAuth()
+  const initiateGmailOAuth = useCallback(async (credentials?: { clientId: string; clientSecret: string }) => {
+    const result = await api.oauth.initiateGmailOAuth(credentials)
     if (result.success) {
       return result.data
     }

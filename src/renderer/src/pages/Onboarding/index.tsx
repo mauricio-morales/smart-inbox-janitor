@@ -18,6 +18,8 @@ import {
   Email as EmailIcon,
   Psychology as PsychologyIcon,
   CheckCircle as CheckCircleIcon,
+  Api as ApiIcon,
+  Launch as LaunchIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useElectronAPI } from '../../hooks/useElectronAPI';
@@ -26,6 +28,10 @@ const steps = [
   {
     label: 'Welcome to Smart Inbox Janitor',
     description: 'AI-powered email management and security',
+  },
+  {
+    label: 'Google API Setup',
+    description: 'Create Google API credentials',
   },
   {
     label: 'Connect Gmail',
@@ -51,6 +57,11 @@ export function Onboarding(): React.JSX.Element {
   const [enableDangerousEmailAlerts, setEnableDangerousEmailAlerts] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Google API credentials state
+  const [googleClientId, setGoogleClientId] = useState('');
+  const [googleClientSecret, setGoogleClientSecret] = useState('');
+  const [credentialsValidated, setCredentialsValidated] = useState(false);
 
   const handleNext = (): void => {
     setActiveStep(prevStep => prevStep + 1);
@@ -62,10 +73,42 @@ export function Onboarding(): React.JSX.Element {
     setError(null);
   };
 
+  const handleGoogleCredentialsSetup = async (): Promise<void> => {
+    try {
+      if (!googleClientId.trim() || !googleClientSecret.trim()) {
+        setError('Please enter both Client ID and Client Secret');
+        return;
+      }
+
+      if (!googleClientId.includes('.apps.googleusercontent.com')) {
+        setError('Client ID should end with .apps.googleusercontent.com');
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      // Store credentials temporarily (will be persisted only after successful OAuth)
+      // For now, just validate format and proceed
+      setCredentialsValidated(true);
+      handleNext();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setError(`Credential validation error: ${message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGmailConnect = async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
+
+      if (!credentialsValidated || !googleClientId || !googleClientSecret) {
+        setError('Google API credentials not configured');
+        return;
+      }
 
       // Check if already connected
       const checkResult = await api.checkGmailConnection();
@@ -75,19 +118,29 @@ export function Onboarding(): React.JSX.Element {
         return;
       }
 
-      // Initiate OAuth flow
-      const oauthResult = await api.initiateGmailOAuth();
+      // Initiate OAuth flow with user-provided credentials
+      const oauthResult = await api.initiateGmailOAuth({
+        clientId: googleClientId,
+        clientSecret: googleClientSecret
+      });
       
       if (oauthResult.accountEmail) {
         // OAuth completed successfully
         handleNext();
       } else {
-        // OAuth failed
-        setError('Gmail connection failed');
+        // OAuth failed - restart credential setup
+        setError('Gmail connection failed. Please verify your Google API credentials and try again.');
+        setCredentialsValidated(false);
+        setActiveStep(1); // Go back to Google API setup step
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setError(`Gmail connection error: ${message}`);
+      // Reset credentials on failure so user can start over
+      setCredentialsValidated(false);
+      setGoogleClientId('');
+      setGoogleClientSecret('');
+      setActiveStep(1); // Go back to Google API setup step
     } finally {
       setLoading(false);
     }
@@ -201,6 +254,139 @@ export function Onboarding(): React.JSX.Element {
         return (
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <ApiIcon sx={{ mr: 1 }} />
+              <Typography variant="h6">Set Up Google API Credentials</Typography>
+            </Box>
+
+            <Typography paragraph>
+              Since this is an open source application, you need to create your own Google API project 
+              and OAuth credentials. This ensures your data stays private and secure.
+            </Typography>
+
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Don't worry - we'll guide you through this step-by-step! It only takes a few minutes.
+            </Alert>
+
+            <Stack spacing={2} sx={{ mb: 3 }}>
+              <Typography variant="h6" color="primary">Step-by-step guide:</Typography>
+              
+              <Box>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  <strong>1. Go to Google Cloud Console</strong>
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<LaunchIcon />}
+                  onClick={() => {
+                    const electronAPI = (globalThis as typeof globalThis & { window?: { electronAPI?: { shell?: { openExternal: (url: string) => void } } } }).window?.electronAPI;
+                    if (electronAPI?.shell) {
+                      void electronAPI.shell.openExternal('https://console.cloud.google.com/');
+                    }
+                  }}
+                  sx={{ mb: 1 }}
+                >
+                  Open Google Cloud Console
+                </Button>
+                <Typography variant="body2" color="text.secondary">
+                  Create a new project or select an existing one
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  <strong>2. Enable Gmail API</strong>
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<LaunchIcon />}
+                  onClick={() => {
+                    const electronAPI = (globalThis as typeof globalThis & { window?: { electronAPI?: { shell?: { openExternal: (url: string) => void } } } }).window?.electronAPI;
+                    if (electronAPI?.shell) {
+                      void electronAPI.shell.openExternal('https://console.cloud.google.com/apis/library/gmail.googleapis.com');
+                    }
+                  }}
+                  sx={{ mb: 1 }}
+                >
+                  Enable Gmail API
+                </Button>
+                <Typography variant="body2" color="text.secondary">
+                  Click "Enable" on the Gmail API page
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  <strong>3. Create OAuth Credentials</strong>
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<LaunchIcon />}
+                  onClick={() => {
+                    const electronAPI = (globalThis as typeof globalThis & { window?: { electronAPI?: { shell?: { openExternal: (url: string) => void } } } }).window?.electronAPI;
+                    if (electronAPI?.shell) {
+                      void electronAPI.shell.openExternal('https://console.cloud.google.com/apis/credentials');
+                    }
+                  }}
+                  sx={{ mb: 1 }}
+                >
+                  Go to Credentials
+                </Button>
+                <Typography variant="body2" color="text.secondary">
+                  Click "Create Credentials" → "OAuth client ID" → "Desktop application"
+                </Typography>
+              </Box>
+
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  <strong>Important:</strong> When creating OAuth credentials, select "Desktop application" 
+                  as the application type. This allows the app to work on your local machine.
+                </Typography>
+              </Alert>
+            </Stack>
+
+            <Typography variant="h6" sx={{ mb: 2 }}>Enter your credentials:</Typography>
+
+            <Stack spacing={2}>
+              <TextField
+                fullWidth
+                label="Client ID"
+                value={googleClientId}
+                onChange={(e) => setGoogleClientId(e.target.value)}
+                placeholder="123456789-abcdef.apps.googleusercontent.com"
+                helperText="Copy this from your OAuth client credentials"
+              />
+
+              <TextField
+                fullWidth
+                label="Client Secret"
+                type="password"
+                value={googleClientSecret}
+                onChange={(e) => setGoogleClientSecret(e.target.value)}
+                placeholder="GOCSPX-..."
+                helperText="Copy this from your OAuth client credentials"
+              />
+            </Stack>
+
+            <Button
+              variant="contained"
+              onClick={() => {
+                void handleGoogleCredentialsSetup();
+              }}
+              disabled={loading || !googleClientId.trim() || !googleClientSecret.trim()}
+              sx={{ mt: 2 }}
+            >
+              {loading ? 'Validating...' : 'Save & Continue'}
+            </Button>
+          </Box>
+        );
+
+      case 2:
+        return (
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <EmailIcon sx={{ mr: 1 }} />
               <Typography variant="h6">Connect Your Gmail Account</Typography>
             </Box>
@@ -233,7 +419,7 @@ export function Onboarding(): React.JSX.Element {
           </Box>
         );
 
-      case 2:
+      case 3:
         return (
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -273,7 +459,7 @@ export function Onboarding(): React.JSX.Element {
           </Box>
         );
 
-      case 3:
+      case 4:
         return (
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -370,8 +556,10 @@ export function Onboarding(): React.JSX.Element {
                       disabled={(index === 0 && !agreedToTerms) || loading}
                       onClick={() => {
                         if (index === 1) {
-                          void handleGmailConnect();
+                          void handleGoogleCredentialsSetup();
                         } else if (index === 2) {
+                          void handleGmailConnect();
+                        } else if (index === 3) {
                           void handleOpenAISetup();
                         } else {
                           handleNext();
