@@ -377,11 +377,25 @@ export class CredentialEncryption {
       throw new Error('OS encryption not available');
     }
     
-    // Use safeStorage to encrypt and store
-    // Store encrypted data using safeStorage
-    // Store encrypted data (implementation would use a persistent store)
-    // For now, this is a placeholder - real implementation would use OS-specific storage
-    // Implementation would store encrypted key in OS keychain
+    // TODO: Implement OS keychain storage using Electron's safeStorage API
+    // Implementation requirements:
+    // 1. Use safeStorage.encryptString() to encrypt the master key before storing
+    // 2. Store the encrypted data in a persistent file in app data directory using fs.writeFileSync()
+    // 3. Use unique identifiers to support multiple key storage (e.g., `sij-key-${keyId}.enc`)
+    // 4. Set proper file permissions (600) for stored keychain files
+    // 5. Handle file system errors gracefully with proper error messages
+    // 6. Add logging for keychain operations (without sensitive data)
+    // 7. Use app.getPath('userData') to get the appropriate storage directory
+    // 8. Consider using atomic file operations (write to temp file, then rename)
+    // 
+    // Example implementation:
+    // ```typescript
+    // const keyData = Buffer.from(newKey).toString('base64');
+    // const encryptedKey = safeStorage.encryptString(keyData);
+    // const keyPath = path.join(app.getPath('userData'), `sij-key-${keyId}.enc`);
+    // fs.writeFileSync(keyPath, encryptedKey, { mode: 0o600 });
+    // ```
+    throw new Error('OS keychain storage not implemented - see TODO comments for implementation guidance');
   }
 
   /**
@@ -392,10 +406,34 @@ export class CredentialEncryption {
       return null;
     }
     
-    // Retrieve encrypted data and decrypt using safeStorage
-    // This is a placeholder - real implementation would retrieve from OS-specific storage
-    // Implementation would retrieve encrypted key from OS keychain
-    return null; // Placeholder
+    // TODO: Implement OS keychain retrieval using Electron's safeStorage API
+    // Implementation requirements:
+    // 1. Use fs.readFileSync() to read the stored encrypted data from app data directory
+    // 2. Use safeStorage.decryptString() to decrypt the retrieved data
+    // 3. Handle file not found errors gracefully by returning null
+    // 4. Handle decryption errors properly (invalid data, corrupted files)
+    // 5. Use the same key path pattern as storeInOSKeychain() for consistency
+    // 6. Add proper error logging without exposing sensitive data
+    // 7. Test safeStorage.isEncryptionAvailable() before each operation
+    // 8. Consider file integrity checks (checksums) for additional security
+    // 9. Handle permission errors gracefully
+    // 10. Return the decrypted key data as base64 string for consistency
+    // 
+    // Example implementation:
+    // ```typescript
+    // try {
+    //   const keyPath = path.join(app.getPath('userData'), `sij-key-${keyId}.enc`);
+    //   if (!fs.existsSync(keyPath)) return null;
+    //   
+    //   const encryptedData = fs.readFileSync(keyPath);
+    //   const decryptedKey = safeStorage.decryptString(encryptedData);
+    //   return decryptedKey;
+    // } catch (error) {
+    //   console.error('Failed to retrieve key from OS keychain:', error.message);
+    //   return null;
+    // }
+    // ```
+    return null; // TODO: Replace with actual implementation
   }
 
   /**
