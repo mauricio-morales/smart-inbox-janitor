@@ -24,8 +24,13 @@ module.exports = {
   moduleNameMapper: {
     '^@shared/(.*)$': '<rootDir>/src/shared/$1',
     '^@providers/(.*)$': '<rootDir>/src/providers/$1',
-    '^@tests/(.*)$': '<rootDir>/__tests__/$1'
+    '^@tests/(.*)$': '<rootDir>/__tests__/$1',
+    // Handle .js imports for TypeScript files
+    '^(\\.\\.?\\/.*)\\.(js|jsx)$': '$1'
   },
+  
+  // Module file extensions
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   
   // Coverage configuration
   collectCoverageFrom: [
