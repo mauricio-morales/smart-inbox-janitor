@@ -769,6 +769,21 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
   }
 
   migrate(targetVersion?: number): Promise<Result<MigrationResult>> {
+    // TODO: Implement database schema migration system
+    // Why not implemented in this PR:
+    // This PR focuses specifically on Gmail OAuth implementation. Database migrations
+    // require careful planning for production data safety and should be implemented
+    // as a separate feature with comprehensive testing.
+    // 
+    // Implementation requirements:
+    // 1. Create migration scripts for each schema version upgrade
+    // 2. Implement rollback mechanisms for safe downgrades
+    // 3. Add schema versioning validation and compatibility checks
+    // 4. Create backup mechanisms before applying migrations
+    // 5. Add progress tracking and error recovery for large migrations
+    // 6. Implement dry-run mode for testing migrations safely
+    // 7. Add comprehensive logging for migration operations
+    // 8. Handle database corruption scenarios gracefully
     return Promise.resolve(createSuccessResult({
       fromVersion: 0,
       toVersion: targetVersion ?? CURRENT_SCHEMA_VERSION,
@@ -779,18 +794,62 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
   }
 
   getClassificationHistory(): Promise<Result<ClassificationHistoryItem[]>> {
+    // TODO: Implement classification history retrieval
+    // Why not implemented in this PR:
+    // This PR establishes the OAuth foundation. Classification history functionality
+    // depends on the email classification system being fully operational first.
+    // 
+    // Implementation requirements:
+    // 1. Query classification_history table with proper indexing
+    // 2. Add pagination support for large history datasets
+    // 3. Implement filtering by date range, classification type, and confidence
+    // 4. Add aggregation queries for classification statistics
+    // 5. Handle database errors and corrupted history records gracefully
     return Promise.resolve(createSuccessResult([]));
   }
 
   addClassificationResult(): Promise<Result<void>> {
+    // TODO: Implement classification result storage
+    // Why not implemented in this PR:
+    // Classification result storage requires the LLM integration to be completed
+    // and the classification schema to be finalized. This PR focuses on OAuth setup.
+    // 
+    // Implementation requirements:
+    // 1. Insert classification results into classification_history table
+    // 2. Validate classification data structure and confidence scores
+    // 3. Handle duplicate classifications with proper conflict resolution
+    // 4. Add transaction support for atomic classification operations
+    // 5. Implement classification result validation and sanitization
     return Promise.resolve(createSuccessResult(undefined));
   }
 
   updateClassificationFeedback(): Promise<Result<void>> {
+    // TODO: Implement user feedback updates for classification results
+    // Why not implemented in this PR:
+    // User feedback system requires the UI components for feedback collection
+    // and the machine learning feedback loop to be designed first.
+    // 
+    // Implementation requirements:
+    // 1. Update classification_history with user feedback (correct/incorrect)
+    // 2. Track user corrections for improving classification accuracy
+    // 3. Add feedback timestamps and user identification
+    // 4. Implement feedback aggregation for model improvement insights
+    // 5. Handle conflicting feedback from multiple user sessions
     return Promise.resolve(createSuccessResult(undefined));
   }
 
   getProcessingState(): Promise<Result<ProcessingState>> {
+    // TODO: Implement processing state retrieval from database
+    // Why not implemented in this PR:
+    // Processing state tracking requires the email processing pipeline to be
+    // operational. This PR establishes OAuth authentication as a prerequisite.
+    // 
+    // Implementation requirements:
+    // 1. Query processing_state table for current session statistics
+    // 2. Calculate aggregate statistics across multiple processing sessions
+    // 3. Track API usage and cost metrics for different providers
+    // 4. Handle concurrent processing sessions with proper state synchronization
+    // 5. Implement state persistence for crash recovery scenarios
     return Promise.resolve(createSuccessResult({
       totalEmailsDiscovered: 0,
       totalEmailsProcessed: 0,
@@ -807,34 +866,122 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
   }
 
   updateProcessingState(): Promise<Result<void>> {
+    // TODO: Implement processing state updates
+    // Why not implemented in this PR:
+    // State updates depend on the email processing workflow being implemented.
+    // This PR provides the authentication foundation needed for that workflow.
+    // 
+    // Implementation requirements:
+    // 1. Update processing_state table with incremental statistics
+    // 2. Handle concurrent updates with proper locking mechanisms
+    // 3. Validate state transitions and prevent invalid updates
+    // 4. Add atomic operations for consistency across related tables
+    // 5. Implement state checkpointing for long-running operations
     return Promise.resolve(createSuccessResult(undefined));
   }
 
   getFolderStates(): Promise<Result<FolderState[]>> {
+    // TODO: Implement folder state retrieval
+    // Why not implemented in this PR:
+    // Folder state management requires Gmail API integration to be completed
+    // to map Gmail folders/labels to internal state tracking.
+    // 
+    // Implementation requirements:
+    // 1. Query folder_states table for Gmail folder synchronization status
+    // 2. Map Gmail labels to internal folder representations
+    // 3. Track folder processing progress and last sync timestamps
+    // 4. Handle folder hierarchy changes and label deletions
+    // 5. Implement folder state caching for performance optimization
     return Promise.resolve(createSuccessResult([]));
   }
 
   updateFolderState(): Promise<Result<void>> {
+    // TODO: Implement folder state updates
+    // Why not implemented in this PR:
+    // Folder state updates require the Gmail synchronization logic to be
+    // implemented first to understand what state changes need tracking.
+    // 
+    // Implementation requirements:
+    // 1. Update folder_states table with sync status and progress
+    // 2. Handle folder hierarchy changes and label modifications
+    // 3. Track folder processing timestamps and error states
+    // 4. Implement batch updates for efficiency during full syncs
+    // 5. Add conflict resolution for concurrent folder modifications
     return Promise.resolve(createSuccessResult(undefined));
   }
 
   queueActions(): Promise<Result<void>> {
+    // TODO: Implement action queuing for email operations
+    // Why not implemented in this PR:
+    // Action queuing requires the email action system (move, delete, label)
+    // to be designed and the Gmail API operations to be fully implemented.
+    // 
+    // Implementation requirements:
+    // 1. Insert actions into action_queue table with proper prioritization
+    // 2. Implement action deduplication to prevent duplicate operations
+    // 3. Add action dependencies and sequencing for complex operations
+    // 4. Handle action conflicts (e.g., move then delete same email)
+    // 5. Implement retry mechanisms with exponential backoff
     return Promise.resolve(createSuccessResult(undefined));
   }
 
   getPendingActions(): Promise<Result<ActionQueueItem[]>> {
+    // TODO: Implement pending actions retrieval
+    // Why not implemented in this PR:
+    // Action queue management requires the complete action framework
+    // including priority handling and batch processing capabilities.
+    // 
+    // Implementation requirements:
+    // 1. Query action_queue table for pending actions with proper ordering
+    // 2. Implement action priority and dependency resolution
+    // 3. Add action batching for efficient API usage
+    // 4. Handle action timeouts and stale action cleanup
+    // 5. Provide action filtering by type, folder, and date range
     return Promise.resolve(createSuccessResult([]));
   }
 
   updateActionStatus(): Promise<Result<void>> {
+    // TODO: Implement action status updates
+    // Why not implemented in this PR:
+    // Action status tracking requires the action execution engine to be
+    // implemented to understand all possible action states and transitions.
+    // 
+    // Implementation requirements:
+    // 1. Update action_queue table with execution status and results
+    // 2. Move completed actions to action_history for audit trail
+    // 3. Handle partial failures and action rollback scenarios
+    // 4. Implement status transition validation and logging
+    // 5. Add action result storage for debugging and user feedback
     return Promise.resolve(createSuccessResult(undefined));
   }
 
   getActionHistory(): Promise<Result<ActionHistoryItem[]>> {
+    // TODO: Implement action history retrieval
+    // Why not implemented in this PR:
+    // Action history depends on the action execution system being operational
+    // and requires UI components for displaying action audit trails.
+    // 
+    // Implementation requirements:
+    // 1. Query action_history table with pagination and filtering
+    // 2. Add search capabilities by action type, email, and date range
+    // 3. Implement history aggregation and statistics reporting
+    // 4. Handle large history datasets with efficient indexing
+    // 5. Add export capabilities for audit and compliance requirements
     return Promise.resolve(createSuccessResult([]));
   }
 
   getConfig(): Promise<Result<StoredAppConfig>> {
+    // TODO: Implement application configuration retrieval
+    // Why not implemented in this PR:
+    // Configuration management requires the settings schema to be finalized
+    // and the UI for configuration management to be completed.
+    // 
+    // Implementation requirements:
+    // 1. Query config table for application settings with proper defaults
+    // 2. Implement configuration validation and schema versioning
+    // 3. Add configuration encryption for sensitive settings
+    // 4. Handle configuration migrations for schema changes
+    // 5. Implement configuration caching for performance optimization
     return Promise.resolve(createSuccessResult({
       values: {},
       lastUpdated: new Date(),
@@ -843,18 +990,63 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
   }
 
   updateConfig(): Promise<Result<void>> {
+    // TODO: Implement configuration updates
+    // Why not implemented in this PR:
+    // Configuration updates require the settings validation system and
+    // the configuration change notification system to be implemented.
+    // 
+    // Implementation requirements:
+    // 1. Update config table with validated configuration changes
+    // 2. Implement configuration change notifications to affected components
+    // 3. Add configuration backup and rollback capabilities
+    // 4. Handle concurrent configuration updates with proper locking
+    // 5. Validate configuration changes against schema and business rules
     return Promise.resolve(createSuccessResult(undefined));
   }
 
   getConfigValue(): Promise<Result<null>> {
+    // TODO: Implement individual configuration value retrieval
+    // Why not implemented in this PR:
+    // Individual config value access requires the configuration schema
+    // definition and the settings management system to be completed.
+    // 
+    // Implementation requirements:
+    // 1. Query config table for specific configuration keys
+    // 2. Implement configuration key validation and type checking
+    // 3. Add default value handling for missing configuration keys
+    // 4. Implement configuration value caching for frequently accessed keys
+    // 5. Handle configuration key deprecation and migration
     return Promise.resolve(createSuccessResult(null));
   }
 
   setConfigValue(): Promise<Result<void>> {
+    // TODO: Implement individual configuration value updates
+    // Why not implemented in this PR:
+    // Configuration value setting requires validation rules and change
+    // propagation mechanisms to be designed and implemented.
+    // 
+    // Implementation requirements:
+    // 1. Update config table with individual key-value pairs
+    // 2. Implement configuration value validation and type enforcement
+    // 3. Add configuration change auditing and history tracking
+    // 4. Handle configuration dependencies and cascading updates
+    // 5. Implement atomic configuration transactions for related changes
     return Promise.resolve(createSuccessResult(undefined));
   }
 
   cleanup(): Promise<Result<CleanupResult>> {
+    // TODO: Implement database cleanup and maintenance operations
+    // Why not implemented in this PR:
+    // Database cleanup requires understanding of data lifecycle policies
+    // and retention requirements across all application features.
+    // 
+    // Implementation requirements:
+    // 1. Implement old data purging based on retention policies
+    // 2. Add database vacuum and optimization operations
+    // 3. Clean up orphaned records and fix referential integrity issues
+    // 4. Implement incremental cleanup to avoid blocking operations
+    // 5. Add cleanup metrics and reporting for monitoring
+    // 6. Handle cleanup failures gracefully with rollback capabilities
     return Promise.resolve(createSuccessResult({
       recordsDeleted: 0,
       spaceFreedBytes: 0,
@@ -864,6 +1056,17 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
   }
 
   getStatistics(): Promise<Result<DatabaseStatistics>> {
+    // TODO: Implement database statistics collection
+    // Why not implemented in this PR:
+    // Statistics collection requires all database tables to be operational
+    // and the monitoring/reporting system to be designed.
+    // 
+    // Implementation requirements:
+    // 1. Query database for table sizes, record counts, and index usage
+    // 2. Calculate storage utilization and growth trends
+    // 3. Add query performance statistics and slow query identification
+    // 4. Implement statistics caching to avoid expensive calculations
+    // 5. Add database health monitoring and alerting capabilities
     return Promise.resolve(createSuccessResult({
       totalSizeBytes: 0,
       tableCount: 0,
@@ -872,6 +1075,18 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
   }
 
   exportData(): Promise<Result<ExportResult>> {
+    // TODO: Implement data export functionality
+    // Why not implemented in this PR:
+    // Data export requires all data models to be finalized and comprehensive
+    // testing to ensure export integrity and user privacy protection.
+    // 
+    // Implementation requirements:
+    // 1. Export all user data in portable formats (JSON, CSV)
+    // 2. Implement data anonymization and privacy protection
+    // 3. Add export filtering by date range and data types
+    // 4. Handle large datasets with streaming and compression
+    // 5. Implement export validation and integrity checking
+    // 6. Add progress reporting for long-running exports
     return Promise.resolve(createSuccessResult({
       metadata: {
         appVersion: '1.0.0',
@@ -887,6 +1102,19 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
   }
 
   importData(): Promise<Result<ImportResult>> {
+    // TODO: Implement data import functionality
+    // Why not implemented in this PR:
+    // Data import requires robust validation, conflict resolution, and
+    // rollback mechanisms to protect user data integrity.
+    // 
+    // Implementation requirements:
+    // 1. Import data from various formats with schema validation
+    // 2. Implement conflict resolution for duplicate and conflicting data
+    // 3. Add transaction support for atomic import operations
+    // 4. Handle import failures with proper rollback mechanisms
+    // 5. Implement progress reporting and cancellation support
+    // 6. Add data transformation and migration capabilities
+    // 7. Validate imported data integrity and consistency
     return Promise.resolve(createSuccessResult({
       importedCounts: {},
       skippedCounts: {},
