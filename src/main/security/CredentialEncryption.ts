@@ -8,8 +8,11 @@
  * @module CredentialEncryption
  */
 
-import { safeStorage } from 'electron';
+import { safeStorage, app } from 'electron';
 import { CryptoUtils, EncryptedData } from '@shared/utils/crypto.utils';
+import { SecureFileOperations } from './utils/SecureFileOperations';
+import * as path from 'path';
+import * as fs from 'fs';
 import { 
   Result, 
   createSuccessResult, 
@@ -345,9 +348,9 @@ export class CredentialEncryption {
     
     try {
       // Try to retrieve existing key
-      const existingKey = this.retrieveFromOSKeychain();
+      const existingKey = this.retrieveFromOSKeychain('master');
       if (existingKey != null && existingKey.length > 0) {
-        return Buffer.from(existingKey);
+        return Buffer.from(existingKey, 'base64');
       }
     } catch {
       // Key doesn't exist, create new one
@@ -355,7 +358,7 @@ export class CredentialEncryption {
     
     // Generate new key and store in OS keychain
     const newKey = CryptoUtils.generateRandomBytes(32);
-    this.storeInOSKeychain();
+    this.storeInOSKeychain('master', newKey);
     
     return newKey;
   }
@@ -371,69 +374,99 @@ export class CredentialEncryption {
 
   /**
    * Store key in OS keychain using safeStorage
+   * 
+   * @param keyId - Unique identifier for the key
+   * @param keyData - Key data to store securely
    */
-  private storeInOSKeychain(): void {
+  private storeInOSKeychain(keyId: string, keyData: Buffer): void {
     if (!this.isOSEncryptionAvailable()) {
+      if (process.platform === 'linux') {
+        throw new Error('Linux OS keychain not implemented. Contributions welcome! Visit github.com/mauricio-morales/smart-inbox-janitor');
+      }
       throw new Error('OS encryption not available');
     }
     
-    // TODO: Implement OS keychain storage using Electron's safeStorage API
-    // Implementation requirements:
-    // 1. Use safeStorage.encryptString() to encrypt the master key before storing
-    // 2. Store the encrypted data in a persistent file in app data directory using fs.writeFileSync()
-    // 3. Use unique identifiers to support multiple key storage (e.g., `sij-key-${keyId}.enc`)
-    // 4. Set proper file permissions (600) for stored keychain files
-    // 5. Handle file system errors gracefully with proper error messages
-    // 6. Add logging for keychain operations (without sensitive data)
-    // 7. Use app.getPath('userData') to get the appropriate storage directory
-    // 8. Consider using atomic file operations (write to temp file, then rename)
-    // 
-    // Example implementation:
-    // ```typescript
-    // const keyData = Buffer.from(newKey).toString('base64');
-    // const encryptedKey = safeStorage.encryptString(keyData);
-    // const keyPath = path.join(app.getPath('userData'), `sij-key-${keyId}.enc`);
-    // fs.writeFileSync(keyPath, encryptedKey, { mode: 0o600 });
-    // ```
-    throw new Error('OS keychain storage not implemented - see TODO comments for implementation guidance');
+    try {
+      // Convert key data to base64 for string handling (follow existing patterns)
+      const keyDataB64 = keyData.toString('base64');
+      
+      // Use safeStorage.encryptString() for OS encryption
+      const encryptedKey = safeStorage.encryptString(keyDataB64);
+      
+      // Store in app.getPath('userData') with atomic operations
+      const userDataPath = app.getPath('userData');
+      const keyPath = path.join(userDataPath, 'keychain', `sij-key-${keyId}.enc`);
+      
+      // Use atomic write pattern to prevent corruption
+      const writeResult = SecureFileOperations.writeFileAtomically(keyPath, encryptedKey, { 
+        mode: 0o600,
+        createParents: true,
+        dirMode: 0o700
+      });
+      
+      if (!writeResult.success) {
+        throw new Error(`Failed to write keychain file: ${writeResult.error.message}`);
+      }
+      
+      // Security audit logging (without sensitive data)
+      this.logSecurityEvent('os_keychain_store', keyId, true);
+    } catch (error: unknown) {
+      // Log error and re-throw for caller to handle
+      const message = error instanceof Error ? error.message : 'Unknown keychain storage error';
+      this.logSecurityEvent('os_keychain_store', keyId, false, message);
+      throw new Error(`OS keychain storage failed: ${message}`);
+    }
   }
 
   /**
    * Retrieve key from OS keychain using safeStorage
+   * 
+   * @param keyId - Unique identifier for the key to retrieve
+   * @returns Decrypted key data as base64 string, or null if not found/error
    */
-  private retrieveFromOSKeychain(): string | null {
+  private retrieveFromOSKeychain(keyId = 'master'): string | null {
     if (!this.isOSEncryptionAvailable()) {
-      return null;
+      return null; // Graceful degradation to fallback encryption
     }
     
-    // TODO: Implement OS keychain retrieval using Electron's safeStorage API
-    // Implementation requirements:
-    // 1. Use fs.readFileSync() to read the stored encrypted data from app data directory
-    // 2. Use safeStorage.decryptString() to decrypt the retrieved data
-    // 3. Handle file not found errors gracefully by returning null
-    // 4. Handle decryption errors properly (invalid data, corrupted files)
-    // 5. Use the same key path pattern as storeInOSKeychain() for consistency
-    // 6. Add proper error logging without exposing sensitive data
-    // 7. Test safeStorage.isEncryptionAvailable() before each operation
-    // 8. Consider file integrity checks (checksums) for additional security
-    // 9. Handle permission errors gracefully
-    // 10. Return the decrypted key data as base64 string for consistency
-    // 
-    // Example implementation:
-    // ```typescript
-    // try {
-    //   const keyPath = path.join(app.getPath('userData'), `sij-key-${keyId}.enc`);
-    //   if (!fs.existsSync(keyPath)) return null;
-    //   
-    //   const encryptedData = fs.readFileSync(keyPath);
-    //   const decryptedKey = safeStorage.decryptString(encryptedData);
-    //   return decryptedKey;
-    // } catch (error) {
-    //   console.error('Failed to retrieve key from OS keychain:', error.message);
-    //   return null;
-    // }
-    // ```
-    return null; // TODO: Replace with actual implementation
+    try {
+      const keyPath = path.join(app.getPath('userData'), 'keychain', `sij-key-${keyId}.enc`);
+      
+      // Check existence before reading (avoid exceptions)
+      if (!fs.existsSync(keyPath)) {
+        return null;
+      }
+      
+      // Verify file permissions before sensitive operations
+      const verifyResult = SecureFileOperations.verifyFilePermissions(keyPath, 0o600);
+      if (!verifyResult.success) {
+        this.logSecurityEvent('os_keychain_retrieve', keyId, false, 'Permission verification failed');
+        return null;
+      }
+      
+      if (!verifyResult.data.correctPermissions) {
+        this.logSecurityEvent('os_keychain_retrieve', keyId, false, 'Incorrect file permissions detected');
+        return null;
+      }
+      
+      const encryptedData = fs.readFileSync(keyPath);
+      const decryptedKey = safeStorage.decryptString(encryptedData);
+      
+      // Validate decrypted data format
+      if (!this.isValidBase64(decryptedKey)) {
+        this.logSecurityEvent('os_keychain_retrieve', keyId, false, 'Invalid decrypted key format');
+        return null;
+      }
+      
+      this.logSecurityEvent('os_keychain_retrieve', keyId, true);
+      return decryptedKey;
+    } catch (error: unknown) {
+      // Log error but return null for graceful degradation
+      const message = error instanceof Error ? error.message : 'Unknown retrieval error';
+      const sanitizedMessage = this.sanitizeErrorMessage(message);
+      this.logSecurityEvent('os_keychain_retrieve', keyId, false, sanitizedMessage);
+      return null;
+    }
   }
 
   /**
@@ -520,6 +553,62 @@ export class CredentialEncryption {
       .replace(/ya29\.[a-zA-Z0-9_-]+/g, '[REDACTED_OAUTH_TOKEN]')
       .replace(/[a-zA-Z0-9]{32,}/g, '[REDACTED_LONG_STRING]')
       .replace(/Bearer\s+[a-zA-Z0-9_-]+/g, 'Bearer [REDACTED]');
+  }
+
+  /**
+   * Log security events for audit trail
+   * 
+   * @param eventType - Type of security event
+   * @param keyId - Key identifier involved in the operation
+   * @param success - Whether the operation was successful
+   * @param errorMessage - Optional error message for failed operations
+   */
+  private logSecurityEvent(
+    eventType: 'os_keychain_store' | 'os_keychain_retrieve' | 'keychain_fallback',
+    keyId: string,
+    success: boolean,
+    errorMessage?: string
+  ): void {
+    // In a full implementation, this would write to a security audit log
+    // For now, we'll use minimal logging without sensitive data
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] Security Event: ${eventType}, keyId: ${keyId}, success: ${success}`;
+    
+    if (!success && errorMessage != null) {
+      const sanitizedMessage = this.sanitizeErrorMessage(errorMessage);
+      // In production, would use proper logging service instead of console
+      // eslint-disable-next-line no-console
+      console.warn(`${logMessage}, error: ${sanitizedMessage}`);
+    } else if (success) {
+      // eslint-disable-next-line no-console
+      console.info(logMessage);
+    }
+  }
+
+  /**
+   * Validate if a string is valid base64 encoding
+   * 
+   * @param str - String to validate
+   * @returns True if valid base64
+   */
+  private isValidBase64(str: string): boolean {
+    try {
+      if (str.length === 0) {
+        return false;
+      }
+      
+      // Check for valid base64 characters only
+      const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+      if (!base64Regex.test(str)) {
+        return false;
+      }
+      
+      // Test by attempting to decode
+      const decoded = Buffer.from(str, 'base64').toString('base64');
+      return decoded === str;
+    } catch {
+      return false;
+    }
   }
 
   /**

@@ -344,9 +344,35 @@ export function setupIPC(
   // OAuth and Authentication operations
   ipcMain.handle('gmail:initiate-oauth', async (_event, credentials?: { clientId: string; clientSecret: string }) => {
     try {
-      // Use provided credentials if available
-      // TODO: Implement credential validation and temporary storage
-      console.log('OAuth initiate with credentials:', credentials ? 'provided' : 'none');
+      // If credentials provided, reinitialize the provider with new credentials
+      if (credentials?.clientId && credentials.clientSecret) {
+        console.log('OAuth initiate with new credentials');
+        
+        // Reinitialize Gmail provider with user-provided credentials
+        const gmailConfig = {
+          auth: {
+            clientId: credentials.clientId,
+            clientSecret: credentials.clientSecret,
+            redirectUri: 'http://localhost:8080'
+          },
+          maxResults: 100,
+          pageSize: 50
+        };
+        
+        const initResult = await emailProvider.initialize(gmailConfig);
+        if (!initResult.success) {
+          return {
+            success: false,
+            error: {
+              code: 'PROVIDER_INIT_ERROR',
+              message: `Failed to initialize Gmail provider: ${initResult.error.message}`,
+              retryable: false,
+              timestamp: new Date(),
+              details: initResult.error,
+            },
+          };
+        }
+      }
       
       // Get Gmail provider's OAuth manager
       if (!(emailProvider instanceof GmailProvider)) {
@@ -418,9 +444,26 @@ export function setupIPC(
       }
 
       // Store tokens securely
-      const storeResult = await secureStorageManager.storeGmailTokens(tokensResult.data);
-      if (!storeResult.success) {
-        return storeResult;
+      console.log('Attempting to store Gmail tokens...');
+      try {
+        const storeResult = await secureStorageManager.storeGmailTokens(tokensResult.data);
+        if (!storeResult.success) {
+          console.error('Failed to store Gmail tokens:', storeResult.error);
+          return storeResult;
+        }
+        console.log('Gmail tokens stored successfully');
+      } catch (error) {
+        console.error('Exception during token storage:', error);
+        return {
+          success: false,
+          error: {
+            code: 'STORAGE_ERROR',
+            message: error instanceof Error ? error.message : 'Unknown storage error',
+            retryable: false,
+            timestamp: new Date(),
+            details: {},
+          },
+        };
       }
 
       // Set storage manager for the provider

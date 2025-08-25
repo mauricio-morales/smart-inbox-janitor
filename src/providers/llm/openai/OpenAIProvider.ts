@@ -56,7 +56,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
   private client: OpenAI | null = null;
   private storageManager: SecureStorageManager | null = null;
   private initialized = false;
-  private readonly usageStats: UsageStatistics = {
+  private usageStatsData = {
     totalRequests: 0,
     totalTokens: 0,
     totalCost: 0,
@@ -434,10 +434,9 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
       
       const result: ContentValidationResult = {
         safe: parsedResponse.safe ?? true,
-        riskLevel: parsedResponse.riskLevel ?? 'low',
         issues: parsedResponse.issues ?? [],
-        recommendations: parsedResponse.recommendations ?? [],
-        confidence: parsedResponse.confidence ?? 0.5
+        safetyScore: parsedResponse.safetyScore ?? 0.8,
+        recommendations: parsedResponse.recommendations ?? []
       };
 
       this.updateUsageStats('validation', 1, completionResult.data.usage?.total_tokens ?? 0, 
@@ -492,12 +491,10 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
       const parsedResponse = JSON.parse(response);
       
       const explanation: ClassificationExplanation = {
-        classification: input.classification,
-        reasoning: parsedResponse.reasoning ?? 'No reasoning provided',
-        keyFactors: parsedResponse.keyFactors ?? [],
-        confidence: parsedResponse.confidence ?? 0.5,
-        alternativeClassifications: parsedResponse.alternatives ?? [],
-        recommendedAction: parsedResponse.recommendedAction ?? 'KEEP'
+        summary: parsedResponse.summary ?? 'No explanation available',
+        reasoning: parsedResponse.reasoning ?? [],
+        influencingFactors: parsedResponse.influencingFactors ?? [],
+        alternatives: parsedResponse.alternatives
       };
 
       this.updateUsageStats('explanation', 1, completionResult.data.usage?.total_tokens ?? 0,
@@ -521,7 +518,44 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
    */
   async getUsageStats(): Promise<Result<UsageStatistics>> {
     try {
-      return createSuccessResult({ ...this.usageStats });
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      
+      const result: UsageStatistics = {
+        billingPeriod: {
+          start: monthStart,
+          end: monthEnd,
+          daysRemaining: Math.ceil((monthEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        },
+        tokenUsage: {
+          promptTokens: 0, // TODO: track separately
+          completionTokens: 0, // TODO: track separately
+          totalTokens: this.usageStatsData.totalTokens,
+          dailyUsage: [] // TODO: implement daily tracking
+        },
+        costs: {
+          totalCost: this.usageStatsData.totalCost,
+          dailyCosts: [], // TODO: implement daily tracking
+          avgCostPerRequest: this.usageStatsData.totalRequests > 0 ? this.usageStatsData.totalCost / this.usageStatsData.totalRequests : 0,
+          projectedMonthlyCost: this.usageStatsData.totalCost * 30 // Simple projection
+        },
+        requests: {
+          totalRequests: this.usageStatsData.totalRequests,
+          successfulRequests: this.usageStatsData.totalRequests, // TODO: track failures separately
+          failedRequests: 0, // TODO: track failures
+          avgResponseTimeMs: 1000 // TODO: track response times
+        },
+        rateLimits: {
+          requestsPerMinute: 3500, // OpenAI default for paid accounts
+          requestsPerDay: 10000, // Estimate
+          currentMinuteRequests: 0, // TODO: implement rate limit tracking
+          currentDayRequests: 0, // TODO: implement rate limit tracking
+          resetTime: new Date(Date.now() + 60000) // Next minute
+        }
+      };
+      
+      return createSuccessResult(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
@@ -802,17 +836,24 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
         return {
           emailId: email.id,
           classification: classification.classification || 'unknown',
+          likelihood: classification.likelihood || 'unsure',
           confidence: classification.confidence || 0.5,
-          reasoning: classification.reasoning || 'No reasoning provided',
+          reasons: Array.isArray(classification.reasoning) ? classification.reasoning : [classification.reasoning || 'No reasoning provided'],
+          bulkKey: classification.bulkKey || `default-${index}`,
+          unsubscribeMethod: classification.unsubscribeMethod,
           suggestedAction: classification.suggestedAction || 'KEEP',
-          riskLevel: classification.riskLevel || 'low',
-          signals: classification.signals || []
+          riskAssessment: classification.riskAssessment
         };
       });
 
       return createSuccessResult({
-        classifications,
-        tokens: completionResult.data.usage?.total_tokens ?? 0
+        items: classifications,
+        usage: completionResult.data.usage ? {
+          promptTokens: completionResult.data.usage.prompt_tokens ?? 0,
+          completionTokens: completionResult.data.usage.completion_tokens ?? 0,
+          totalTokens: completionResult.data.usage.total_tokens ?? 0,
+          estimatedCost: 0 // TODO: Calculate based on model pricing
+        } : undefined
       });
     } catch (parseError) {
       return createErrorResult(
@@ -834,7 +875,7 @@ For each email, provide:
 - riskLevel: low, medium, high
 - signals: array of detected signals
 
-Context: ${input.userContext || 'General email classification'}
+Context: General email classification for ${input.emails.length} emails
 
 Emails to classify:
 ${emails.map((email, i) => `
@@ -861,11 +902,10 @@ Return response as JSON with this structure:
   }
 
   private buildContentValidationPrompt(content: ContentValidationInput): string {
-    return `Analyze this email content for safety and potential issues:
+    return `Analyze this ${content.contentType} content for safety and potential issues:
 
-Subject: ${content.subject || 'N/A'}
-Body: ${content.body?.substring(0, 1000) || 'N/A'}
-Headers: ${JSON.stringify(content.headers || {})}
+Content: ${content.content.substring(0, 1000)}
+Context: ${content.context ? JSON.stringify(content.context) : 'N/A'}
 
 Check for:
 - Phishing attempts
@@ -885,15 +925,15 @@ Return JSON:
   }
 
   private buildExplanationPrompt(input: ExplanationInput): string {
-    return `Explain why this email was classified as "${input.classification}":
+    return `Explain why this email was classified as "${input.classification.classification}":
 
 Email details:
-From: ${input.emailData.from}
-Subject: ${input.emailData.subject}
-Snippet: ${input.emailData.snippet}
+From: ${input.email.headers.From || 'Unknown'}
+Subject: ${input.email.headers.Subject || 'No Subject'}
+Body: ${input.email.bodyText?.substring(0, 500) || 'No content'}
 
-Current classification: ${input.classification}
-Confidence: ${input.confidence}
+Current classification: ${input.classification.classification}
+Confidence: ${input.classification.confidence}
 
 Provide detailed explanation as JSON:
 {
@@ -906,12 +946,12 @@ Provide detailed explanation as JSON:
   }
 
   private updateUsageStats(operation: string, requests: number, tokens: number, cost: number): void {
-    this.usageStats.totalRequests += requests;
-    this.usageStats.totalTokens += tokens;
-    this.usageStats.totalCost += cost;
+    this.usageStatsData.totalRequests += requests;
+    this.usageStatsData.totalTokens += tokens;
+    this.usageStatsData.totalCost += cost;
     
-    if (operation in this.usageStats.requestCounts) {
-      (this.usageStats.requestCounts as any)[operation] += requests;
+    if (operation in this.usageStatsData.requestCounts) {
+      (this.usageStatsData.requestCounts as any)[operation] += requests;
     }
   }
 
