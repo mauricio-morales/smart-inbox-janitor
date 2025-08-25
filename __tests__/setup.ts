@@ -82,7 +82,7 @@ process.env.NODE_ENV = 'test';
 
 // Suppress specific warnings that are expected in test environment
 const originalWarnings = process.emitWarning;
-process.emitWarning = (warning, options) => {
+process.emitWarning = function(warning: string | Error, ...args: any[]) {
   // Suppress deprecation warnings from dependencies during testing
   if (typeof warning === 'string' && warning.includes('better-sqlite3')) {
     return;
@@ -90,5 +90,8 @@ process.emitWarning = (warning, options) => {
   if (typeof warning === 'object' && warning.name === 'DeprecationWarning') {
     return;
   }
-  originalWarnings.call(process, warning, options);
+  
+  // Call original with all arguments
+  // @ts-ignore - complex overload handling for process.emitWarning
+  return originalWarnings.call(process, warning, ...args);
 };

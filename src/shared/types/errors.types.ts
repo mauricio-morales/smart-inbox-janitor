@@ -201,7 +201,7 @@ export class GmailError extends BaseProviderError {
       );
     }
     
-    if (error.code >= 500) {
+    if (error.code != null && error.code >= 500) {
       return new GmailError(
         'GMAIL_SERVER_ERROR',
         'Gmail server error. Please try again.',
@@ -214,7 +214,7 @@ export class GmailError extends BaseProviderError {
     
     return new GmailError(
       'GMAIL_UNKNOWN_ERROR',
-      error.message || 'Unknown Gmail API error',
+      error.message ?? 'Unknown Gmail API error',
       false,
       error.code,
       error.reason,
@@ -304,8 +304,8 @@ export class OpenAIError extends BaseProviderError {
     this.openaiCode = openaiCode;
   }
   
-  static fromOpenAIError(error: any): OpenAIError {
-    const baseDetails = { originalError: error.message };
+  static fromOpenAIError(error: { type?: string; code?: string; message?: string }): OpenAIError {
+    const baseDetails = { originalError: error.message ?? 'Unknown OpenAI error' };
     
     if (error.type === 'insufficient_quota') {
       return new OpenAIError(
@@ -353,7 +353,7 @@ export class OpenAIError extends BaseProviderError {
     
     return new OpenAIError(
       'OPENAI_UNKNOWN_ERROR',
-      error.message || 'Unknown OpenAI API error',
+      error.message ?? 'Unknown OpenAI API error',
       false,
       error.type,
       error.code,
@@ -475,4 +475,31 @@ export function getErrorSeverity(error: ProviderError): ErrorSeverity {
   }
   
   return ErrorSeverity.MEDIUM;
+}
+
+/**
+ * Security-related error for authentication, authorization, and security violations
+ */
+export class SecurityError extends BaseProviderError {
+  constructor(message: string, context?: Record<string, unknown>) {
+    super('SECURITY_ERROR', message, false, context);
+  }
+}
+
+/**
+ * Cryptographic operation error for encryption, decryption, and key management
+ */
+export class CryptoError extends BaseProviderError {
+  constructor(message: string, context?: Record<string, unknown>) {
+    super('CRYPTO_ERROR', message, false, context);
+  }
+}
+
+/**
+ * Storage-related error for database operations and data persistence
+ */
+export class StorageError extends BaseProviderError {
+  constructor(message: string, context?: Record<string, unknown>) {
+    super('STORAGE_ERROR', message, false, context);
+  }
 }

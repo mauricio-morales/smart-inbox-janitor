@@ -26,6 +26,7 @@ export {
   isErrorResult,
   createSuccessResult,
   createErrorResult,
+  createProviderError,
 } from './base.types.js';
 
 // Error hierarchy and classes
@@ -39,6 +40,9 @@ export {
   ValidationError,
   TimeoutError,
   CancellationError,
+  SecurityError,
+  CryptoError,
+  StorageError,
   isRetryableError,
   isRateLimitError,
   isAuthenticationError,
@@ -64,7 +68,6 @@ export type {
   SQLiteStorageConfig,
   IndexedDBStorageConfig,
   AppConfig,
-  LLMProviderConfig,
   StorageProviderConfig,
   UserPreferences,
 } from './config.types.js';
@@ -76,6 +79,7 @@ export {
 // Email provider types
 export type {
   EmailProvider,
+  EmailProviderConfig,
   ContactsProvider,
   RelationshipStrength,
   EmailSummary,
@@ -102,6 +106,7 @@ export type {
   StorageProvider,
   StoredAppConfig,
   UserRules,
+  UserRule,
   EmailMetadata,
   EmailClassification,
   UserAction,
@@ -111,6 +116,16 @@ export type {
   ActionQueueItem,
   ActionType,
   ActionStatus,
+  FolderState,
+  ActionHistoryItem,
+  MigrationResult,
+  BulkOperationResult,
+  EmailMetadataFilters,
+  EmailMetadataQueryResult,
+  CleanupResult,
+  DatabaseStatistics,
+  ExportResult,
+  ImportResult,
 } from './storage.types.js';
 
 // LLM provider types
@@ -126,6 +141,14 @@ export type {
   UsageStatistics,
   CostEstimation,
   ContactSignal,
+  GroupingInput,
+  GroupOutput,
+  ContentValidationInput,
+  ContentValidationResult,
+  ExplanationInput,
+  ClassificationExplanation,
+  ConnectionTestResult,
+  CostEstimationInput,
 } from './llm.types.js';
 
 // Rules engine types
@@ -138,3 +161,26 @@ export type {
   RuleTestResult,
   RuleAnalytics,
 } from './rules.types.js';
+
+// Security types
+export type {
+  SecureCredential,
+  SecurityAuditEvent,
+  SecurityEventType,
+  SecurityConfig,
+  SecurityLevel,
+  CredentialStorageOptions,
+  RotationPolicy,
+  SecurityValidationResult,
+  SecurityValidationDetails,
+  EncryptionKeyMetadata,
+  KeyDerivationMethod,
+  KeyUsageStats,
+  TokenRefreshRequest,
+  TokenRefreshResponse,
+  SecureStorageStatus,
+  StorageHealthStatus,
+  SecurityConfigSummary,
+  RecoveryInfo,
+  CredentialBackup,
+} from './security.types.js';
