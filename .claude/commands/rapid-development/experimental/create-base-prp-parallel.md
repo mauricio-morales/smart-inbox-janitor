@@ -13,6 +13,7 @@ Generate a comprehensive PRP using parallel research agents for maximum context 
 Launch these agents concurrently - do not wait for one to complete before starting the next:
 
 #### Agent 1: Codebase Pattern Analysis
+
 ```
 Task: Codebase Context Research
 Prompt: Analyze the codebase for patterns relevant to "$ARGUMENTS". Research and identify:
@@ -27,6 +28,7 @@ Focus on codebase exploration only - do not write code. Use Glob, Grep, and Read
 ```
 
 #### Agent 2: External Technical Research
+
 ```
 Task: External Technical Research
 Prompt: Research external technical resources for "$ARGUMENTS". Investigate:
@@ -41,6 +43,7 @@ Focus purely on research - do not write code. Use web search extensively. Return
 ```
 
 #### Agent 3: Testing & Validation Strategy
+
 ```
 Task: Testing Strategy Research
 Prompt: Research testing and validation approaches for "$ARGUMENTS". Analyze:
@@ -55,6 +58,7 @@ Research only - no test implementation. Use codebase analysis and web search. Re
 ```
 
 #### Agent 4: Documentation & Context Research
+
 ```
 Task: Documentation Context Research
 Prompt: Research documentation and context resources for "$ARGUMENTS". Gather:
@@ -77,19 +81,23 @@ Once all agents complete their research, synthesize the findings and generate a 
 Using PRPs/templates/prp_base.md as the foundation, integrate the research findings:
 
 #### Critical Context Integration
+
 From the research agents, include:
+
 - **Codebase Patterns**: Specific file paths and code examples from Agent 1
 - **Technical Documentation**: URLs and specific sections from Agent 2
 - **Testing Strategies**: Validation approaches and patterns from Agent 3
 - **Project Documentation**: Relevant ai_docs and configuration from Agent 4
 
 #### Implementation Blueprint Enhancement
+
 - Start with pseudocode informed by existing patterns
 - Reference real files and patterns discovered in research
 - Include error handling strategies from similar implementations
 - List tasks in order of completion based on codebase analysis
 
 #### Context-Rich Validation Gates
+
 ```bash
 # Syntax/Style (from codebase analysis)
 uv run ruff check . --fix
@@ -173,6 +181,7 @@ Generate a complete PRP including:
 Before finalizing the PRP, ensure:
 
 ### Research Quality
+
 - [ ] All 4 research agents completed successfully
 - [ ] Codebase patterns thoroughly analyzed
 - [ ] External documentation properly referenced
@@ -180,6 +189,7 @@ Before finalizing the PRP, ensure:
 - [ ] Documentation context comprehensive
 
 ### PRP Quality
+
 - [ ] All necessary context included from research
 - [ ] Validation gates are executable and specific
 - [ ] References existing patterns and conventions
@@ -188,6 +198,7 @@ Before finalizing the PRP, ensure:
 - [ ] Integration points clearly defined
 
 ### Context Completeness
+
 - [ ] Specific file paths and examples included
 - [ ] URLs with relevant sections specified
 - [ ] Library versions and dependencies noted
@@ -201,6 +212,7 @@ Save the comprehensive PRP as: `PRPs/{feature-name}-parallel.md`
 ## Success Metrics
 
 Score the PRP on a scale of 1-10 for:
+
 - **Context Richness**: How much relevant context is included
 - **Implementation Clarity**: How clear the implementation path is
 - **Validation Completeness**: How comprehensive the testing strategy is
@@ -211,6 +223,7 @@ Target: 8+ on all metrics through parallel research depth
 ## Time Efficiency
 
 This parallel approach reduces PRP creation time by:
+
 - **4x faster research**: Parallel agents vs sequential
 - **Better context**: Multiple perspectives simultaneously
 - **Reduced iterations**: Comprehensive upfront research

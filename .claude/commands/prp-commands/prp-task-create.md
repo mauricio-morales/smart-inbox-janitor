@@ -42,8 +42,8 @@ context:
       copy: [pattern to follow]
 
   gotchas:
-    - issue: "Library requires X"
-      fix: "Always do Y first"
+    - issue: 'Library requires X'
+      fix: 'Always do Y first'
 ```
 
 ### Task Structure

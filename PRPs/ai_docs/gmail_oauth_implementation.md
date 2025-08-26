@@ -1,6 +1,7 @@
 # Gmail OAuth 2.0 Implementation Guide for Electron Applications
 
 ## Table of Contents
+
 - [OAuth 2.0 Flow Overview](#oauth-20-flow-overview)
 - [Required OAuth Scopes](#required-oauth-scopes)
 - [Desktop Application Implementation](#desktop-application-implementation)
@@ -13,6 +14,7 @@
 ## OAuth 2.0 Flow Overview
 
 ### Prerequisites
+
 1. **Enable Gmail API** in Google Cloud Console
 2. **Create OAuth 2.0 Credentials** (Desktop Application type)
 3. **Configure authorized redirect URIs** (use loopback for desktop apps)
@@ -20,26 +22,28 @@
 ### Complete Authorization Flow
 
 #### Step 1: Generate Authorization URL
+
 ```typescript
 const oauth2Client = new google.auth.OAuth2(
   CLIENT_ID,
   CLIENT_SECRET,
-  'http://127.0.0.1:8080' // Loopback redirect for desktop
+  'http://127.0.0.1:8080', // Loopback redirect for desktop
 );
 
 const authUrl = oauth2Client.generateAuthUrl({
   access_type: 'offline', // Required for refresh tokens
   scope: [
     'https://www.googleapis.com/auth/gmail.modify',
-    'https://www.googleapis.com/auth/gmail.labels'
+    'https://www.googleapis.com/auth/gmail.labels',
   ],
   prompt: 'consent', // Force consent to get refresh token
   code_challenge: codeChallenge, // PKCE for security
-  code_challenge_method: 'S256'
+  code_challenge_method: 'S256',
 });
 ```
 
 #### Step 2: Handle Authorization Code Exchange
+
 ```typescript
 // After user authorization, exchange code for tokens
 const { tokens } = await oauth2Client.getToken(authorizationCode);
@@ -59,17 +63,15 @@ oauth2Client.on('tokens', (newTokens) => {
 ```
 
 #### Step 3: Implement PKCE for Security
+
 ```typescript
 import crypto from 'crypto';
 
 // Generate code verifier and challenge
 function generatePKCEPair() {
   const codeVerifier = crypto.randomBytes(32).toString('base64url');
-  const codeChallenge = crypto
-    .createHash('sha256')
-    .update(codeVerifier)
-    .digest('base64url');
-  
+  const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
+
   return { codeVerifier, codeChallenge };
 }
 
@@ -84,34 +86,38 @@ const { codeVerifier, codeChallenge } = generatePKCEPair();
 ### Scope Categories and Permissions
 
 #### Non-Sensitive Scopes (Basic Permissions)
-| Scope | Description | Use Case |
-|-------|-------------|----------|
+
+| Scope          | Description                             | Use Case                    |
+| -------------- | --------------------------------------- | --------------------------- |
 | `gmail.labels` | Create, read, update, and delete labels | Label management operations |
 
 #### Sensitive Scopes (Moderate Permissions)
-| Scope | Description | Use Case |
-|-------|-------------|----------|
-| `gmail.send` | Send messages without read/modify | Send-only email functionality |
+
+| Scope                                   | Description                        | Use Case                       |
+| --------------------------------------- | ---------------------------------- | ------------------------------ |
+| `gmail.send`                            | Send messages without read/modify  | Send-only email functionality  |
 | `gmail.addons.current.message.metadata` | View email metadata during runtime | Message headers and basic info |
 
 #### Restricted Scopes (High-Level Permissions)
-| Scope | Description | Use Case |
-|-------|-------------|----------|
-| `gmail.readonly` | Read all resources and metadata | Safe read-only access |
-| `gmail.modify` | Read/write operations (no deletion) | **Recommended for Smart Inbox Janitor** |
-| `gmail.compose` | Create, read, update drafts and send | Draft management and sending |
-| `gmail.metadata` | Read metadata excluding message bodies | Headers, labels, thread info |
-| `gmail.settings.basic` | Manage basic mail settings | Filter and forwarding rules |
-| `gmail.settings.sharing` | Manage sensitive mail settings | Advanced settings management |
-| `mail.google.com/` | Full mailbox access including deletion | **Use with extreme caution** |
+
+| Scope                    | Description                            | Use Case                                |
+| ------------------------ | -------------------------------------- | --------------------------------------- |
+| `gmail.readonly`         | Read all resources and metadata        | Safe read-only access                   |
+| `gmail.modify`           | Read/write operations (no deletion)    | **Recommended for Smart Inbox Janitor** |
+| `gmail.compose`          | Create, read, update drafts and send   | Draft management and sending            |
+| `gmail.metadata`         | Read metadata excluding message bodies | Headers, labels, thread info            |
+| `gmail.settings.basic`   | Manage basic mail settings             | Filter and forwarding rules             |
+| `gmail.settings.sharing` | Manage sensitive mail settings         | Advanced settings management            |
+| `mail.google.com/`       | Full mailbox access including deletion | **Use with extreme caution**            |
 
 ### Recommended Scope Combination for Smart Inbox Janitor
+
 ```typescript
 const RECOMMENDED_SCOPES = [
-  'https://www.googleapis.com/auth/gmail.modify',    // Primary scope for triage operations
-  'https://www.googleapis.com/auth/gmail.labels',    // Label management
-  'https://www.googleapis.com/auth/userinfo.email',  // User identification
-  'https://www.googleapis.com/auth/userinfo.profile' // User profile info
+  'https://www.googleapis.com/auth/gmail.modify', // Primary scope for triage operations
+  'https://www.googleapis.com/auth/gmail.labels', // Label management
+  'https://www.googleapis.com/auth/userinfo.email', // User identification
+  'https://www.googleapis.com/auth/userinfo.profile', // User profile info
 ];
 ```
 
@@ -120,6 +126,7 @@ const RECOMMENDED_SCOPES = [
 ### Electron-Specific OAuth Setup
 
 #### Main Process OAuth Handler
+
 ```typescript
 // main/oauth-handler.ts
 import { BrowserWindow, shell } from 'electron';
@@ -136,7 +143,7 @@ export class GmailOAuthHandler {
     this.oauth2Client = new google.auth.OAuth2(
       clientId,
       clientSecret,
-      'http://127.0.0.1' // Will be set dynamically with port
+      'http://127.0.0.1', // Will be set dynamically with port
     );
   }
 
@@ -146,16 +153,16 @@ export class GmailOAuthHandler {
       const app = express();
       this.server = app.listen(0, '127.0.0.1', () => {
         const port = (this.server.address() as AddressInfo).port;
-        
+
         // Update redirect URI with actual port
         this.oauth2Client.redirectUri = `http://127.0.0.1:${port}/callback`;
-        
+
         // Setup callback route
         app.get('/callback', async (req, res) => {
           try {
             const { code } = req.query;
             const { tokens } = await this.oauth2Client.getToken(code);
-            
+
             res.send('<h1>Authentication successful!</h1><p>You can close this window.</p>');
             this.cleanup();
             resolve(tokens);
@@ -170,7 +177,7 @@ export class GmailOAuthHandler {
         const authUrl = this.oauth2Client.generateAuthUrl({
           access_type: 'offline',
           scope: RECOMMENDED_SCOPES,
-          prompt: 'consent'
+          prompt: 'consent',
         });
 
         // Open in system browser (more secure than embedded)
@@ -192,6 +199,7 @@ export class GmailOAuthHandler {
 ```
 
 #### Secure Token Storage with Encryption
+
 ```typescript
 // main/secure-token-storage.ts
 import { safeStorage } from 'electron';
@@ -214,7 +222,7 @@ export class SecureTokenStorage {
 
     const tokenData = JSON.stringify(tokens);
     const encryptedData = safeStorage.encryptString(tokenData);
-    
+
     writeFileSync(this.tokenPath, encryptedData);
   }
 
@@ -246,6 +254,7 @@ export class SecureTokenStorage {
 ### Token Security Implementation
 
 #### 1. Secure Storage Requirements
+
 ```typescript
 // Use Electron's safeStorage for token encryption
 const encryptedTokens = safeStorage.encryptString(JSON.stringify(tokens));
@@ -256,6 +265,7 @@ const encryptedTokens = safeStorage.encryptString(JSON.stringify(tokens));
 ```
 
 #### 2. Refresh Token Management
+
 ```typescript
 export class TokenManager {
   private refreshTokenRotation = true;
@@ -263,13 +273,13 @@ export class TokenManager {
   async refreshAccessToken(refreshToken: string): Promise<TokenResult> {
     try {
       oauth2Client.setCredentials({ refresh_token: refreshToken });
-      
+
       const { credentials } = await oauth2Client.refreshAccessToken();
-      
+
       // Store new tokens (refresh token may rotate)
       await this.storeTokensSecurely({
         access_token: credentials.access_token!,
-        refresh_token: credentials.refresh_token || refreshToken // Keep old if no new one
+        refresh_token: credentials.refresh_token || refreshToken, // Keep old if no new one
       });
 
       return createSuccessResult(credentials);
@@ -286,6 +296,7 @@ export class TokenManager {
 ```
 
 #### 3. Access Token Lifecycle
+
 ```typescript
 export class GmailTokenHandler {
   private accessToken: string | null = null;
@@ -314,6 +325,7 @@ export class GmailTokenHandler {
 ```
 
 ### Security Checklist
+
 - ✅ **Use PKCE** for authorization code exchange
 - ✅ **Store tokens encrypted** using Electron's safeStorage
 - ✅ **Implement refresh token rotation**
@@ -328,12 +340,13 @@ export class GmailTokenHandler {
 ### OAuth-Specific Error Handling
 
 #### 1. Authentication Errors (401)
+
 ```typescript
 async handleAuthenticationError(error: any): Promise<TokenResult> {
   if (error.code === 401) {
     // Token expired or invalid
     const refreshResult = await this.attemptTokenRefresh();
-    
+
     if (refreshResult.success) {
       return refreshResult;
     } else {
@@ -347,33 +360,34 @@ async handleAuthenticationError(error: any): Promise<TokenResult> {
       );
     }
   }
-  
+
   return createErrorResult(new AuthenticationError(error.message));
 }
 ```
 
 #### 2. Authorization Errors (403)
+
 ```typescript
 async handleAuthorizationError(error: any): Promise<void> {
   if (error.code === 403) {
     const errorDetails = error.errors?.[0];
-    
+
     switch (errorDetails?.reason) {
       case 'dailyLimitExceeded':
         throw new QuotaError('Daily API limit exceeded. Try again tomorrow.');
-      
+
       case 'userRateLimitExceeded':
         throw new RateLimitError('User rate limit exceeded. Please slow down requests.');
-      
+
       case 'quotaExceeded':
         throw new QuotaError('API quota exceeded.');
-      
+
       case 'insufficientPermissions':
         throw new AuthorizationError(
           'Insufficient permissions. Please re-authorize with required scopes.',
           'INSUFFICIENT_SCOPES'
         );
-      
+
       default:
         throw new AuthorizationError('Access forbidden: ' + errorDetails?.message);
     }
@@ -382,6 +396,7 @@ async handleAuthorizationError(error: any): Promise<void> {
 ```
 
 #### 3. Rate Limiting with Exponential Backoff
+
 ```typescript
 export class RateLimitHandler {
   private maxRetries = 5;
@@ -398,8 +413,10 @@ export class RateLimitHandler {
 
         if (error.code === 429 || error.code === 503) {
           const delayMs = this.baseDelay * Math.pow(2, attempt);
-          console.log(`Rate limited. Waiting ${delayMs}ms before retry ${attempt + 1}/${this.maxRetries}`);
-          
+          console.log(
+            `Rate limited. Waiting ${delayMs}ms before retry ${attempt + 1}/${this.maxRetries}`,
+          );
+
           await this.delay(delayMs);
           continue;
         }
@@ -409,51 +426,54 @@ export class RateLimitHandler {
       }
     }
 
-    throw new RateLimitError(`Operation failed after ${this.maxRetries} retries: ${lastError.message}`);
+    throw new RateLimitError(
+      `Operation failed after ${this.maxRetries} retries: ${lastError.message}`,
+    );
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 ```
 
 ### Common Error Scenarios and Solutions
 
-| Error Code | Scenario | Solution |
-|------------|----------|----------|
-| 400 | Invalid request parameters | Validate all parameters before API calls |
-| 401 | Expired/invalid access token | Refresh token or re-authenticate |
-| 403 | Insufficient permissions | Check scopes, request re-authorization |
-| 403 | Rate limit exceeded | Implement exponential backoff |
-| 403 | Daily quota exceeded | Display user-friendly message, retry tomorrow |
-| 429 | Too many requests | Implement request throttling |
-| 500/503 | Server errors | Retry with exponential backoff |
+| Error Code | Scenario                     | Solution                                      |
+| ---------- | ---------------------------- | --------------------------------------------- |
+| 400        | Invalid request parameters   | Validate all parameters before API calls      |
+| 401        | Expired/invalid access token | Refresh token or re-authenticate              |
+| 403        | Insufficient permissions     | Check scopes, request re-authorization        |
+| 403        | Rate limit exceeded          | Implement exponential backoff                 |
+| 403        | Daily quota exceeded         | Display user-friendly message, retry tomorrow |
+| 429        | Too many requests            | Implement request throttling                  |
+| 500/503    | Server errors                | Retry with exponential backoff                |
 
 ## Rate Limiting and Quotas
 
 ### Gmail API Quotas (Current Limits)
 
-| Limit Type | Quota | Notes |
-|------------|-------|-------|
+| Limit Type  | Quota                  | Notes                  |
+| ----------- | ---------------------- | ---------------------- |
 | Per Project | 1,200,000 units/minute | Total across all users |
-| Per User | 15,000 units/minute | Per individual user |
+| Per User    | 15,000 units/minute    | Per individual user    |
 
 ### Quota Unit Costs (Key Operations)
 
-| Operation | Quota Units | Description |
-|-----------|-------------|-------------|
-| `messages.list` | 5 | List messages in mailbox |
-| `messages.get` | 5 | Get single message |
-| `messages.modify` | 5 | Modify message labels |
-| `messages.batchModify` | 50 | Batch modify up to 1000 messages |
-| `messages.send` | 100 | Send new message |
-| `labels.list` | 5 | List all labels |
-| `labels.create` | 5 | Create new label |
+| Operation              | Quota Units | Description                      |
+| ---------------------- | ----------- | -------------------------------- |
+| `messages.list`        | 5           | List messages in mailbox         |
+| `messages.get`         | 5           | Get single message               |
+| `messages.modify`      | 5           | Modify message labels            |
+| `messages.batchModify` | 50          | Batch modify up to 1000 messages |
+| `messages.send`        | 100         | Send new message                 |
+| `labels.list`          | 5           | List all labels                  |
+| `labels.create`        | 5           | Create new label                 |
 
 ### Quota Management Implementation
 
 #### 1. Request Throttling
+
 ```typescript
 export class QuotaManager {
   private requestQueue: Array<() => Promise<any>> = [];
@@ -518,27 +538,32 @@ export class QuotaManager {
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 ```
 
 #### 2. Batch Operations for Efficiency
+
 ```typescript
 export class EfficientGmailOperations {
-  async batchModifyMessages(messageIds: string[], labelsToAdd: string[], labelsToRemove: string[]): Promise<void> {
+  async batchModifyMessages(
+    messageIds: string[],
+    labelsToAdd: string[],
+    labelsToRemove: string[],
+  ): Promise<void> {
     const batchSize = 1000; // Gmail API limit
-    
+
     for (let i = 0; i < messageIds.length; i += batchSize) {
       const batch = messageIds.slice(i, i + batchSize);
-      
+
       await gmail.users.messages.batchModify({
         userId: 'me',
         requestBody: {
           ids: batch,
           addLabelIds: labelsToAdd,
-          removeLabelIds: labelsToRemove
-        }
+          removeLabelIds: labelsToRemove,
+        },
       });
 
       // Progress tracking
@@ -552,6 +577,7 @@ export class EfficientGmailOperations {
 ## Complete Implementation Example
 
 ### Full Gmail OAuth Provider
+
 ```typescript
 // providers/email/gmail-provider.ts
 import { google } from 'googleapis';
@@ -567,12 +593,8 @@ export class GmailProvider implements EmailProvider {
   private rateLimitHandler: RateLimitHandler;
 
   constructor(clientId: string, clientSecret: string) {
-    this.oauth2Client = new google.auth.OAuth2(
-      clientId,
-      clientSecret,
-      'http://127.0.0.1:8080'
-    );
-    
+    this.oauth2Client = new google.auth.OAuth2(clientId, clientSecret, 'http://127.0.0.1:8080');
+
     this.gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
     this.tokenStorage = new SecureTokenStorage();
     this.rateLimitHandler = new RateLimitHandler();
@@ -587,10 +609,10 @@ export class GmailProvider implements EmailProvider {
     try {
       // Try to load existing tokens
       const storedTokens = await this.tokenStorage.retrieveTokens();
-      
+
       if (storedTokens) {
         this.oauth2Client.setCredentials(storedTokens);
-        
+
         // Verify tokens are still valid
         const testResult = await this.healthCheck();
         if (testResult.success) {
@@ -599,12 +621,10 @@ export class GmailProvider implements EmailProvider {
       }
 
       // Need fresh authentication
-      return createErrorResult(
-        new AuthenticationError('Authentication required', 'AUTH_REQUIRED')
-      );
+      return createErrorResult(new AuthenticationError('Authentication required', 'AUTH_REQUIRED'));
     } catch (error) {
       return createErrorResult(
-        new ConfigurationError(`Failed to initialize Gmail provider: ${error.message}`)
+        new ConfigurationError(`Failed to initialize Gmail provider: ${error.message}`),
       );
     }
   }
@@ -613,7 +633,7 @@ export class GmailProvider implements EmailProvider {
     try {
       const oauthHandler = new GmailOAuthHandler(
         this.oauth2Client.clientId!,
-        this.oauth2Client.clientSecret!
+        this.oauth2Client.clientSecret!,
       );
 
       const tokens = await oauthHandler.authenticate();
@@ -622,9 +642,7 @@ export class GmailProvider implements EmailProvider {
 
       return createSuccessResult(undefined);
     } catch (error) {
-      return createErrorResult(
-        new AuthenticationError(`Authentication failed: ${error.message}`)
-      );
+      return createErrorResult(new AuthenticationError(`Authentication failed: ${error.message}`));
     }
   }
 
@@ -634,12 +652,12 @@ export class GmailProvider implements EmailProvider {
         return await this.gmail.users.messages.list({
           userId: 'me',
           q: query,
-          maxResults
+          maxResults,
         });
       });
 
       const messages: EmailMessage[] = [];
-      
+
       if (result.data.messages) {
         for (const message of result.data.messages) {
           const messageResult = await this.getMessage(message.id!);
@@ -661,7 +679,7 @@ export class GmailProvider implements EmailProvider {
         return await this.gmail.users.messages.get({
           userId: 'me',
           id: messageId,
-          format: 'full'
+          format: 'full',
         });
       });
 
@@ -673,9 +691,9 @@ export class GmailProvider implements EmailProvider {
   }
 
   async modifyMessage(
-    messageId: string, 
-    addLabels: string[] = [], 
-    removeLabels: string[] = []
+    messageId: string,
+    addLabels: string[] = [],
+    removeLabels: string[] = [],
   ): Promise<EmailResult<void>> {
     try {
       await this.rateLimitHandler.executeWithRetry(async () => {
@@ -684,8 +702,8 @@ export class GmailProvider implements EmailProvider {
           id: messageId,
           requestBody: {
             addLabelIds: addLabels,
-            removeLabelIds: removeLabels
-          }
+            removeLabelIds: removeLabels,
+          },
         });
       });
 
@@ -703,36 +721,28 @@ export class GmailProvider implements EmailProvider {
 
       return createSuccessResult(true);
     } catch (error) {
-      return createErrorResult(
-        new NetworkError(`Health check failed: ${error.message}`)
-      );
+      return createErrorResult(new NetworkError(`Health check failed: ${error.message}`));
     }
   }
 
   private handleApiError(error: any): EmailResult<any> {
     if (error.code === 401) {
       return createErrorResult(
-        new AuthenticationError('Authentication expired', 'REAUTH_REQUIRED')
+        new AuthenticationError('Authentication expired', 'REAUTH_REQUIRED'),
       );
     } else if (error.code === 403) {
-      return createErrorResult(
-        new AuthorizationError(`Access forbidden: ${error.message}`)
-      );
+      return createErrorResult(new AuthorizationError(`Access forbidden: ${error.message}`));
     } else if (error.code === 429) {
-      return createErrorResult(
-        new RateLimitError('Rate limit exceeded')
-      );
+      return createErrorResult(new RateLimitError('Rate limit exceeded'));
     } else {
-      return createErrorResult(
-        new NetworkError(`API error: ${error.message}`)
-      );
+      return createErrorResult(new NetworkError(`API error: ${error.message}`));
     }
   }
 
   private parseGmailMessage(gmailMessage: any): EmailMessage {
     // Parse Gmail API response into EmailMessage interface
     const headers = gmailMessage.payload?.headers || [];
-    
+
     return {
       id: gmailMessage.id,
       threadId: gmailMessage.threadId,
@@ -743,7 +753,7 @@ export class GmailProvider implements EmailProvider {
       body: this.extractMessageBody(gmailMessage.payload),
       labels: gmailMessage.labelIds || [],
       snippet: gmailMessage.snippet || '',
-      unread: gmailMessage.labelIds?.includes('UNREAD') || false
+      unread: gmailMessage.labelIds?.includes('UNREAD') || false,
     };
   }
 
@@ -753,7 +763,7 @@ export class GmailProvider implements EmailProvider {
     if (payload.body?.data) {
       return Buffer.from(payload.body.data, 'base64').toString('utf-8');
     }
-    
+
     if (payload.parts) {
       for (const part of payload.parts) {
         if (part.mimeType === 'text/plain' && part.body?.data) {
@@ -761,7 +771,7 @@ export class GmailProvider implements EmailProvider {
         }
       }
     }
-    
+
     return '';
   }
 }
@@ -770,28 +780,33 @@ export class GmailProvider implements EmailProvider {
 ## Official Documentation References
 
 ### Core OAuth 2.0 Documentation
+
 - **OAuth 2.0 for Native Apps**: https://developers.google.com/identity/protocols/oauth2/native-app
 - **Gmail API Authorization**: https://developers.google.com/gmail/api/auth/web-server
 - **OAuth 2.0 Scopes**: https://developers.google.com/gmail/api/auth/scopes
 
 ### API References
+
 - **Gmail API Reference**: https://developers.google.com/gmail/api/reference/rest
 - **Gmail API Quotas**: https://developers.google.com/gmail/api/reference/quota
 - **Error Handling**: https://developers.google.com/gmail/api/guides/handle-errors
 
 ### Security and Best Practices
+
 - **OAuth 2.0 Security (RFC 6819)**: https://datatracker.ietf.org/doc/html/rfc6819
 - **PKCE Specification (RFC 7636)**: https://datatracker.ietf.org/doc/html/rfc7636
 - **OAuth 2.0 for Native Apps (RFC 8252)**: https://datatracker.ietf.org/doc/html/rfc8252
 
 ### Implementation Libraries
+
 - **Google APIs Node.js Client**: https://github.com/googleapis/google-api-nodejs-client
 - **Google Auth Library**: https://github.com/googleapis/google-auth-library-nodejs
 
 ### Electron-Specific Resources
+
 - **Electron Security**: https://www.electronjs.org/docs/latest/tutorial/security
 - **Electron safeStorage**: https://www.electronjs.org/docs/latest/api/safe-storage
 
 ---
 
-*This document provides comprehensive implementation guidance for Gmail OAuth 2.0 in Electron applications. Always refer to the latest official Google documentation for the most current information.*
+_This document provides comprehensive implementation guidance for Gmail OAuth 2.0 in Electron applications. Always refer to the latest official Google documentation for the most current information._

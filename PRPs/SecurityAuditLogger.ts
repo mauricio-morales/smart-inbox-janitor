@@ -1,22 +1,22 @@
 /**
  * Security Audit Logger for Smart Inbox Janitor
- * 
+ *
  * Provides comprehensive security event logging without exposing sensitive data.
  * Integrates with existing StorageProvider interface for persistence and maintains
  * audit trail for compliance and security monitoring.
- * 
+ *
  * @module SecurityAuditLogger
  */
 
-import { 
-  Result, 
-  createSuccessResult, 
+import {
+  Result,
+  createSuccessResult,
   createErrorResult,
   SecurityError,
   StorageProvider,
   SecurityAuditEvent,
   SecurityEventType,
-  ClassificationHistoryItem
+  ClassificationHistoryItem,
 } from '@shared/types';
 import { CryptoUtils } from '@shared/utils/crypto.utils';
 
@@ -75,7 +75,7 @@ export interface AuditStatistics {
 
 /**
  * Security Audit Logger
- * 
+ *
  * Provides secure audit logging for security events with automatic
  * sensitive data sanitization and integrity verification.
  */
@@ -90,8 +90,8 @@ export class SecurityAuditLogger {
       enabled: true,
       maxEntries: 10000,
       retentionDays: 90,
-      includeDetailedMetadata: false
-    }
+      includeDetailedMetadata: false,
+    },
   ) {
     this.storageProvider = storageProvider;
     this.config = config;
@@ -99,7 +99,7 @@ export class SecurityAuditLogger {
 
   /**
    * Initialize the audit logger
-   * 
+   *
    * @returns Result indicating initialization success or failure
    */
   async initialize(): Promise<Result<void>> {
@@ -115,8 +115,8 @@ export class SecurityAuditLogger {
         return createErrorResult(
           new SecurityError('Storage provider not available for audit logging', {
             provider: this.storageProvider.name,
-            healthStatus: healthCheck.error?.message
-          })
+            healthStatus: healthCheck.error?.message,
+          }),
         );
       }
 
@@ -133,8 +133,8 @@ export class SecurityAuditLogger {
         metadata: {
           maxEntries: this.config.maxEntries,
           retentionDays: this.config.retentionDays,
-          detailedMetadata: this.config.includeDetailedMetadata
-        }
+          detailedMetadata: this.config.includeDetailedMetadata,
+        },
       });
 
       return createSuccessResult(undefined);
@@ -143,19 +143,21 @@ export class SecurityAuditLogger {
       return createErrorResult(
         new SecurityError(`Audit logger initialization failed: ${message}`, {
           enabled: this.config.enabled,
-          storageProvider: this.storageProvider.name
-        })
+          storageProvider: this.storageProvider.name,
+        }),
       );
     }
   }
 
   /**
    * Log a security event with automatic sanitization
-   * 
+   *
    * @param event - Security event to log
    * @returns Result indicating logging success or failure
    */
-  async logSecurityEvent(event: Omit<SecurityAuditEvent, 'id' | 'timestamp'>): Promise<Result<void>> {
+  async logSecurityEvent(
+    event: Omit<SecurityAuditEvent, 'id' | 'timestamp'>,
+  ): Promise<Result<void>> {
     try {
       if (!this.config.enabled) {
         return createSuccessResult(undefined);
@@ -169,13 +171,17 @@ export class SecurityAuditLogger {
         timestamp: new Date(),
         sessionId: this.config.sessionId,
         userId: this.config.userId,
-        ...event
+        ...event,
       };
 
       // Sanitize metadata and error messages
       const sanitizedMetadata = this.sanitizeMetadata(auditEvent.metadata);
-      const sanitizedErrorMessage = (auditEvent.errorMessage !== undefined && auditEvent.errorMessage !== null && auditEvent.errorMessage !== '') ? 
-        this.sanitizeErrorMessage(auditEvent.errorMessage) : undefined;
+      const sanitizedErrorMessage =
+        auditEvent.errorMessage !== undefined &&
+        auditEvent.errorMessage !== null &&
+        auditEvent.errorMessage !== ''
+          ? this.sanitizeErrorMessage(auditEvent.errorMessage)
+          : undefined;
 
       // Create audit log entry
       const logEntry: AuditLogEntry = {
@@ -189,7 +195,7 @@ export class SecurityAuditLogger {
         sanitizedMetadata,
         errorCode: auditEvent.errorCode,
         sanitizedErrorMessage,
-        integrityHash: this.calculateIntegrityHash(auditEvent)
+        integrityHash: this.calculateIntegrityHash(auditEvent),
       };
 
       // Store audit log entry
@@ -204,7 +210,7 @@ export class SecurityAuditLogger {
       return createSuccessResult(undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown logging error';
-      
+
       // Security audit logging failed - using fallback logging
       // Error details: eventType: event.eventType, provider: event.provider, success: event.success
 
@@ -212,27 +218,29 @@ export class SecurityAuditLogger {
         new SecurityError(`Security event logging failed: ${message}`, {
           eventType: event.eventType,
           provider: event.provider,
-          originalEventSuccess: event.success
-        })
+          originalEventSuccess: event.success,
+        }),
       );
     }
   }
 
   /**
    * Retrieve audit log entries with filtering
-   * 
+   *
    * @param filters - Filtering criteria
    * @returns Result containing filtered audit entries
    */
-  async getAuditLogs(filters: {
-    eventTypes?: SecurityEventType[];
-    providers?: string[];
-    success?: boolean;
-    startTime?: Date;
-    endTime?: Date;
-    limit?: number;
-    offset?: number;
-  } = {}): Promise<Result<AuditLogEntry[]>> {
+  async getAuditLogs(
+    filters: {
+      eventTypes?: SecurityEventType[];
+      providers?: string[];
+      success?: boolean;
+      startTime?: Date;
+      endTime?: Date;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<Result<AuditLogEntry[]>> {
     try {
       this.ensureInitialized();
 
@@ -242,12 +250,15 @@ export class SecurityAuditLogger {
 
       // Use existing classification history structure for audit logs
       const historyFilters = {
-        dateRange: (filters.startTime !== undefined) || (filters.endTime !== undefined) ? {
-          start: filters.startTime,
-          end: filters.endTime
-        } : undefined,
+        dateRange:
+          filters.startTime !== undefined || filters.endTime !== undefined
+            ? {
+                start: filters.startTime,
+                end: filters.endTime,
+              }
+            : undefined,
         limit: filters.limit ?? 100,
-        offset: filters.offset ?? 0
+        offset: filters.offset ?? 0,
       };
 
       const historyResult = await this.storageProvider.getClassificationHistory(historyFilters);
@@ -258,19 +269,25 @@ export class SecurityAuditLogger {
       // Filter and convert classification history to audit entries
       // This is a simplified implementation - real implementation would use dedicated audit tables
       const auditEntries: AuditLogEntry[] = historyResult.data
-        .filter(item => {
-          if ((filters.eventTypes !== undefined) && !filters.eventTypes.includes('credential_store' as SecurityEventType)) {
+        .filter((item) => {
+          if (
+            filters.eventTypes !== undefined &&
+            !filters.eventTypes.includes('credential_store' as SecurityEventType)
+          ) {
             return false;
           }
-          if ((filters.providers !== undefined) && !filters.providers.includes('security_audit')) {
+          if (filters.providers !== undefined && !filters.providers.includes('security_audit')) {
             return false;
           }
-          if (filters.success !== undefined && item.userFeedback !== (filters.success ? 'correct' : 'incorrect')) {
+          if (
+            filters.success !== undefined &&
+            item.userFeedback !== (filters.success ? 'correct' : 'incorrect')
+          ) {
             return false;
           }
           return true;
         })
-        .map(item => ({
+        .map((item) => ({
           id: item.id,
           timestamp: item.timestamp,
           eventType: 'credential_store' as SecurityEventType,
@@ -282,8 +299,8 @@ export class SecurityAuditLogger {
             timestamp: item.timestamp,
             eventType: 'credential_store',
             provider: 'security_audit',
-            success: item.userFeedback !== 'incorrect'
-          })
+            success: item.userFeedback !== 'incorrect',
+          }),
         }));
 
       return createSuccessResult(auditEntries);
@@ -291,15 +308,15 @@ export class SecurityAuditLogger {
       const message = error instanceof Error ? error.message : 'Unknown retrieval error';
       return createErrorResult(
         new SecurityError(`Audit log retrieval failed: ${message}`, {
-          filters: Object.keys(filters)
-        })
+          filters: Object.keys(filters),
+        }),
       );
     }
   }
 
   /**
    * Get audit logging statistics
-   * 
+   *
    * @returns Result containing audit statistics
    */
   async getAuditStatistics(): Promise<Result<AuditStatistics>> {
@@ -311,14 +328,14 @@ export class SecurityAuditLogger {
           totalEvents: 0,
           eventsByType: {} as Record<SecurityEventType, number>,
           successRateByType: {} as Record<SecurityEventType, number>,
-          recentFailureRate: 0
+          recentFailureRate: 0,
         });
       }
 
       // Get recent audit logs for statistics
       const recentLogsResult = await this.getAuditLogs({
         startTime: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
-        limit: 1000
+        limit: 1000,
       });
 
       if (!recentLogsResult.success) {
@@ -326,26 +343,35 @@ export class SecurityAuditLogger {
       }
 
       const logs = recentLogsResult.data;
-      
-      // Calculate statistics
-      const eventsByType: Record<SecurityEventType, number> = {} as Record<SecurityEventType, number>;
-      const successByType: Record<SecurityEventType, number> = {} as Record<SecurityEventType, number>;
 
-      logs.forEach(log => {
+      // Calculate statistics
+      const eventsByType: Record<SecurityEventType, number> = {} as Record<
+        SecurityEventType,
+        number
+      >;
+      const successByType: Record<SecurityEventType, number> = {} as Record<
+        SecurityEventType,
+        number
+      >;
+
+      logs.forEach((log) => {
         eventsByType[log.eventType] = (eventsByType[log.eventType] || 0) + 1;
         if (log.success) {
           successByType[log.eventType] = (successByType[log.eventType] || 0) + 1;
         }
       });
 
-      const successRateByType: Record<SecurityEventType, number> = {} as Record<SecurityEventType, number>;
-      Object.keys(eventsByType).forEach(eventType => {
+      const successRateByType: Record<SecurityEventType, number> = {} as Record<
+        SecurityEventType,
+        number
+      >;
+      Object.keys(eventsByType).forEach((eventType) => {
         const total = eventsByType[eventType as SecurityEventType];
         const successful = successByType[eventType as SecurityEventType] || 0;
         successRateByType[eventType as SecurityEventType] = total > 0 ? successful / total : 0;
       });
 
-      const totalFailures = logs.filter(log => !log.success).length;
+      const totalFailures = logs.filter((log) => !log.success).length;
       const recentFailureRate = logs.length > 0 ? totalFailures / logs.length : 0;
 
       const statistics: AuditStatistics = {
@@ -354,21 +380,21 @@ export class SecurityAuditLogger {
         successRateByType,
         recentFailureRate,
         oldestEntry: logs.length > 0 ? logs[logs.length - 1]?.timestamp : undefined,
-        newestEntry: logs.length > 0 ? logs[0]?.timestamp : undefined
+        newestEntry: logs.length > 0 ? logs[0]?.timestamp : undefined,
       };
 
       return createSuccessResult(statistics);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown statistics error';
       return createErrorResult(
-        new SecurityError(`Audit statistics calculation failed: ${message}`)
+        new SecurityError(`Audit statistics calculation failed: ${message}`),
       );
     }
   }
 
   /**
    * Clear old audit logs based on retention policy
-   * 
+   *
    * @returns Result indicating cleanup success
    */
   async cleanupOldLogs(): Promise<Result<number>> {
@@ -380,7 +406,7 @@ export class SecurityAuditLogger {
       }
 
       const cutoffDate = new Date(Date.now() - this.config.retentionDays * 24 * 60 * 60 * 1000);
-      
+
       // Use storage provider cleanup functionality
       const cleanupResult = await this.storageProvider.cleanup(this.config.retentionDays);
       if (!cleanupResult.success) {
@@ -395,8 +421,8 @@ export class SecurityAuditLogger {
         metadata: {
           operation: 'cleanup',
           recordsDeleted: cleanupResult.data.recordsDeleted,
-          cutoffDate: cutoffDate.toISOString()
-        }
+          cutoffDate: cutoffDate.toISOString(),
+        },
       });
 
       return createSuccessResult(cleanupResult.data.recordsDeleted);
@@ -404,15 +430,15 @@ export class SecurityAuditLogger {
       const message = error instanceof Error ? error.message : 'Unknown cleanup error';
       return createErrorResult(
         new SecurityError(`Audit log cleanup failed: ${message}`, {
-          retentionDays: this.config.retentionDays
-        })
+          retentionDays: this.config.retentionDays,
+        }),
       );
     }
   }
 
   /**
    * Verify audit log integrity
-   * 
+   *
    * @returns Result indicating integrity verification
    */
   async verifyIntegrity(): Promise<Result<boolean>> {
@@ -437,7 +463,7 @@ export class SecurityAuditLogger {
           eventType: log.eventType,
           provider: log.provider,
           success: log.success,
-          metadata: log.sanitizedMetadata
+          metadata: log.sanitizedMetadata,
         });
 
         if (expectedHash !== log.integrityHash) {
@@ -445,8 +471,8 @@ export class SecurityAuditLogger {
             new SecurityError('Audit log integrity violation detected', {
               logId: log.id,
               expectedHash,
-              actualHash: log.integrityHash
-            })
+              actualHash: log.integrityHash,
+            }),
           );
         }
       }
@@ -455,7 +481,7 @@ export class SecurityAuditLogger {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown integrity check error';
       return createErrorResult(
-        new SecurityError(`Audit log integrity verification failed: ${message}`)
+        new SecurityError(`Audit log integrity verification failed: ${message}`),
       );
     }
   }
@@ -486,13 +512,19 @@ export class SecurityAuditLogger {
    */
   private isSensitiveKey(key: string): boolean {
     const sensitiveKeys = [
-      'password', 'token', 'key', 'secret', 'credential',
-      'apikey', 'oauth', 'refresh', 'access', 'bearer'
+      'password',
+      'token',
+      'key',
+      'secret',
+      'credential',
+      'apikey',
+      'oauth',
+      'refresh',
+      'access',
+      'bearer',
     ];
-    
-    return sensitiveKeys.some(sensitive => 
-      key.toLowerCase().includes(sensitive)
-    );
+
+    return sensitiveKeys.some((sensitive) => key.toLowerCase().includes(sensitive));
   }
 
   /**
@@ -527,7 +559,7 @@ export class SecurityAuditLogger {
       eventType: event.eventType,
       provider: event.provider,
       success: event.success,
-      metadata: this.sanitizeMetadata(event.metadata)
+      metadata: this.sanitizeMetadata(event.metadata),
     };
 
     // Simplified hash calculation - real implementation would use crypto.createHash
@@ -552,7 +584,7 @@ export class SecurityAuditLogger {
       eventType: data.eventType,
       provider: data.provider,
       success: data.success,
-      metadata: data.metadata ?? {}
+      metadata: data.metadata ?? {},
     };
 
     // Simplified hash calculation - real implementation would use crypto.createHash
@@ -575,7 +607,7 @@ export class SecurityAuditLogger {
       userFeedback: entry.success ? 'correct' : 'incorrect',
       batchId: entry.sessionId,
       modelVersion: 'audit-logger-1.0',
-      processingTimeMs: 0
+      processingTimeMs: 0,
     };
 
     return await this.storageProvider.addClassificationResult(historyItem);

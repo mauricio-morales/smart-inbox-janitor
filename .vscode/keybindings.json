@@ -7,7 +7,7 @@
   },
   {
     "key": "ctrl+shift+q",
-    "command": "workbench.action.tasks.runTask", 
+    "command": "workbench.action.tasks.runTask",
     "args": "⚡ Quick Check",
     "when": "!inDebugMode"
   },
@@ -20,7 +20,7 @@
   {
     "key": "ctrl+shift+t",
     "command": "workbench.action.tasks.runTask",
-    "args": "🧪 Code Quality Check", 
+    "args": "🧪 Code Quality Check",
     "when": "!inDebugMode"
   },
   {

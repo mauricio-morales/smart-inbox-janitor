@@ -1,6 +1,6 @@
 /**
  * Tests for GmailOAuthManager
- * 
+ *
  * Comprehensive unit tests covering OAuth 2.0 flow, PKCE security,
  * token management, and error handling scenarios.
  */
@@ -8,11 +8,11 @@
 import { GmailOAuthManager } from '../../src/main/oauth/GmailOAuthManager';
 import { google } from 'googleapis';
 import { createHash, randomBytes } from 'crypto';
-import { 
-  ConfigurationError, 
-  AuthenticationError, 
-  NetworkError, 
-  ValidationError 
+import {
+  ConfigurationError,
+  AuthenticationError,
+  NetworkError,
+  ValidationError,
 } from '@shared/types';
 
 // Mock dependencies
@@ -30,7 +30,7 @@ describe('GmailOAuthManager', () => {
   const testConfig = {
     clientId: 'test-client-id',
     clientSecret: 'test-client-secret',
-    redirectUri: 'http://localhost:8080'
+    redirectUri: 'http://localhost:8080',
   };
 
   beforeEach(() => {
@@ -42,25 +42,25 @@ describe('GmailOAuthManager', () => {
       generateAuthUrl: jest.fn(),
       getToken: jest.fn(),
       refreshAccessToken: jest.fn(),
-      setCredentials: jest.fn()
+      setCredentials: jest.fn(),
     };
 
     // Mock Google Auth
     mockGoogle.auth = {
-      OAuth2: jest.fn().mockImplementation(() => mockOAuth2Client)
+      OAuth2: jest.fn().mockImplementation(() => mockOAuth2Client),
     } as any;
 
     // Mock crypto functions
     const mockBuffer = {
-      toString: jest.fn().mockReturnValue('mock-code-verifier')
+      toString: jest.fn().mockReturnValue('mock-code-verifier'),
     };
     mockRandomBytes.mockReturnValue(mockBuffer as any);
 
     const mockHasher = {
       update: jest.fn().mockReturnThis(),
       digest: jest.fn().mockReturnValue({
-        toString: jest.fn().mockReturnValue('mock-code-challenge')
-      })
+        toString: jest.fn().mockReturnValue('mock-code-challenge'),
+      }),
     };
     mockCreateHash.mockReturnValue(mockHasher as any);
 
@@ -86,23 +86,23 @@ describe('GmailOAuthManager', () => {
   describe('initialize', () => {
     it('should initialize successfully with valid configuration', () => {
       const result = oauthManager.initialize();
-      
+
       expect(result.success).toBe(true);
       expect(mockGoogle.auth.OAuth2).toHaveBeenCalledWith(
         testConfig.clientId,
         testConfig.clientSecret,
-        testConfig.redirectUri
+        testConfig.redirectUri,
       );
     });
 
     it('should fail with missing client ID', () => {
       const invalidManager = new GmailOAuthManager({
         ...testConfig,
-        clientId: ''
+        clientId: '',
       });
 
       const result = invalidManager.initialize();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ConfigurationError);
@@ -113,11 +113,11 @@ describe('GmailOAuthManager', () => {
     it('should fail with missing client secret', () => {
       const invalidManager = new GmailOAuthManager({
         ...testConfig,
-        clientSecret: ''
+        clientSecret: '',
       });
 
       const result = invalidManager.initialize();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ConfigurationError);
@@ -127,11 +127,11 @@ describe('GmailOAuthManager', () => {
     it('should fail with missing redirect URI', () => {
       const invalidManager = new GmailOAuthManager({
         ...testConfig,
-        redirectUri: ''
+        redirectUri: '',
       });
 
       const result = invalidManager.initialize();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ConfigurationError);
@@ -145,16 +145,18 @@ describe('GmailOAuthManager', () => {
     });
 
     it('should generate authorization URL with PKCE parameters', () => {
-      mockOAuth2Client.generateAuthUrl.mockReturnValue('https://accounts.google.com/oauth/authorize?code_challenge=mock');
+      mockOAuth2Client.generateAuthUrl.mockReturnValue(
+        'https://accounts.google.com/oauth/authorize?code_challenge=mock',
+      );
 
       const result = oauthManager.initiateAuth();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toMatchObject({
           authUrl: 'https://accounts.google.com/oauth/authorize?code_challenge=mock',
           codeVerifier: 'mock-code-verifier',
-          state: expect.any(String)
+          state: expect.any(String),
         });
       }
 
@@ -164,21 +166,21 @@ describe('GmailOAuthManager', () => {
           'https://www.googleapis.com/auth/gmail.readonly',
           'https://www.googleapis.com/auth/gmail.modify',
           'https://www.googleapis.com/auth/userinfo.email',
-          'https://www.googleapis.com/auth/userinfo.profile'
+          'https://www.googleapis.com/auth/userinfo.profile',
         ],
         prompt: 'consent',
         code_challenge: 'mock-code-challenge',
         code_challenge_method: 'S256',
         state: expect.any(String),
-        include_granted_scopes: true
+        include_granted_scopes: true,
       });
     });
 
     it('should fail if not initialized', () => {
       const uninitializedManager = new GmailOAuthManager(testConfig);
-      
+
       const result = uninitializedManager.initiateAuth();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ConfigurationError);
@@ -189,7 +191,7 @@ describe('GmailOAuthManager', () => {
     it('should generate different state values on multiple calls', () => {
       const result1 = oauthManager.initiateAuth();
       const result2 = oauthManager.initiateAuth();
-      
+
       expect(result1.success).toBe(true);
       expect(result2.success).toBe(true);
       if (result1.success && result2.success) {
@@ -209,8 +211,8 @@ describe('GmailOAuthManager', () => {
         refresh_token: 'test-refresh-token',
         expiry_date: Date.now() + 3600000,
         scope: 'https://www.googleapis.com/auth/gmail.readonly',
-        token_type: 'Bearer'
-      }
+        token_type: 'Bearer',
+      },
     };
 
     it('should exchange authorization code for tokens successfully', async () => {
@@ -218,11 +220,11 @@ describe('GmailOAuthManager', () => {
 
       const result = await oauthManager.exchangeCode(
         'test-auth-code',
-        'test-code-verifier', 
+        'test-code-verifier',
         'test-state',
-        'test-state'
+        'test-state',
       );
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toMatchObject({
@@ -230,13 +232,13 @@ describe('GmailOAuthManager', () => {
           refreshToken: 'test-refresh-token',
           expiryDate: expect.any(Number),
           scope: 'https://www.googleapis.com/auth/gmail.readonly',
-          tokenType: 'Bearer'
+          tokenType: 'Bearer',
         });
       }
 
       expect(mockOAuth2Client.getToken).toHaveBeenCalledWith({
         code: 'test-auth-code',
-        codeVerifier: 'test-code-verifier'
+        codeVerifier: 'test-code-verifier',
       });
     });
 
@@ -245,9 +247,9 @@ describe('GmailOAuthManager', () => {
         'test-auth-code',
         'test-code-verifier',
         'wrong-state',
-        'expected-state'
+        'expected-state',
       );
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
@@ -260,9 +262,9 @@ describe('GmailOAuthManager', () => {
         '',
         'test-code-verifier',
         'test-state',
-        'test-state'
+        'test-state',
       );
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
@@ -275,9 +277,9 @@ describe('GmailOAuthManager', () => {
         'test-auth-code',
         '',
         'test-state',
-        'test-state'
+        'test-state',
       );
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
@@ -286,16 +288,16 @@ describe('GmailOAuthManager', () => {
 
     it('should handle invalid_grant error from Google', async () => {
       mockOAuth2Client.getToken.mockRejectedValue(
-        new Error('invalid_grant: Authorization code expired')
+        new Error('invalid_grant: Authorization code expired'),
       );
 
       const result = await oauthManager.exchangeCode(
         'expired-code',
         'test-code-verifier',
         'test-state',
-        'test-state'
+        'test-state',
       );
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
@@ -304,17 +306,15 @@ describe('GmailOAuthManager', () => {
     });
 
     it('should handle network errors', async () => {
-      mockOAuth2Client.getToken.mockRejectedValue(
-        new Error('ENOTFOUND accounts.google.com')
-      );
+      mockOAuth2Client.getToken.mockRejectedValue(new Error('ENOTFOUND accounts.google.com'));
 
       const result = await oauthManager.exchangeCode(
         'test-code',
         'test-code-verifier',
         'test-state',
-        'test-state'
+        'test-state',
       );
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(NetworkError);
@@ -324,17 +324,17 @@ describe('GmailOAuthManager', () => {
     it('should fail if no access token received', async () => {
       mockOAuth2Client.getToken.mockResolvedValue({
         tokens: {
-          refresh_token: 'test-refresh-token'
-        }
+          refresh_token: 'test-refresh-token',
+        },
       });
 
       const result = await oauthManager.exchangeCode(
         'test-code',
         'test-code-verifier',
         'test-state',
-        'test-state'
+        'test-state',
       );
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
@@ -354,26 +354,26 @@ describe('GmailOAuthManager', () => {
         refresh_token: 'new-refresh-token',
         expiry_date: Date.now() + 3600000,
         scope: 'https://www.googleapis.com/auth/gmail.readonly',
-        token_type: 'Bearer'
-      }
+        token_type: 'Bearer',
+      },
     };
 
     it('should refresh tokens successfully', async () => {
       mockOAuth2Client.refreshAccessToken.mockResolvedValue(mockRefreshResponse);
 
       const result = await oauthManager.refreshTokens('test-refresh-token');
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toMatchObject({
           accessToken: 'ya29.new-access-token',
           refreshToken: 'new-refresh-token',
-          expiryDate: expect.any(Number)
+          expiryDate: expect.any(Number),
         });
       }
 
       expect(mockOAuth2Client.setCredentials).toHaveBeenCalledWith({
-        refresh_token: 'test-refresh-token'
+        refresh_token: 'test-refresh-token',
       });
       expect(mockOAuth2Client.refreshAccessToken).toHaveBeenCalled();
     });
@@ -382,12 +382,12 @@ describe('GmailOAuthManager', () => {
       mockOAuth2Client.refreshAccessToken.mockResolvedValue({
         credentials: {
           access_token: 'ya29.new-access-token',
-          expiry_date: Date.now() + 3600000
-        }
+          expiry_date: Date.now() + 3600000,
+        },
       });
 
       const result = await oauthManager.refreshTokens('old-refresh-token');
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.refreshToken).toBe('old-refresh-token');
@@ -396,7 +396,7 @@ describe('GmailOAuthManager', () => {
 
     it('should fail with missing refresh token', async () => {
       const result = await oauthManager.refreshTokens('');
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
@@ -406,11 +406,11 @@ describe('GmailOAuthManager', () => {
 
     it('should handle expired refresh token', async () => {
       mockOAuth2Client.refreshAccessToken.mockRejectedValue(
-        new Error('invalid_grant: Token has been expired or revoked')
+        new Error('invalid_grant: Token has been expired or revoked'),
       );
 
       const result = await oauthManager.refreshTokens('expired-token');
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
@@ -427,11 +427,11 @@ describe('GmailOAuthManager', () => {
         refreshToken: 'valid-refresh-token',
         expiryDate: Date.now() + 3600000,
         scope: 'test-scope',
-        tokenType: 'Bearer'
+        tokenType: 'Bearer',
       };
 
       const result = oauthManager.validateTokens(validTokens);
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toBe(true);
@@ -444,11 +444,11 @@ describe('GmailOAuthManager', () => {
         refreshToken: 'test-refresh',
         expiryDate: Date.now() + 3600000,
         scope: 'test-scope',
-        tokenType: 'Bearer'
+        tokenType: 'Bearer',
       };
 
       const result = oauthManager.validateTokens(invalidTokens);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
@@ -461,11 +461,11 @@ describe('GmailOAuthManager', () => {
         refreshToken: 'test-refresh',
         expiryDate: Date.now() + 3600000,
         scope: 'test-scope',
-        tokenType: 'Bearer'
+        tokenType: 'Bearer',
       };
 
       const result = oauthManager.validateTokens(invalidTokens);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
@@ -479,11 +479,11 @@ describe('GmailOAuthManager', () => {
         refreshToken: 'test-refresh',
         expiryDate: Date.now() - 3600000, // Expired 1 hour ago
         scope: 'test-scope',
-        tokenType: 'Bearer'
+        tokenType: 'Bearer',
       };
 
       const result = oauthManager.validateTokens(expiredTokens);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
@@ -499,11 +499,11 @@ describe('GmailOAuthManager', () => {
         refreshToken: 'test-refresh',
         expiryDate: Date.now() + 3600000, // Expires in 1 hour
         scope: 'test-scope',
-        tokenType: 'Bearer'
+        tokenType: 'Bearer',
       };
 
       const willExpire = oauthManager.willExpireSoon(tokens);
-      
+
       expect(willExpire).toBe(false);
     });
 
@@ -513,11 +513,11 @@ describe('GmailOAuthManager', () => {
         refreshToken: 'test-refresh',
         expiryDate: Date.now() + 60000, // Expires in 1 minute
         scope: 'test-scope',
-        tokenType: 'Bearer'
+        tokenType: 'Bearer',
       };
 
       const willExpire = oauthManager.willExpireSoon(tokens, 5 * 60 * 1000); // 5 minute window
-      
+
       expect(willExpire).toBe(true);
     });
 
@@ -527,11 +527,11 @@ describe('GmailOAuthManager', () => {
         refreshToken: 'test-refresh',
         expiryDate: Date.now() + 7200000, // 2 hours from now
         scope: 'test-scope',
-        tokenType: 'Bearer'
+        tokenType: 'Bearer',
       };
 
       const willExpire = oauthManager.willExpireSoon(tokens);
-      
+
       expect(willExpire).toBe(false);
     });
   });
@@ -539,18 +539,18 @@ describe('GmailOAuthManager', () => {
   describe('getScopes', () => {
     it('should return correct OAuth scopes', () => {
       const scopes = oauthManager.getScopes();
-      
+
       expect(scopes).toEqual([
         'https://www.googleapis.com/auth/gmail.readonly',
         'https://www.googleapis.com/auth/gmail.modify',
         'https://www.googleapis.com/auth/userinfo.email',
-        'https://www.googleapis.com/auth/userinfo.profile'
+        'https://www.googleapis.com/auth/userinfo.profile',
       ]);
     });
 
     it('should return readonly array', () => {
       const scopes = oauthManager.getScopes();
-      
+
       expect(() => {
         (scopes as any).push('new-scope');
       }).toThrow();
@@ -569,7 +569,7 @@ describe('GmailOAuthManager', () => {
 
       const manager = new GmailOAuthManager(testConfig);
       const result = manager.initialize();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ConfigurationError);
@@ -582,7 +582,7 @@ describe('GmailOAuthManager', () => {
       });
 
       const result = oauthManager.initiateAuth();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(AuthenticationError);

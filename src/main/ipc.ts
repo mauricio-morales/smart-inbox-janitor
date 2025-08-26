@@ -23,7 +23,7 @@ export function setupIPC(
   emailProvider: EmailProvider,
   llmProvider: LLMProvider,
   storageProvider: StorageProvider,
-  secureStorageManager: SecureStorageManager
+  secureStorageManager: SecureStorageManager,
 ): void {
   // Email provider operations
   ipcMain.handle('email:list', async (_, options?: ListOptions) => {
@@ -207,7 +207,7 @@ export function setupIPC(
           },
         };
       }
-    }
+    },
   );
 
   ipcMain.handle('storage:getConfig', async () => {
@@ -326,6 +326,7 @@ export function setupIPC(
   ipcMain.handle('shell:openExternal', async (_, url: string) => {
     try {
       await shell.openExternal(url);
+      return { success: true };
     } catch (error) {
       // External URL open error logged internally
       return {
@@ -342,164 +343,201 @@ export function setupIPC(
   });
 
   // OAuth and Authentication operations
-  ipcMain.handle('gmail:initiate-oauth', async (_event, credentials?: { clientId: string; clientSecret: string }) => {
-    try {
-      // If credentials provided, reinitialize the provider with new credentials
-      if (credentials?.clientId && credentials.clientSecret) {
-        console.log('OAuth initiate with new credentials');
-        
-        // Reinitialize Gmail provider with user-provided credentials
-        const gmailConfig = {
-          auth: {
-            clientId: credentials.clientId,
-            clientSecret: credentials.clientSecret,
-            redirectUri: 'http://localhost:8080'
-          },
-          maxResults: 100,
-          pageSize: 50
-        };
-        
-        const initResult = await emailProvider.initialize(gmailConfig);
-        if (!initResult.success) {
+  ipcMain.handle(
+    'gmail:initiate-oauth',
+    async (_event, credentials?: { clientId: string; clientSecret: string }) => {
+      try {
+        // If credentials provided, reinitialize the provider with new credentials
+        if (
+          credentials?.clientId !== undefined &&
+          credentials?.clientId !== '' &&
+          credentials?.clientSecret !== undefined &&
+          credentials?.clientSecret !== ''
+        ) {
+          console.log('OAuth initiate with new credentials');
+
+          // Reinitialize Gmail provider with user-provided credentials
+          const gmailConfig = {
+            auth: {
+              clientId: credentials.clientId,
+              clientSecret: credentials.clientSecret,
+              redirectUri: 'http://localhost:8080',
+            },
+            maxResults: 100,
+            pageSize: 50,
+          };
+
+          const initResult = await emailProvider.initialize(gmailConfig);
+          if (!initResult.success) {
+            return {
+              success: false,
+              error: {
+                code: 'PROVIDER_INIT_ERROR',
+                message: `Failed to initialize Gmail provider: ${initResult.error.message}`,
+                retryable: false,
+                timestamp: new Date(),
+                details: initResult.error,
+              },
+            };
+          }
+        }
+
+        // Get Gmail provider's OAuth manager
+        if (!(emailProvider instanceof GmailProvider)) {
           return {
             success: false,
             error: {
-              code: 'PROVIDER_INIT_ERROR',
-              message: `Failed to initialize Gmail provider: ${initResult.error.message}`,
+              code: 'PROVIDER_ERROR',
+              message: 'Gmail provider not available',
               retryable: false,
               timestamp: new Date(),
-              details: initResult.error,
+              details: { provider: emailProvider.name },
             },
           };
         }
-      }
-      
-      // Get Gmail provider's OAuth manager
-      if (!(emailProvider instanceof GmailProvider)) {
-        return {
-          success: false,
-          error: {
-            code: 'PROVIDER_ERROR',
-            message: 'Gmail provider not available',
-            retryable: false,
-            timestamp: new Date(),
-            details: { provider: emailProvider.name },
-          },
-        };
-      }
 
-      const oauthManager = emailProvider.getOAuthManager();
-      if (!oauthManager) {
-        return {
-          success: false,
-          error: {
-            code: 'OAUTH_ERROR',
-            message: 'OAuth manager not initialized',
-            retryable: false,
-            timestamp: new Date(),
-            details: {},
-          },
-        };
-      }
-
-      // Initiate OAuth flow
-      const authResult = oauthManager.initiateAuth();
-      if (!authResult.success) {
-        return authResult;
-      }
-
-      // Create OAuth window
-      const oauthWindow = new OAuthWindow('http://localhost:8080');
-      const windowResult = oauthWindow.createOAuthWindow({
-        title: 'Sign in to Gmail',
-        width: 500,
-        height: 700,
-        modal: true
-      });
-
-      if (!windowResult.success) {
-        return windowResult;
-      }
-
-      // Navigate and wait for callback
-      const callbackResult = await oauthWindow.navigateAndWaitForCallback(
-        authResult.data.authUrl,
-        5 * 60 * 1000 // 5 minute timeout
-      );
-
-      if (!callbackResult.success) {
-        return callbackResult;
-      }
-
-      // Exchange authorization code for tokens
-      const tokensResult = await oauthManager.exchangeCode(
-        callbackResult.data.code,
-        authResult.data.codeVerifier,
-        callbackResult.data.state,
-        authResult.data.state
-      );
-
-      if (!tokensResult.success) {
-        return tokensResult;
-      }
-
-      // Store tokens securely
-      console.log('Attempting to store Gmail tokens...');
-      try {
-        const storeResult = await secureStorageManager.storeGmailTokens(tokensResult.data);
-        if (!storeResult.success) {
-          console.error('Failed to store Gmail tokens:', storeResult.error);
-          return storeResult;
+        const oauthManager = emailProvider.getOAuthManager();
+        if (!oauthManager) {
+          return {
+            success: false,
+            error: {
+              code: 'OAUTH_ERROR',
+              message: 'OAuth manager not initialized',
+              retryable: false,
+              timestamp: new Date(),
+              details: {},
+            },
+          };
         }
-        console.log('Gmail tokens stored successfully');
+
+        // Initiate OAuth flow
+        const authResult = oauthManager.initiateAuth();
+        if (!authResult.success) {
+          return authResult;
+        }
+
+        // Create OAuth window
+        const oauthWindow = new OAuthWindow('http://localhost:8080');
+        const windowResult = oauthWindow.createOAuthWindow({
+          title: 'Sign in to Gmail',
+          width: 500,
+          height: 700,
+          modal: true,
+        });
+
+        if (!windowResult.success) {
+          return windowResult;
+        }
+
+        // Navigate and wait for callback
+        const callbackResult = await oauthWindow.navigateAndWaitForCallback(
+          authResult.data.authUrl,
+          5 * 60 * 1000, // 5 minute timeout
+        );
+
+        if (!callbackResult.success) {
+          return callbackResult;
+        }
+
+        // Exchange authorization code for tokens
+        const tokensResult = await oauthManager.exchangeCode(
+          callbackResult.data.code,
+          authResult.data.codeVerifier,
+          callbackResult.data.state,
+          authResult.data.state,
+        );
+
+        if (!tokensResult.success) {
+          return tokensResult;
+        }
+
+        // Store tokens securely
+        console.log('Attempting to store Gmail tokens...');
+        try {
+          const storeResult = await secureStorageManager.storeGmailTokens(tokensResult.data);
+          if (!storeResult.success) {
+            console.error('Failed to store Gmail tokens:', storeResult.error);
+            return storeResult;
+          }
+          console.log('Gmail tokens stored successfully');
+
+          // Store Gmail credentials for future connection checks
+          if (
+            credentials?.clientId !== undefined &&
+            credentials?.clientId !== '' &&
+            credentials?.clientSecret !== undefined &&
+            credentials?.clientSecret !== ''
+          ) {
+            console.log('Storing Gmail OAuth credentials...');
+            const credStoreResult = await secureStorageManager.storeGmailCredentials({
+              clientId: credentials.clientId,
+              clientSecret: credentials.clientSecret,
+            });
+            if (!credStoreResult.success) {
+              console.error('Failed to store Gmail credentials:', credStoreResult.error);
+              // Don't fail the entire flow for this - tokens are the important part
+            } else {
+              console.log('Gmail credentials stored successfully');
+            }
+          }
+        } catch (storageError) {
+          console.error('Exception during token storage:', storageError);
+          return {
+            success: false,
+            error: {
+              code: 'STORAGE_ERROR',
+              message:
+                storageError instanceof Error ? storageError.message : 'Unknown storage error',
+              retryable: false,
+              timestamp: new Date(),
+              details: {},
+            },
+          };
+        }
+
+        // Set storage manager for the provider
+        emailProvider.setStorageManager(secureStorageManager);
+
+        // Connect the provider
+        const connectResult = await emailProvider.connect();
+        if (!connectResult.success) {
+          return connectResult;
+        }
+
+        // At this point we know connectResult.success is true due to the check above
+        const successResult = connectResult as {
+          readonly success: true;
+          readonly data: { providerInfo?: { accountEmail?: string }; connectedAt?: Date };
+        };
+        return {
+          success: true,
+          data: {
+            accountEmail: successResult.data?.providerInfo?.accountEmail,
+            connectedAt: successResult.data?.connectedAt,
+          },
+        };
       } catch (error) {
-        console.error('Exception during token storage:', error);
+        // Gmail OAuth error logged internally
         return {
           success: false,
           error: {
-            code: 'STORAGE_ERROR',
-            message: error instanceof Error ? error.message : 'Unknown storage error',
+            code: 'IPC_ERROR',
+            message: error instanceof Error ? error.message : 'Unknown OAuth error',
             retryable: false,
             timestamp: new Date(),
             details: {},
           },
         };
       }
-
-      // Set storage manager for the provider
-      emailProvider.setStorageManager(secureStorageManager);
-
-      // Connect the provider
-      const connectResult = await emailProvider.connect();
-      if (!connectResult.success) {
-        return connectResult;
-      }
-
-      return {
-        success: true,
-        data: {
-          accountEmail: connectResult.data?.accountInfo?.email,
-          connectedAt: connectResult.data?.connectedAt
-        }
-      };
-    } catch (error) {
-      // Gmail OAuth error logged internally
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown OAuth error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
-  });
+    },
+  );
 
   ipcMain.handle('gmail:check-connection', async () => {
     try {
+      console.log('DEBUG: Checking Gmail connection...');
+
       if (!(emailProvider instanceof GmailProvider)) {
+        console.log('DEBUG: Gmail provider not available');
         return {
           success: false,
           error: {
@@ -513,30 +551,101 @@ export function setupIPC(
       }
 
       // Check if we have stored tokens
+      console.log('DEBUG: Getting Gmail tokens from secure storage...');
       const tokensResult = await secureStorageManager.getGmailTokens();
+      console.log('DEBUG: Gmail tokens result:', tokensResult);
+
       if (!tokensResult.success || !tokensResult.data) {
+        console.log('DEBUG: No Gmail tokens found, returning requires auth');
         return {
           success: true,
           data: {
             isConnected: false,
-            requiresAuth: true
-          }
+            requiresAuth: true,
+          },
         };
       }
 
-      // Set storage manager and try to connect
+      // Initialize Gmail provider with configuration (similar to OpenAI flow)
+      console.log('DEBUG: Initializing Gmail provider...');
       emailProvider.setStorageManager(secureStorageManager);
+
+      // Try to get stored Gmail OAuth credentials
+      console.log('DEBUG: Getting stored Gmail credentials...');
+      const credentialsResult = await secureStorageManager.getGmailCredentials();
+      console.log(
+        'DEBUG: Gmail credentials result:',
+        credentialsResult.success
+          ? credentialsResult.data
+            ? 'found with data'
+            : 'found but no data'
+          : 'not found',
+      );
+
+      let gmailConfig;
+      if (credentialsResult.success && credentialsResult.data) {
+        // Use stored credentials
+        gmailConfig = {
+          auth: {
+            clientId: credentialsResult.data.clientId,
+            clientSecret: credentialsResult.data.clientSecret,
+            redirectUri: 'http://localhost:8080',
+          },
+        };
+        console.log('DEBUG: Using stored credentials for connection check');
+      } else {
+        // No stored credentials - return requires auth
+        console.log('DEBUG: No stored credentials found, returning requires auth');
+        return {
+          success: true,
+          data: {
+            isConnected: false,
+            requiresAuth: true,
+            error: 'No OAuth credentials stored - please complete setup first',
+          },
+        };
+      }
+
+      console.log('DEBUG: Initializing Gmail provider with config...');
+      const initResult = await emailProvider.initialize(gmailConfig);
+      console.log('DEBUG: Gmail provider init result:', initResult);
+
+      if (!initResult.success) {
+        console.log('DEBUG: Gmail initialization failed, returning not connected');
+        return {
+          success: true,
+          data: {
+            isConnected: false,
+            requiresAuth: true,
+            error: initResult.error?.message,
+          },
+        };
+      }
+
+      console.log('DEBUG: Attempting Gmail connection...');
       const connectResult = await emailProvider.connect();
-      
-      return {
+      console.log('DEBUG: Gmail connect result:', connectResult);
+
+      let connectionAccountEmail: string | undefined;
+      if (
+        connectResult.success &&
+        connectResult.data?.providerInfo?.accountEmail !== undefined &&
+        connectResult.data?.providerInfo?.accountEmail !== ''
+      ) {
+        connectionAccountEmail = connectResult.data.providerInfo.accountEmail;
+      }
+
+      const finalResult = {
         success: true,
         data: {
           isConnected: connectResult.success,
           requiresAuth: !connectResult.success,
-          accountEmail: connectResult.success ? connectResult.data?.accountInfo?.email : undefined,
-          error: connectResult.success ? undefined : connectResult.error?.message
-        }
+          accountEmail: connectionAccountEmail,
+          error: connectResult.success ? undefined : connectResult.error?.message,
+        },
       };
+      console.log('DEBUG: Final Gmail connection check result:', finalResult);
+      return finalResult;
     } catch (error) {
       // Gmail connection check error logged internally
       return {
@@ -572,7 +681,7 @@ export function setupIPC(
         apiKey,
         model: 'gpt-4o-mini',
         temperature: 0.1,
-        maxTokens: 1000
+        maxTokens: 1000,
       };
 
       // Validate configuration with OpenAI provider
@@ -595,10 +704,14 @@ export function setupIPC(
       }
 
       // Store the API key securely
+      console.log('DEBUG: Attempting to store OpenAI API key...');
       const storeResult = await secureStorageManager.storeOpenAIKey(apiKey);
+      console.log('DEBUG: Store OpenAI key result:', storeResult);
       if (!storeResult.success) {
+        console.log('DEBUG: Failed to store OpenAI key:', storeResult.error);
         return storeResult;
       }
+      console.log('DEBUG: OpenAI key stored successfully');
 
       // Initialize the provider with the configuration
       const initResult = await llmProvider.initialize(config);
@@ -621,8 +734,8 @@ export function setupIPC(
           apiKeyValid: true,
           modelAvailable: testResult.data?.modelAvailable ?? false,
           responseTimeMs: testResult.data?.responseTimeMs ?? 0,
-          testedAt: new Date()
-        }
+          testedAt: new Date(),
+        },
       };
     } catch (error) {
       // OpenAI key validation error logged internally
@@ -641,7 +754,10 @@ export function setupIPC(
 
   ipcMain.handle('openai:check-connection', async () => {
     try {
+      console.log('DEBUG: Checking OpenAI connection...');
+
       if (!(llmProvider instanceof OpenAIProvider)) {
+        console.log('DEBUG: OpenAI provider not available');
         return {
           success: false,
           error: {
@@ -655,44 +771,54 @@ export function setupIPC(
       }
 
       // Check if we have stored API key
+      console.log('DEBUG: Getting OpenAI config from secure storage...');
       const configResult = await secureStorageManager.getOpenAIConfig();
+      console.log('DEBUG: OpenAI config result:', configResult);
+
       if (!configResult.success || !configResult.data) {
+        console.log('DEBUG: No OpenAI config found, returning not configured');
         return {
           success: true,
           data: {
-            isConfigured: false,
-            requiresSetup: true
-          }
+            isConnected: false,
+            modelAvailable: false,
+          },
         };
       }
 
       // Set storage manager and initialize
+      console.log('DEBUG: Initializing OpenAI provider with stored config...');
       llmProvider.setStorageManager(secureStorageManager);
       const initResult = await llmProvider.initialize(configResult.data);
-      
+      console.log('DEBUG: OpenAI provider init result:', initResult);
+
       if (!initResult.success) {
+        console.log('DEBUG: OpenAI initialization failed, returning not connected');
         return {
           success: true,
           data: {
-            isConfigured: false,
-            requiresSetup: true,
-            error: initResult.error.message
-          }
+            isConnected: false,
+            modelAvailable: false,
+            error: initResult.error.message,
+          },
         };
       }
 
       // Test connection
+      console.log('DEBUG: Testing OpenAI connection...');
       const testResult = await llmProvider.testConnection();
-      
-      return {
+      console.log('DEBUG: OpenAI test result:', testResult);
+
+      const finalResult = {
         success: true,
         data: {
-          isConfigured: testResult.success,
-          requiresSetup: !testResult.success,
-          modelAvailable: testResult.success ? testResult.data.modelAvailable : undefined,
-          error: testResult.success ? undefined : testResult.error.message
-        }
+          isConnected: testResult.success,
+          modelAvailable: testResult.success ? testResult.data?.modelAvailable : false,
+          error: testResult.success ? undefined : testResult.error?.message,
+        },
       };
+      console.log('DEBUG: Final OpenAI connection check result:', finalResult);
+      return finalResult;
     } catch (error) {
       // OpenAI connection check error logged internally
       return {

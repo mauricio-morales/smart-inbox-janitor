@@ -81,7 +81,7 @@ root.render(
         <App />
       </QueryClientProvider>
     </ThemeProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
 
 // Hot Module Replacement for development

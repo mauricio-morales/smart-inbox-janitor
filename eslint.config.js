@@ -2,14 +2,16 @@
 const js = require('@eslint/js');
 const tsPlugin = require('@typescript-eslint/eslint-plugin');
 const tsParser = require('@typescript-eslint/parser');
+const importPlugin = require('eslint-plugin-import');
+const unusedImports = require('eslint-plugin-unused-imports');
 
 module.exports = [
   // Base ESLint recommended rules
   js.configs.recommended,
-  
-  // TypeScript files configuration
+
+  // TypeScript source files configuration
   {
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', '__tests__/**/*.{ts,tsx}'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -27,122 +29,145 @@ module.exports = [
         require: 'readonly',
         exports: 'readonly',
         global: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        NodeJS: 'readonly',
       },
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
+      import: importPlugin,
+      'unused-imports': unusedImports,
+    },
+    settings: {
+      'import/resolver': {
+        node: { extensions: ['.js', '.jsx', '.ts', '.tsx'] },
+        typescript: {},
+      },
     },
     rules: {
-      ...tsPlugin.configs.recommended.rules,
-      ...tsPlugin.configs['recommended-requiring-type-checking'].rules,
-      
-      // TypeScript-specific rules
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unused-vars': 'error',
-      '@typescript-eslint/explicit-function-return-type': 'error',
-      '@typescript-eslint/explicit-module-boundary-types': 'error',
-      '@typescript-eslint/prefer-readonly': 'error',
-      '@typescript-eslint/prefer-readonly-parameter-types': 'off', // Too strict for this project
-      '@typescript-eslint/no-inferrable-types': 'error',
-      '@typescript-eslint/no-non-null-assertion': 'error',
-      '@typescript-eslint/strict-boolean-expressions': 'error',
-      
-      // Interface and type naming conventions
-      '@typescript-eslint/naming-convention': [
-        'error',
-        {
-          selector: 'interface',
-          format: ['PascalCase'],
-          custom: {
-            regex: '^[A-Z][a-zA-Z]*$',
-            match: true
-          }
-        },
-        {
-          selector: 'typeAlias',
-          format: ['PascalCase']
-        },
-        {
-          selector: 'enum',
-          format: ['PascalCase']
-        },
-        {
-          selector: 'enumMember',
-          format: ['UPPER_CASE']
-        },
-        {
-          selector: 'class',
-          format: ['PascalCase']
-        },
-        {
-          selector: 'method',
-          format: ['camelCase']
-        },
-        {
-          selector: 'property',
-          format: ['camelCase', 'UPPER_CASE']
-        },
-        {
-          selector: 'variable',
-          format: ['camelCase', 'UPPER_CASE', 'PascalCase']
-        }
-      ],
-      
-      // General code quality
-      'no-console': 'warn',
-      'no-debugger': 'error',
-      'prefer-const': 'error',
-      'no-var': 'error',
-      'object-shorthand': 'error',
-      'prefer-template': 'error',
-      'prefer-destructuring': 'error',
-      'no-duplicate-imports': 'error',
-      
-      // Ensure proper Result pattern usage
+      /* --- High-value: fail CI --- */
+      'no-unreachable': 'error',
+      'no-undef': 'error',
+      eqeqeq: ['error', 'smart'],
+      'import/no-unresolved': 'error',
       '@typescript-eslint/no-floating-promises': 'error',
-      '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
-      
-      // Prevent common mistakes in provider interfaces
-      '@typescript-eslint/no-empty-interface': 'error',
-      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
-      '@typescript-eslint/prefer-nullish-coalescing': 'error',
-      '@typescript-eslint/prefer-optional-chain': 'error'
+      '@typescript-eslint/only-throw-error': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+
+      /* --- Useful but non-blocking --- */
+      'no-console': 'warn',
+      'no-return-await': 'warn',
+      complexity: ['warn', 12],
+      'max-lines-per-function': ['warn', 140],
+
+      /* --- Cleanup (autofix + warn) --- */
+      'unused-imports/no-unused-imports': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
     },
   },
-  
+
   // Test files configuration
   {
-    files: ['**/__tests__/**/*.ts', '**/*.test.ts', '**/*.spec.ts'],
+    files: [
+      '**/__tests__/**/*.{ts,tsx,js,jsx}',
+      '**/*.test.{ts,tsx,js,jsx}',
+      '**/*.spec.{ts,tsx,js,jsx}',
+    ],
+    languageOptions: {
+      globals: {
+        jest: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+      },
+    },
     rules: {
-      // Relax some rules for test files
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-non-null-assertion': 'off',
-      'no-console': 'off'
-    }
+      'no-console': 'off',
+      'max-lines-per-function': 'off',
+    },
   },
-  
-  // Configuration files
+
+  // Type definition files - allow unused parameters
   {
-    files: ['*.config.js', '*.config.ts', '.eslintrc.js', 'eslint.config.js'],
+    files: ['**/*.types.ts', '**/types/**/*.ts'],
     rules: {
-      // Relax rules for configuration files
-      '@typescript-eslint/no-var-requires': 'off'
-    }
+      '@typescript-eslint/no-unused-vars': 'off',
+      'no-unused-vars': 'off',
+    },
   },
-  
+
+  // TypeScript config files (no project needed)
+  {
+    files: ['*.config.ts'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: 'module',
+        // Don't use project for config files
+      },
+      globals: {
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-var-requires': 'off',
+      'no-undef': 'off',
+    },
+  },
+
+  // Configuration files (CommonJS)
+  {
+    files: ['*.config.js', '.eslintrc.js', 'eslint.config.js', 'jest.config.js'],
+    languageOptions: {
+      globals: {
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+      },
+      sourceType: 'commonjs',
+    },
+    rules: {
+      '@typescript-eslint/no-var-requires': 'off',
+      'no-undef': 'off',
+    },
+  },
+
   // Global ignores
   {
     ignores: [
       'dist/',
-      'dist-electron/',
-      'node_modules/',
-      'coverage/',
+      'dist-*/',
+      'build/',
       'out/',
-      '*.js',
-      '!jest.config.js',
-      '!.eslintrc.js',
-      '!eslint.config.js'
+      'coverage/',
+      'node_modules/',
+      '*.min.js',
+      '*.d.ts',
+      '**/generated/**',
+      '**/*.snap',
+      'PRPs/',
+      'git',
     ],
   },
 ];

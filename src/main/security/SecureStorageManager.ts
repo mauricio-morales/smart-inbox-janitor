@@ -1,16 +1,16 @@
 /**
  * Secure Storage Manager for Smart Inbox Janitor
- * 
+ *
  * Main orchestrator for secure credential operations combining OS-level security
  * with encrypted SQLite storage. Provides ZERO-PASSWORD user experience with
  * automatic token rotation and comprehensive security audit logging.
- * 
+ *
  * @module SecureStorageManager
  */
 
-import { 
-  Result, 
-  createSuccessResult, 
+import {
+  Result,
+  createSuccessResult,
   createErrorResult,
   SecurityError,
   ConfigurationError,
@@ -25,7 +25,7 @@ import {
   StorageHealthStatus,
   SecurityConfigSummary,
   CredentialStorageOptions,
-  SecurityLevel
+  SecurityLevel,
 } from '@shared/types';
 import { CredentialEncryption } from './CredentialEncryption';
 import { SecurityAuditLogger } from '../../../PRPs/SecurityAuditLogger';
@@ -60,7 +60,7 @@ export interface SecureStorageInitOptions {
 
 /**
  * Secure Storage Manager
- * 
+ *
  * Provides comprehensive secure credential storage with:
  * - ZERO-PASSWORD user experience via OS-level security
  * - Hybrid storage (OS keychain + encrypted SQLite)
@@ -86,18 +86,18 @@ export class SecureStorageManager {
 
   /**
    * Initialize the secure storage manager
-   * 
+   *
    * @param options - Initialization configuration
    * @returns Result indicating initialization success or failure
    */
   async initialize(options: SecureStorageInitOptions): Promise<Result<void>> {
     try {
       this.storageProvider = options.storageProvider;
-      
+
       // Update security configuration
       this.securityConfig = {
         ...this.securityConfig,
-        ...options.securityConfig
+        ...options.securityConfig,
       };
 
       // Initialize components
@@ -113,7 +113,7 @@ export class SecureStorageManager {
         retentionDays: this.securityConfig.auditLogRetentionDays,
         includeDetailedMetadata: this.securityConfig.securityLevel === 'maximum',
         sessionId: options.sessionId,
-        userId: options.userId
+        userId: options.userId,
       });
 
       const auditResult = await this.securityAuditLogger.initialize();
@@ -134,14 +134,14 @@ export class SecureStorageManager {
         metadata: {
           securityLevel: this.securityConfig.securityLevel,
           osKeychainAvailable: this.credentialEncryption.isOSEncryptionAvailable(),
-          tokenRotationEnabled: this.securityConfig.useOSKeychain
-        }
+          tokenRotationEnabled: this.securityConfig.useOSKeychain,
+        },
       });
 
       return createSuccessResult(undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown initialization error';
-      
+
       // Try to log the failure
       if (this.securityAuditLogger !== undefined) {
         await this.securityAuditLogger.logSecurityEvent({
@@ -149,29 +149,29 @@ export class SecureStorageManager {
           provider: 'secure_storage_manager',
           success: false,
           errorMessage: message,
-          metadata: {}
+          metadata: {},
         });
       }
 
       return createErrorResult(
         new ConfigurationError(`Secure storage manager initialization failed: ${message}`, {
           securityLevel: this.securityConfig.securityLevel,
-          osKeychainAvailable: this.credentialEncryption?.isOSEncryptionAvailable()
-        })
+          osKeychainAvailable: this.credentialEncryption?.isOSEncryptionAvailable(),
+        }),
       );
     }
   }
 
   /**
    * Store Gmail OAuth tokens securely
-   * 
+   *
    * @param tokens - Gmail OAuth tokens to store
    * @param options - Storage options
    * @returns Result indicating storage success or failure
    */
   async storeGmailTokens(
-    tokens: GmailTokens, 
-    options: CredentialStorageOptions = { provider: 'gmail', shouldExpire: true }
+    tokens: GmailTokens,
+    options: CredentialStorageOptions = { provider: 'gmail', shouldExpire: true },
   ): Promise<Result<void>> {
     try {
       this.ensureInitialized();
@@ -182,8 +182,8 @@ export class SecureStorageManager {
         'gmail-tokens',
         {
           expirationMs: options.expirationMs,
-          metadata: options.metadata
-        }
+          metadata: options.metadata,
+        },
       );
 
       if (!encryptionResult.success) {
@@ -192,7 +192,12 @@ export class SecureStorageManager {
           provider: 'gmail',
           success: false,
           errorMessage: 'Credential encryption failed',
-          metadata: { hasRefreshToken: tokens.refreshToken !== undefined && tokens.refreshToken !== null && tokens.refreshToken !== '' }
+          metadata: {
+            hasRefreshToken:
+              tokens.refreshToken !== undefined &&
+              tokens.refreshToken !== null &&
+              tokens.refreshToken !== '',
+          },
         });
         return createErrorResult(encryptionResult.error);
       }
@@ -200,7 +205,7 @@ export class SecureStorageManager {
       // Store encrypted credential in database
       const storeResult = await this.storageProvider.setEncryptedToken(
         'gmail',
-        JSON.stringify(encryptionResult.data.credential)
+        JSON.stringify(encryptionResult.data.credential),
       );
 
       if (!storeResult.success) {
@@ -209,7 +214,7 @@ export class SecureStorageManager {
           provider: 'gmail',
           success: false,
           errorMessage: 'Database storage failed',
-          metadata: { usedOSKeychain: encryptionResult.data.usedOSKeychain }
+          metadata: { usedOSKeychain: encryptionResult.data.usedOSKeychain },
         });
         return createErrorResult(storeResult.error);
       }
@@ -223,36 +228,39 @@ export class SecureStorageManager {
         provider: 'gmail',
         success: true,
         metadata: {
-          hasRefreshToken: tokens.refreshToken !== undefined && tokens.refreshToken !== null && tokens.refreshToken !== '',
+          hasRefreshToken:
+            tokens.refreshToken !== undefined &&
+            tokens.refreshToken !== null &&
+            tokens.refreshToken !== '',
           expiresAt: new Date(tokens.expiryDate).toISOString(),
           usedOSKeychain: encryptionResult.data.usedOSKeychain,
-          encryptionAlgorithm: encryptionResult.data.credential.algorithm
-        }
+          encryptionAlgorithm: encryptionResult.data.credential.algorithm,
+        },
       });
 
       return createSuccessResult(undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      
+
       await this.securityAuditLogger.logSecurityEvent({
         eventType: 'credential_store',
         provider: 'gmail',
         success: false,
         errorMessage: message,
-        metadata: {}
+        metadata: {},
       });
 
       return createErrorResult(
         new SecurityError(`Failed to store Gmail tokens: ${message}`, {
-          provider: 'gmail'
-        })
+          provider: 'gmail',
+        }),
       );
     }
   }
 
   /**
    * Retrieve Gmail OAuth tokens
-   * 
+   *
    * @returns Result containing Gmail tokens or null if not found
    */
   async getGmailTokens(): Promise<Result<GmailTokens | null>> {
@@ -271,7 +279,11 @@ export class SecureStorageManager {
       }
 
       const encryptedGmailToken = tokenResult.data.gmail;
-      if (encryptedGmailToken === undefined || encryptedGmailToken === null || encryptedGmailToken === '') {
+      if (
+        encryptedGmailToken === undefined ||
+        encryptedGmailToken === null ||
+        encryptedGmailToken === ''
+      ) {
         return createSuccessResult(null);
       }
 
@@ -285,14 +297,14 @@ export class SecureStorageManager {
           provider: 'gmail',
           success: false,
           errorMessage: 'Credential decryption failed',
-          metadata: { algorithm: secureCredential.algorithm }
+          metadata: { algorithm: secureCredential.algorithm },
         });
         return createErrorResult(decryptionResult.error);
       }
 
       // Parse tokens
       const tokens = JSON.parse(decryptionResult.data) as GmailTokens;
-      
+
       // Cache tokens
       this.credentials.gmail = tokens;
 
@@ -302,41 +314,44 @@ export class SecureStorageManager {
         provider: 'gmail',
         success: true,
         metadata: {
-          hasRefreshToken: tokens.refreshToken !== undefined && tokens.refreshToken !== null && tokens.refreshToken !== '',
-          isExpired: tokens.expiryDate < Date.now()
-        }
+          hasRefreshToken:
+            tokens.refreshToken !== undefined &&
+            tokens.refreshToken !== null &&
+            tokens.refreshToken !== '',
+          isExpired: tokens.expiryDate < Date.now(),
+        },
       });
 
       return createSuccessResult(tokens);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      
+
       await this.securityAuditLogger.logSecurityEvent({
         eventType: 'credential_retrieve',
         provider: 'gmail',
         success: false,
         errorMessage: message,
-        metadata: {}
+        metadata: {},
       });
 
       return createErrorResult(
         new SecurityError(`Failed to retrieve Gmail tokens: ${message}`, {
-          provider: 'gmail'
-        })
+          provider: 'gmail',
+        }),
       );
     }
   }
 
   /**
    * Store OpenAI API key securely
-   * 
+   *
    * @param apiKey - OpenAI API key to store
    * @param options - Storage options
    * @returns Result indicating storage success or failure
    */
   async storeOpenAIKey(
     apiKey: string,
-    options: CredentialStorageOptions = { provider: 'openai', shouldExpire: false }
+    options: CredentialStorageOptions = { provider: 'openai', shouldExpire: false },
   ): Promise<Result<void>> {
     try {
       this.ensureInitialized();
@@ -345,8 +360,8 @@ export class SecureStorageManager {
       if (!apiKey.startsWith('sk-')) {
         return createErrorResult(
           new ValidationError('Invalid OpenAI API key format', {
-            provider: ['openai']
-          })
+            provider: ['openai'],
+          }),
         );
       }
 
@@ -355,7 +370,7 @@ export class SecureStorageManager {
         apiKey,
         model: 'gpt-4o-mini',
         temperature: 0.1,
-        maxTokens: 1000
+        maxTokens: 1000,
       };
 
       // Encrypt and store
@@ -364,8 +379,8 @@ export class SecureStorageManager {
         'openai-config',
         {
           expirationMs: options.expirationMs,
-          metadata: { ...options.metadata, keyLastFour: apiKey.slice(-4) }
-        }
+          metadata: { ...options.metadata, keyLastFour: apiKey.slice(-4) },
+        },
       );
 
       if (!encryptionResult.success) {
@@ -374,7 +389,7 @@ export class SecureStorageManager {
           provider: 'openai',
           success: false,
           errorMessage: 'Credential encryption failed',
-          metadata: { keyLastFour: apiKey.slice(-4) }
+          metadata: { keyLastFour: apiKey.slice(-4) },
         });
         return createErrorResult(encryptionResult.error);
       }
@@ -382,7 +397,7 @@ export class SecureStorageManager {
       // Store in database
       const storeResult = await this.storageProvider.setEncryptedToken(
         'openai',
-        JSON.stringify(encryptionResult.data.credential)
+        JSON.stringify(encryptionResult.data.credential),
       );
 
       if (!storeResult.success) {
@@ -391,7 +406,7 @@ export class SecureStorageManager {
           provider: 'openai',
           success: false,
           errorMessage: 'Database storage failed',
-          metadata: { keyLastFour: apiKey.slice(-4) }
+          metadata: { keyLastFour: apiKey.slice(-4) },
         });
         return createErrorResult(storeResult.error);
       }
@@ -407,33 +422,33 @@ export class SecureStorageManager {
         metadata: {
           keyLastFour: apiKey.slice(-4),
           usedOSKeychain: encryptionResult.data.usedOSKeychain,
-          encryptionAlgorithm: encryptionResult.data.credential.algorithm
-        }
+          encryptionAlgorithm: encryptionResult.data.credential.algorithm,
+        },
       });
 
       return createSuccessResult(undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      
+
       await this.securityAuditLogger.logSecurityEvent({
         eventType: 'credential_store',
         provider: 'openai',
         success: false,
         errorMessage: message,
-        metadata: { keyLastFour: apiKey.slice(-4) }
+        metadata: { keyLastFour: apiKey.slice(-4) },
       });
 
       return createErrorResult(
         new SecurityError(`Failed to store OpenAI API key: ${message}`, {
-          provider: 'openai'
-        })
+          provider: 'openai',
+        }),
       );
     }
   }
 
   /**
    * Get OpenAI configuration
-   * 
+   *
    * @returns Result containing OpenAI config or null if not found
    */
   async getOpenAIConfig(): Promise<Result<OpenAIConfig | null>> {
@@ -452,7 +467,11 @@ export class SecureStorageManager {
       }
 
       const encryptedOpenAIToken = tokenResult.data.openai;
-      if (encryptedOpenAIToken === undefined || encryptedOpenAIToken === null || encryptedOpenAIToken === '') {
+      if (
+        encryptedOpenAIToken === undefined ||
+        encryptedOpenAIToken === null ||
+        encryptedOpenAIToken === ''
+      ) {
         return createSuccessResult(null);
       }
 
@@ -466,14 +485,14 @@ export class SecureStorageManager {
           provider: 'openai',
           success: false,
           errorMessage: 'Credential decryption failed',
-          metadata: {}
+          metadata: {},
         });
         return createErrorResult(decryptionResult.error);
       }
 
       // Parse config
       const config = JSON.parse(decryptionResult.data) as OpenAIConfig;
-      
+
       // Cache config
       this.credentials.openai = config;
 
@@ -483,33 +502,33 @@ export class SecureStorageManager {
         provider: 'openai',
         success: true,
         metadata: {
-          keyLastFour: config.apiKey.slice(-4)
-        }
+          keyLastFour: config.apiKey.slice(-4),
+        },
       });
 
       return createSuccessResult(config);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      
+
       await this.securityAuditLogger.logSecurityEvent({
         eventType: 'credential_retrieve',
         provider: 'openai',
         success: false,
         errorMessage: message,
-        metadata: {}
+        metadata: {},
       });
 
       return createErrorResult(
         new SecurityError(`Failed to retrieve OpenAI config: ${message}`, {
-          provider: 'openai'
-        })
+          provider: 'openai',
+        }),
       );
     }
   }
 
   /**
    * Remove credentials for a specific provider
-   * 
+   *
    * @param provider - Provider identifier
    * @returns Result indicating removal success or failure
    */
@@ -525,7 +544,7 @@ export class SecureStorageManager {
           provider,
           success: false,
           errorMessage: 'Database removal failed',
-          metadata: {}
+          metadata: {},
         });
         return createErrorResult(removeResult.error);
       }
@@ -538,32 +557,32 @@ export class SecureStorageManager {
         eventType: 'credential_delete',
         provider,
         success: true,
-        metadata: {}
+        metadata: {},
       });
 
       return createSuccessResult(undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      
+
       await this.securityAuditLogger.logSecurityEvent({
         eventType: 'credential_delete',
         provider,
         success: false,
         errorMessage: message,
-        metadata: {}
+        metadata: {},
       });
 
       return createErrorResult(
         new SecurityError(`Failed to remove credentials for ${provider}: ${message}`, {
-          provider
-        })
+          provider,
+        }),
       );
     }
   }
 
   /**
    * Clear all stored credentials
-   * 
+   *
    * @returns Result indicating clear operation success or failure
    */
   async clearAllCredentials(): Promise<Result<void>> {
@@ -592,9 +611,12 @@ export class SecureStorageManager {
 
       if (failedProviders.length > 0) {
         return createErrorResult(
-          new SecurityError(`Failed to clear credentials for providers: ${failedProviders.join(', ')}`, {
-            failedProviders
-          })
+          new SecurityError(
+            `Failed to clear credentials for providers: ${failedProviders.join(', ')}`,
+            {
+              failedProviders,
+            },
+          ),
         );
       }
 
@@ -604,22 +626,20 @@ export class SecureStorageManager {
         provider: 'all',
         success: true,
         metadata: {
-          providersCleared: providers.length
-        }
+          providersCleared: providers.length,
+        },
       });
 
       return createSuccessResult(undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return createErrorResult(
-        new SecurityError(`Failed to clear all credentials: ${message}`)
-      );
+      return createErrorResult(new SecurityError(`Failed to clear all credentials: ${message}`));
     }
   }
 
   /**
    * Rotate encryption keys for enhanced security
-   * 
+   *
    * @returns Result indicating rotation success or failure
    */
   async rotateEncryptionKeys(): Promise<Result<void>> {
@@ -633,31 +653,29 @@ export class SecureStorageManager {
         provider: 'all',
         success: true,
         metadata: {
-          rotationTime: new Date().toISOString()
-        }
+          rotationTime: new Date().toISOString(),
+        },
       });
 
       return createSuccessResult(undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      
+
       await this.securityAuditLogger.logSecurityEvent({
         eventType: 'encryption_key_rotation',
         provider: 'all',
         success: false,
         errorMessage: message,
-        metadata: {}
+        metadata: {},
       });
 
-      return createErrorResult(
-        new SecurityError(`Key rotation failed: ${message}`)
-      );
+      return createErrorResult(new SecurityError(`Key rotation failed: ${message}`));
     }
   }
 
   /**
    * Get secure storage status and health information
-   * 
+   *
    * @returns Result containing storage status
    */
   async getStorageStatus(): Promise<Result<SecureStorageStatus>> {
@@ -678,22 +696,20 @@ export class SecureStorageManager {
           auditLoggingEnabled: this.securityConfig.enableAuditLogging,
           tokenRotationActive: this.securityConfig.tokenRotationIntervalMs > 0,
           keyRotationActive: this.securityConfig.keyRotationIntervalMs > 0,
-          encryptionAlgorithms: ['aes-256-gcm']
-        } as SecurityConfigSummary
+          encryptionAlgorithms: ['aes-256-gcm'],
+        } as SecurityConfigSummary,
       };
 
       return createSuccessResult(status);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return createErrorResult(
-        new SecurityError(`Failed to get storage status: ${message}`)
-      );
+      return createErrorResult(new SecurityError(`Failed to get storage status: ${message}`));
     }
   }
 
   /**
    * Validate security configuration and setup
-   * 
+   *
    * @returns Result containing validation results
    */
   validateSecurity(): Result<SecurityValidationResult> {
@@ -706,7 +722,7 @@ export class SecureStorageManager {
         requiredKeysPresent: true,
         auditLoggingFunctional: this.securityConfig.enableAuditLogging,
         securityIssues: [] as string[],
-        recommendations: [] as string[]
+        recommendations: [] as string[],
       };
 
       if (!validationDetails.osEncryptionAvailable) {
@@ -715,21 +731,19 @@ export class SecureStorageManager {
 
       const result: SecurityValidationResult = {
         valid: validationDetails.securityIssues.length === 0,
-        details: validationDetails
+        details: validationDetails,
       };
 
       return createSuccessResult(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return createErrorResult(
-        new SecurityError(`Security validation failed: ${message}`)
-      );
+      return createErrorResult(new SecurityError(`Security validation failed: ${message}`));
     }
   }
 
   /**
    * Shutdown and cleanup
-   * 
+   *
    * @returns Result indicating shutdown success or failure
    */
   async shutdown(): Promise<Result<void>> {
@@ -737,7 +751,7 @@ export class SecureStorageManager {
       if (this.initialized) {
         // Clear sensitive data from memory
         this.credentials = {};
-        
+
         // Clear encryption caches
         this.credentialEncryption.clearCache();
 
@@ -746,7 +760,7 @@ export class SecureStorageManager {
           eventType: 'secure_storage_shutdown',
           provider: 'secure_storage_manager',
           success: true,
-          metadata: {}
+          metadata: {},
         });
 
         this.initialized = false;
@@ -755,8 +769,166 @@ export class SecureStorageManager {
       return createSuccessResult(undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      return createErrorResult(new SecurityError(`Shutdown failed: ${message}`));
+    }
+  }
+
+  /**
+   * Store Gmail OAuth client credentials (clientId/clientSecret) securely
+   *
+   * @param credentials - Gmail OAuth credentials
+   * @param options - Storage options
+   * @returns Result indicating storage success or failure
+   */
+  async storeGmailCredentials(
+    credentials: { clientId: string; clientSecret: string },
+    options: CredentialStorageOptions = { provider: 'gmail-credentials', shouldExpire: false },
+  ): Promise<Result<void>> {
+    try {
+      this.ensureInitialized();
+
+      // Encrypt and store credentials
+      const encryptionResult = this.credentialEncryption.encryptCredential(
+        JSON.stringify(credentials),
+        'gmail-credentials',
+        {
+          expirationMs: options.expirationMs,
+          metadata: { ...options.metadata, clientIdPrefix: credentials.clientId.substring(0, 20) },
+        },
+      );
+
+      if (!encryptionResult.success) {
+        await this.securityAuditLogger.logSecurityEvent({
+          eventType: 'credential_store',
+          provider: 'gmail-credentials',
+          success: false,
+          errorMessage: 'Credential encryption failed',
+          metadata: { clientIdPrefix: credentials.clientId.substring(0, 20) },
+        });
+        return createErrorResult(encryptionResult.error);
+      }
+
+      // Store in database
+      const storeResult = await this.storageProvider.setEncryptedToken(
+        'gmail-credentials',
+        JSON.stringify(encryptionResult.data.credential),
+      );
+
+      if (!storeResult.success) {
+        await this.securityAuditLogger.logSecurityEvent({
+          eventType: 'credential_store',
+          provider: 'gmail-credentials',
+          success: false,
+          errorMessage: 'Database storage failed',
+          metadata: { clientIdPrefix: credentials.clientId.substring(0, 20) },
+        });
+        return createErrorResult(storeResult.error);
+      }
+
+      // Log successful storage
+      await this.securityAuditLogger.logSecurityEvent({
+        eventType: 'credential_store',
+        provider: 'gmail-credentials',
+        success: true,
+        metadata: {
+          clientIdPrefix: credentials.clientId.substring(0, 20),
+          hasClientSecret: Boolean(credentials.clientSecret),
+        },
+      });
+
+      return createSuccessResult(undefined);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+
+      await this.securityAuditLogger.logSecurityEvent({
+        eventType: 'credential_store',
+        provider: 'gmail-credentials',
+        success: false,
+        errorMessage: message,
+        metadata: {},
+      });
+
       return createErrorResult(
-        new SecurityError(`Shutdown failed: ${message}`)
+        new SecurityError(`Failed to store Gmail credentials: ${message}`, {
+          provider: 'gmail-credentials',
+        }),
+      );
+    }
+  }
+
+  /**
+   * Retrieve Gmail OAuth client credentials from secure storage
+   *
+   * @returns Result containing Gmail credentials or null if not found
+   */
+  async getGmailCredentials(): Promise<Result<{ clientId: string; clientSecret: string } | null>> {
+    try {
+      this.ensureInitialized();
+
+      // Retrieve from storage
+      const tokenResult = await this.storageProvider.getEncryptedTokens();
+      if (!tokenResult.success) {
+        return createErrorResult(tokenResult.error);
+      }
+
+      const encryptedCredentials = tokenResult.data['gmail-credentials'];
+      if (
+        encryptedCredentials === undefined ||
+        encryptedCredentials === null ||
+        encryptedCredentials === ''
+      ) {
+        return createSuccessResult(null);
+      }
+
+      // Decrypt credential
+      const decryptionResult = this.credentialEncryption.decryptCredential(
+        JSON.parse(encryptedCredentials),
+        'gmail-credentials',
+      );
+
+      if (!decryptionResult.success) {
+        await this.securityAuditLogger.logSecurityEvent({
+          eventType: 'credential_retrieve',
+          provider: 'gmail-credentials',
+          success: false,
+          errorMessage: 'Credential decryption failed',
+          metadata: {},
+        });
+        return createErrorResult(decryptionResult.error);
+      }
+
+      const credentials = JSON.parse(decryptionResult.data) as {
+        clientId: string;
+        clientSecret: string;
+      };
+
+      // Log successful retrieval
+      await this.securityAuditLogger.logSecurityEvent({
+        eventType: 'credential_retrieve',
+        provider: 'gmail-credentials',
+        success: true,
+        metadata: {
+          clientIdPrefix: credentials.clientId.substring(0, 20),
+          hasClientSecret: Boolean(credentials.clientSecret),
+        },
+      });
+
+      return createSuccessResult(credentials);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+
+      await this.securityAuditLogger.logSecurityEvent({
+        eventType: 'credential_retrieve',
+        provider: 'gmail-credentials',
+        success: false,
+        errorMessage: message,
+        metadata: {},
+      });
+
+      return createErrorResult(
+        new SecurityError(`Failed to retrieve Gmail credentials: ${message}`, {
+          provider: 'gmail-credentials',
+        }),
       );
     }
   }
@@ -787,7 +959,7 @@ export class SecureStorageManager {
       keyRotationIntervalMs: 30 * 24 * 60 * 60 * 1000, // 30 days
       enableAuditLogging: true,
       auditLogRetentionDays: 90,
-      securityLevel: 'standard' as SecurityLevel
+      securityLevel: 'standard' as SecurityLevel,
     };
   }
 

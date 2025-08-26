@@ -34,7 +34,7 @@ export function createMainWindow(): BrowserWindow {
   });
 
   // Handle external links securely - open in default browser
-  mainWindow.webContents.setWindowOpenHandler(details => {
+  mainWindow.webContents.setWindowOpenHandler((details) => {
     void shell.openExternal(details.url);
     return { action: 'deny' };
   });

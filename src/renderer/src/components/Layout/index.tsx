@@ -66,7 +66,7 @@ export function Layout({ children }: LayoutProps): React.JSX.Element {
       </Toolbar>
       <Divider />
       <List>
-        {menuItems.map(item => (
+        {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
               selected={location.pathname === item.path}

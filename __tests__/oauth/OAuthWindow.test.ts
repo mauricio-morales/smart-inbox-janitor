@@ -1,6 +1,6 @@
 /**
  * Tests for OAuthWindow
- * 
+ *
  * Comprehensive unit tests covering secure window creation, navigation handling,
  * callback parsing, and security measures for OAuth flows.
  */
@@ -13,8 +13,8 @@ import { SecurityError, ValidationError, NetworkError } from '@shared/types';
 jest.mock('electron', () => ({
   BrowserWindow: jest.fn(),
   shell: {
-    openExternal: jest.fn()
-  }
+    openExternal: jest.fn(),
+  },
 }));
 
 const MockBrowserWindow = BrowserWindow as jest.MockedClass<typeof BrowserWindow>;
@@ -35,9 +35,9 @@ describe('OAuthWindow', () => {
       setWindowOpenHandler: jest.fn(),
       on: jest.fn(),
       session: {
-        on: jest.fn()
+        on: jest.fn(),
       },
-      loadURL: jest.fn().mockResolvedValue(undefined)
+      loadURL: jest.fn().mockResolvedValue(undefined),
     };
 
     // Mock BrowserWindow instance
@@ -45,7 +45,7 @@ describe('OAuthWindow', () => {
       isDestroyed: jest.fn().mockReturnValue(false),
       close: jest.fn(),
       on: jest.fn(),
-      webContents: mockWebContents
+      webContents: mockWebContents,
     };
 
     // Mock BrowserWindow constructor
@@ -65,12 +65,12 @@ describe('OAuthWindow', () => {
   describe('createOAuthWindow', () => {
     it('should create secure BrowserWindow with default options', () => {
       const result = oauthWindow.createOAuthWindow();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toBe(mockWindow);
       }
-      
+
       expect(MockBrowserWindow).toHaveBeenCalledWith({
         width: 500,
         height: 700,
@@ -105,8 +105,8 @@ describe('OAuthWindow', () => {
           webaudio: false,
           spellcheck: false,
           scrollBounce: false,
-          preload: undefined
-        }
+          preload: undefined,
+        },
       });
     });
 
@@ -115,19 +115,19 @@ describe('OAuthWindow', () => {
         width: 800,
         height: 900,
         title: 'Custom OAuth',
-        modal: true
+        modal: true,
       };
 
       const result = oauthWindow.createOAuthWindow(options);
-      
+
       expect(result.success).toBe(true);
       expect(MockBrowserWindow).toHaveBeenCalledWith(
         expect.objectContaining({
           width: 800,
           height: 900,
           title: 'Custom OAuth',
-          modal: true
-        })
+          modal: true,
+        }),
       );
     });
 
@@ -135,25 +135,28 @@ describe('OAuthWindow', () => {
       // Create first window
       const result1 = oauthWindow.createOAuthWindow();
       expect(result1.success).toBe(true);
-      
+
       // Create second window
       const result2 = oauthWindow.createOAuthWindow();
       expect(result2.success).toBe(true);
-      
+
       // First window should be closed
       expect(mockWindow.close).toHaveBeenCalled();
     });
 
     it('should setup security handlers', () => {
       const result = oauthWindow.createOAuthWindow();
-      
+
       expect(result.success).toBe(true);
       expect(mockWebContents.setWindowOpenHandler).toHaveBeenCalled();
       expect(mockWebContents.on).toHaveBeenCalledWith('certificate-error', expect.any(Function));
       expect(mockWebContents.on).toHaveBeenCalledWith('will-navigate', expect.any(Function));
       expect(mockWebContents.on).toHaveBeenCalledWith('will-redirect', expect.any(Function));
       expect(mockWebContents.on).toHaveBeenCalledWith('new-window', expect.any(Function));
-      expect(mockWebContents.session.on).toHaveBeenCalledWith('will-download', expect.any(Function));
+      expect(mockWebContents.session.on).toHaveBeenCalledWith(
+        'will-download',
+        expect.any(Function),
+      );
     });
 
     it('should handle window creation errors', () => {
@@ -162,7 +165,7 @@ describe('OAuthWindow', () => {
       });
 
       const result = oauthWindow.createOAuthWindow();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(SecurityError);
@@ -178,14 +181,15 @@ describe('OAuthWindow', () => {
 
     it('should navigate to auth URL and wait for callback', async () => {
       const authUrl = 'https://accounts.google.com/oauth/authorize?client_id=test';
-      
+
       // Simulate successful callback after navigation
       mockWebContents.loadURL.mockImplementation(async () => {
         // Simulate redirect to callback URL
         setTimeout(() => {
-          const redirectHandler = mockWebContents.on.mock.calls
-            .find(([event]) => event === 'will-redirect')?.[1];
-          
+          const redirectHandler = mockWebContents.on.mock.calls.find(
+            ([event]) => event === 'will-redirect',
+          )?.[1];
+
           if (redirectHandler) {
             const mockEvent: { preventDefault: jest.Mock } = { preventDefault: jest.fn() };
             const callbackUrl = 'http://localhost:8080?code=test-code&state=test-state';
@@ -195,17 +199,17 @@ describe('OAuthWindow', () => {
       });
 
       const resultPromise = oauthWindow.navigateAndWaitForCallback(authUrl);
-      
+
       // Fast-forward timers
       jest.advanceTimersByTime(100);
-      
+
       const result = await resultPromise;
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toMatchObject({
           code: 'test-code',
-          state: 'test-state'
+          state: 'test-state',
         });
       }
       expect(mockWebContents.loadURL).toHaveBeenCalledWith(authUrl);
@@ -213,9 +217,9 @@ describe('OAuthWindow', () => {
 
     it('should validate auth URL for security', async () => {
       const invalidUrl = 'http://evil.com/oauth';
-      
+
       const result = await oauthWindow.navigateAndWaitForCallback(invalidUrl);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(SecurityError);
@@ -225,9 +229,9 @@ describe('OAuthWindow', () => {
 
     it('should require HTTPS for auth URL', async () => {
       const httpUrl = 'http://accounts.google.com/oauth/authorize';
-      
+
       const result = await oauthWindow.navigateAndWaitForCallback(httpUrl);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(SecurityError);
@@ -237,35 +241,34 @@ describe('OAuthWindow', () => {
 
     it('should timeout if callback takes too long', async () => {
       jest.useFakeTimers();
-      
+
       const authUrl = 'https://accounts.google.com/oauth/authorize';
       const timeoutMs = 5000;
-      
+
       const resultPromise = oauthWindow.navigateAndWaitForCallback(authUrl, timeoutMs);
-      
+
       // Fast-forward past timeout
       jest.advanceTimersByTime(timeoutMs + 1000);
-      
+
       const result = await resultPromise;
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(NetworkError);
         expect(result.error.message).toContain('OAuth flow timed out');
       }
-      
+
       jest.useRealTimers();
     });
 
     it('should handle user closing window', async () => {
       const authUrl = 'https://accounts.google.com/oauth/authorize';
-      
+
       // Simulate user closing window
       mockWebContents.loadURL.mockImplementation(async () => {
         setTimeout(() => {
-          const closeHandler = mockWindow.on?.mock.calls
-            .find(([event]) => event === 'closed')?.[1];
-          
+          const closeHandler = mockWindow.on?.mock.calls.find(([event]) => event === 'closed')?.[1];
+
           if (closeHandler) {
             closeHandler();
           }
@@ -273,7 +276,7 @@ describe('OAuthWindow', () => {
       });
 
       const result = await oauthWindow.navigateAndWaitForCallback(authUrl);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
@@ -284,9 +287,9 @@ describe('OAuthWindow', () => {
     it('should fail if window not available', async () => {
       // Destroy the window
       mockWindow.isDestroyed?.mockReturnValue(true);
-      
+
       const result = await oauthWindow.navigateAndWaitForCallback('https://test.com');
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(SecurityError);
@@ -298,25 +301,26 @@ describe('OAuthWindow', () => {
   describe('handleCallback', () => {
     it('should parse successful callback URL', () => {
       const callbackUrl = 'http://localhost:8080?code=auth-code&state=csrf-state';
-      
+
       const result = oauthWindow.handleCallback(callbackUrl);
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toEqual({
           code: 'auth-code',
           state: 'csrf-state',
           error: null,
-          errorDescription: undefined
+          errorDescription: undefined,
         });
       }
     });
 
     it('should parse OAuth error responses', () => {
-      const errorUrl = 'http://localhost:8080?error=access_denied&error_description=User%20denied%20access';
-      
+      const errorUrl =
+        'http://localhost:8080?error=access_denied&error_description=User%20denied%20access';
+
       const result = oauthWindow.handleCallback(errorUrl);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
@@ -326,9 +330,9 @@ describe('OAuthWindow', () => {
 
     it('should validate redirect URI for security', () => {
       const maliciousUrl = 'http://evil.com:8080?code=stolen-code&state=csrf-state';
-      
+
       const result = oauthWindow.handleCallback(maliciousUrl);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(SecurityError);
@@ -338,9 +342,9 @@ describe('OAuthWindow', () => {
 
     it('should fail with missing required parameters', () => {
       const incompleteUrl = 'http://localhost:8080?code=auth-code';
-      
+
       const result = oauthWindow.handleCallback(incompleteUrl);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
@@ -350,9 +354,9 @@ describe('OAuthWindow', () => {
 
     it('should handle malformed callback URLs', () => {
       const malformedUrl = 'not-a-valid-url';
-      
+
       const result = oauthWindow.handleCallback(malformedUrl);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
@@ -369,85 +373,89 @@ describe('OAuthWindow', () => {
     it('should prevent new window creation', () => {
       const setWindowOpenHandler = mockWebContents.setWindowOpenHandler;
       expect(setWindowOpenHandler).toHaveBeenCalled();
-      
+
       const handler = setWindowOpenHandler.mock.calls[0][0];
       const result = handler();
-      
+
       expect(result).toEqual({ action: 'deny' });
     });
 
     it('should prevent downloads', () => {
       const sessionOn = mockWebContents.session.on;
       expect(sessionOn).toHaveBeenCalledWith('will-download', expect.any(Function));
-      
-      const handler = sessionOn.mock.calls
-        .find(([event]) => event === 'will-download')?.[1];
-      
+
+      const handler = sessionOn.mock.calls.find(([event]) => event === 'will-download')?.[1];
+
       const mockEvent = { preventDefault: jest.fn() };
       handler(mockEvent);
-      
+
       expect(mockEvent.preventDefault).toHaveBeenCalled();
     });
 
     it('should block navigation to unsafe URLs', () => {
-      const onNavigate = mockWebContents.on.mock.calls
-        .find(([event]) => event === 'will-navigate')?.[1];
-      
+      const onNavigate = mockWebContents.on.mock.calls.find(
+        ([event]) => event === 'will-navigate',
+      )?.[1];
+
       const mockEvent = { preventDefault: jest.fn() };
       const unsafeUrl = 'file:///etc/passwd';
-      
+
       onNavigate(mockEvent, unsafeUrl);
-      
+
       expect(mockEvent.preventDefault).toHaveBeenCalled();
     });
 
     it('should allow navigation to HTTPS URLs', () => {
-      const onNavigate = mockWebContents.on.mock.calls
-        .find(([event]) => event === 'will-navigate')?.[1];
-      
+      const onNavigate = mockWebContents.on.mock.calls.find(
+        ([event]) => event === 'will-navigate',
+      )?.[1];
+
       const mockEvent = { preventDefault: jest.fn() };
       const safeUrl = 'https://accounts.google.com/oauth/authorize';
-      
+
       onNavigate(mockEvent, safeUrl);
-      
+
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
     });
 
     it('should open external Google links in system browser', () => {
-      const onNewWindow = mockWebContents.on.mock.calls
-        .find(([event]) => event === 'new-window')?.[1];
-      
+      const onNewWindow = mockWebContents.on.mock.calls.find(
+        ([event]) => event === 'new-window',
+      )?.[1];
+
       const mockEvent = { preventDefault: jest.fn() };
       const googleUrl = 'https://support.google.com/accounts';
-      
+
       onNewWindow(mockEvent, googleUrl);
-      
+
       expect(mockEvent.preventDefault).toHaveBeenCalled();
       expect(mockShell.openExternal).toHaveBeenCalledWith(googleUrl);
     });
 
     it('should block non-Google external links', () => {
-      const onNewWindow = mockWebContents.on.mock.calls
-        .find(([event]) => event === 'new-window')?.[1];
-      
+      const onNewWindow = mockWebContents.on.mock.calls.find(
+        ([event]) => event === 'new-window',
+      )?.[1];
+
       const mockEvent = { preventDefault: jest.fn() };
       const evilUrl = 'https://evil.com/malware';
-      
+
       onNewWindow(mockEvent, evilUrl);
-      
+
       expect(mockEvent.preventDefault).toHaveBeenCalled();
       expect(mockShell.openExternal).not.toHaveBeenCalled();
     });
 
     it('should handle certificate errors', () => {
-      const onCertError = mockWebContents.on.mock.calls
-        .find(([event]) => event === 'certificate-error')?.[1];
-      
+      const onCertError = mockWebContents.on.mock.calls.find(
+        ([event]) => event === 'certificate-error',
+      )?.[1];
+
       const mockEvent = { preventDefault: jest.fn() };
       const mockCallback = jest.fn();
-      
+
       onCertError(mockEvent, 'https://test.com', 'cert-error', {}, mockCallback);
-      
+
       expect(mockEvent.preventDefault).toHaveBeenCalled();
       expect(mockCallback).toHaveBeenCalledWith(false);
     });
@@ -457,16 +465,16 @@ describe('OAuthWindow', () => {
     it('should close window on cleanup', () => {
       oauthWindow.createOAuthWindow();
       oauthWindow.close();
-      
+
       expect(mockWindow.close).toHaveBeenCalled();
     });
 
     it('should report window state correctly', () => {
       expect(oauthWindow.isOpen()).toBe(false);
-      
+
       oauthWindow.createOAuthWindow();
       expect(oauthWindow.isOpen()).toBe(true);
-      
+
       mockWindow.isDestroyed?.mockReturnValue(true);
       expect(oauthWindow.isOpen()).toBe(false);
     });
@@ -474,7 +482,7 @@ describe('OAuthWindow', () => {
     it('should handle cleanup of already destroyed window', () => {
       oauthWindow.createOAuthWindow();
       mockWindow.isDestroyed?.mockReturnValue(true);
-      
+
       // Should not throw error
       expect(() => oauthWindow.close()).not.toThrow();
     });

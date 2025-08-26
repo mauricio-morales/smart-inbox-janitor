@@ -1,9 +1,9 @@
 /**
  * Security-specific type definitions for Smart Inbox Janitor
- * 
+ *
  * This module defines types for secure credential storage, security audit events,
  * and other security-related data structures used throughout the application.
- * 
+ *
  * @module SecurityTypes
  */
 
@@ -58,7 +58,7 @@ export interface SecurityAuditEvent {
 /**
  * Types of security events for audit logging
  */
-export type SecurityEventType = 
+export type SecurityEventType =
   | 'credential_store'
   | 'credential_retrieve'
   | 'credential_delete'
@@ -181,11 +181,7 @@ export interface EncryptionKeyMetadata {
 /**
  * Key derivation methods
  */
-export type KeyDerivationMethod = 
-  | 'os_keychain'
-  | 'machine_characteristics'
-  | 'pbkdf2'
-  | 'hybrid';
+export type KeyDerivationMethod = 'os_keychain' | 'machine_characteristics' | 'pbkdf2' | 'hybrid';
 
 /**
  * Key usage statistics for monitoring
@@ -310,5 +306,5 @@ export {
   CryptoError,
   SecurityError,
   AuthenticationError,
-  ValidationError
+  ValidationError,
 } from './errors.types.js';

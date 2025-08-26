@@ -11,6 +11,7 @@ User Story: $ARGUMENTS
    - Define success metrics
 
 2. **Plan API contract first** (backend/frontend agreement):
+
    ```yaml
    Endpoints:
      - GET /api/v1/{resources} - List with pagination
@@ -18,14 +19,15 @@ User Story: $ARGUMENTS
      - POST /api/v1/{resources} - Create new
      - PUT /api/v1/{resources}/{id} - Update existing
      - DELETE /api/v1/{resources}/{id} - Delete
-   
+
    DTOs:
-     Request: {field validations}
-     Response: {field types}
-     Error: {standard error format}
+     Request: { field validations }
+     Response: { field types }
+     Error: { standard error format }
    ```
 
 3. **Backend implementation plan** (Java project):
+
    ```
    Package structure:
    com.company.feature/
@@ -37,7 +39,7 @@ User Story: $ARGUMENTS
    ├── exception/
    └── mapper/
    ```
-   
+
    Implementation order:
    1. Entity with JPA annotations
    2. Repository interface
@@ -49,6 +51,7 @@ User Story: $ARGUMENTS
    8. Integration tests
 
 4. **Frontend implementation plan** (React project):
+
    ```
    src/features/{feature}/
    ├── api/          # API client functions
@@ -59,7 +62,7 @@ User Story: $ARGUMENTS
    ├── __tests__/    # Component tests
    └── index.ts      # Public exports
    ```
-   
+
    Implementation order:
    1. Zod schemas matching backend DTOs
    2. TypeScript types
@@ -78,13 +81,14 @@ User Story: $ARGUMENTS
    - Optimistic updates where applicable
 
 6. **Validation commands**:
+
    ```bash
    # Backend (in Java project)
    ./gradlew clean build test
-   
+
    # Frontend (in React project)
    npm run type-check && npm run lint && npm run test:coverage
-   
+
    # Integration (manual or e2e)
    - Start backend: ./gradlew bootRun
    - Start frontend: npm run dev

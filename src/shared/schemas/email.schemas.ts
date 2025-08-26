@@ -1,9 +1,9 @@
 /**
  * Zod validation schemas for email provider configurations and operations
- * 
+ *
  * This module provides runtime validation schemas for email provider types,
  * ensuring type safety and data integrity for Gmail and IMAP configurations.
- * 
+ *
  * @module EmailSchemas
  */
 
@@ -98,12 +98,14 @@ export const AccountInfoSchema = z.object({
   name: z.string().optional(),
   profilePicture: z.string().url().optional(),
   accountType: z.string().min(1, 'Account type is required'),
-  quota: z.object({
-    totalBytes: z.number().int().nonnegative(),
-    usedBytes: z.number().int().nonnegative(),
-    availableBytes: z.number().int().nonnegative(),
-    usagePercentage: z.number().min(0).max(100),
-  }).optional(),
+  quota: z
+    .object({
+      totalBytes: z.number().int().nonnegative(),
+      usedBytes: z.number().int().nonnegative(),
+      availableBytes: z.number().int().nonnegative(),
+      usagePercentage: z.number().min(0).max(100),
+    })
+    .optional(),
 });
 
 /**
@@ -127,16 +129,15 @@ export const SortOrderSchema = z.object({
 /**
  * Date range schema
  */
-export const DateRangeSchema = z.object({
-  start: z.date().optional(),
-  end: z.date().optional(),
-}).refine(
-  (data) => !data.start || !data.end || data.start <= data.end,
-  {
+export const DateRangeSchema = z
+  .object({
+    start: z.date().optional(),
+    end: z.date().optional(),
+  })
+  .refine((data) => !data.start || !data.end || data.start <= data.end, {
     message: 'Start date must be before or equal to end date',
     path: ['end'],
-  }
-);
+  });
 
 /**
  * List options schema
@@ -215,18 +216,17 @@ export const EmailHeadersSchema = z.object({
 /**
  * Email body schema
  */
-export const EmailBodySchema = z.object({
-  text: z.string().optional(),
-  html: z.string().optional(),
-  encoding: z.string().optional(),
-  sizeBytes: z.number().int().nonnegative().optional(),
-}).refine(
-  (data) => Boolean(data.text) || Boolean(data.html),
-  {
+export const EmailBodySchema = z
+  .object({
+    text: z.string().optional(),
+    html: z.string().optional(),
+    encoding: z.string().optional(),
+    sizeBytes: z.number().int().nonnegative().optional(),
+  })
+  .refine((data) => Boolean(data.text) || Boolean(data.html), {
     message: 'Either text or html body is required',
     path: ['text'],
-  }
-);
+  });
 
 /**
  * Email attachment schema
@@ -341,12 +341,14 @@ export const ContactInfoSchema = z.object({
   organization: z.string().optional(),
   photoUrl: z.string().url().optional(),
   lastUpdated: z.date().optional(),
-  stats: z.object({
-    emailsSent: z.number().int().nonnegative(),
-    emailsReceived: z.number().int().nonnegative(),
-    lastInteraction: z.date().optional(),
-    avgResponseTimeHours: z.number().nonnegative().optional(),
-  }).optional(),
+  stats: z
+    .object({
+      emailsSent: z.number().int().nonnegative(),
+      emailsReceived: z.number().int().nonnegative(),
+      lastInteraction: z.date().optional(),
+      avgResponseTimeHours: z.number().nonnegative().optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -366,10 +368,14 @@ export const UnsubscribeMethodSchema = z.object({
   type: z.enum(['http_link', 'mailto', 'none']),
   value: z.string().optional(),
   valid: z.boolean(),
-  alternatives: z.array(z.object({
-    type: z.string(),
-    value: z.string(),
-  })).optional(),
+  alternatives: z
+    .array(
+      z.object({
+        type: z.string(),
+        value: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 /**
@@ -475,9 +481,9 @@ export function validateBatchRequest(data: unknown): BatchModifyRequest | BatchD
 /**
  * Safe validation that returns Result type
  */
-export function safeValidateGmailConfig(data: unknown): 
-  { success: true; data: GmailProviderConfig } | 
-  { success: false; error: z.ZodError } {
+export function safeValidateGmailConfig(
+  data: unknown,
+): { success: true; data: GmailProviderConfig } | { success: false; error: z.ZodError } {
   try {
     const result = GmailProviderConfigSchema.parse(data);
     return { success: true, data: result };
@@ -489,9 +495,9 @@ export function safeValidateGmailConfig(data: unknown):
 /**
  * Safe validation for IMAP config
  */
-export function safeValidateIMAPConfig(data: unknown): 
-  { success: true; data: IMAPProviderConfig } | 
-  { success: false; error: z.ZodError } {
+export function safeValidateIMAPConfig(
+  data: unknown,
+): { success: true; data: IMAPProviderConfig } | { success: false; error: z.ZodError } {
   try {
     const result = IMAPProviderConfigSchema.parse(data);
     return { success: true, data: result };
@@ -504,7 +510,5 @@ export function safeValidateIMAPConfig(data: unknown):
  * Create validation error message from ZodError
  */
 export function createValidationErrorMessage(error: z.ZodError): string {
-  return error.errors
-    .map(err => `${err.path.join('.')}: ${err.message}`)
-    .join('; ');
+  return error.errors.map((err) => `${err.path.join('.')}: ${err.message}`).join('; ');
 }
