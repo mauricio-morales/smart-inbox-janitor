@@ -14,9 +14,10 @@
 
 **Use Case**: Setting up a modern desktop application development environment that supports Gmail integration, AI classification, and cross-platform distribution
 
-**User Journey**: 
+**User Journey**:
+
 1. Clone repository
-2. Run `npm install` 
+2. Run `npm install`
 3. Run `npm run dev` → Electron app launches with React UI
 4. Make code changes → Hot reload works
 5. Push to GitHub → CI pipeline runs tests and builds artifacts
@@ -38,7 +39,7 @@ A complete application scaffold that transforms the current backend-focused code
 
 - [ ] Electron main process successfully launches and creates application window
 - [ ] React renderer process loads with Material-UI components and routing
-- [ ] Hot module replacement works for both main and renderer processes  
+- [ ] Hot module replacement works for both main and renderer processes
 - [ ] All linting, formatting, and type checking passes without errors
 - [ ] Jest tests run successfully with proper coverage reporting
 - [ ] GitHub Actions CI/CD pipeline builds successfully for Windows, macOS, and Linux
@@ -71,7 +72,7 @@ _This PRP provides everything needed to implement a complete Electron app scaffo
   pattern: Build scripts and electron-builder settings are already configured
   gotcha: Must preserve existing provider dependencies (googleapis, keytar, better-sqlite3)
 
-- file: /Users/mmorales/Dev/smart-inbox-janitor/tsconfig.json  
+- file: /Users/mmorales/Dev/smart-inbox-janitor/tsconfig.json
   why: Existing TypeScript configuration with path mapping to extend
   pattern: Strict typing with path aliases for @shared/* and @providers/*
   gotcha: Must maintain compatibility with existing provider interfaces
@@ -85,7 +86,7 @@ _This PRP provides everything needed to implement a complete Electron app scaffo
   why: Electron-Vite configuration patterns and TypeScript setup
   section: Configuration structure and security best practices
 
-- docfile: PRPs/ai_docs/electron_react_architecture.md  
+- docfile: PRPs/ai_docs/electron_react_architecture.md
   why: Modern Electron + React architecture patterns and IPC communication
   section: Process separation and secure API bridge patterns
 ```
@@ -100,7 +101,7 @@ smart-inbox-janitor/
 │   ├── providers/                  # Provider interfaces (EMPTY - needs implementation)
 │   └── shared/                     # Complete type system (EXISTS)
 │       ├── types/                  # Comprehensive interfaces (COMPLETE)
-│       ├── schemas/                # Zod validation schemas (EXISTS)  
+│       ├── schemas/                # Zod validation schemas (EXISTS)
 │       └── utils/                  # Shared utilities (EMPTY)
 ├── package.json                    # Electron + build scripts configured (EXISTS)
 ├── tsconfig.json                   # Strict TypeScript config (EXISTS)
@@ -116,14 +117,14 @@ smart-inbox-janitor/
 ├── src/
 │   ├── main/                       # Electron main process
 │   │   ├── index.ts                # Main process entry point
-│   │   ├── window.ts               # BrowserWindow management  
+│   │   ├── window.ts               # BrowserWindow management
 │   │   ├── ipc.ts                  # IPC handler setup
 │   │   ├── security.ts             # Security policy configuration
 │   │   └── menu.ts                 # Application menu
 │   ├── preload/                    # Preload scripts
 │   │   ├── index.ts                # Secure IPC bridge
 │   │   └── types.ts                # Renderer-side type definitions
-│   ├── renderer/                   # React application  
+│   ├── renderer/                   # React application
 │   │   ├── index.html              # HTML template
 │   │   ├── src/
 │   │   │   ├── main.tsx            # React entry point
@@ -147,7 +148,7 @@ smart-inbox-janitor/
 │       ├── email/
 │       │   └── gmail/
 │       │       └── GmailProvider.ts # Stub implementation
-│       ├── llm/  
+│       ├── llm/
 │       │   └── openai/
 │       │       └── OpenAIProvider.ts # Stub implementation
 │       └── storage/
@@ -174,15 +175,15 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
-        external: ['better-sqlite3', 'keytar', 'googleapis']
-      }
-    }
-  }
-})
+        external: ['better-sqlite3', 'keytar', 'googleapis'],
+      },
+    },
+  },
+});
 
 // CRITICAL: IPC communication must preserve Result<T> type safety
 // Pattern from existing codebase - all provider methods return Result<T>
-const result = await window.electronAPI.email.list(options)
+const result = await window.electronAPI.email.list(options);
 if (result.success) {
   // result.data is typed correctly
 } else {
@@ -209,28 +210,28 @@ The existing type system is complete and comprehensive. The scaffold will levera
 // Existing types to be used throughout application
 import type {
   EmailProvider,
-  StorageProvider, 
+  StorageProvider,
   LLMProvider,
   Result,
   EmailSummary,
   EmailClassification,
-  UserRules
-} from '@shared/types'
+  UserRules,
+} from '@shared/types';
 
 // New types needed for Electron IPC
 interface ElectronAPI {
   email: {
-    list: (options?: ListOptions) => Promise<Result<ListEmailsResult>>
-    get: (emailId: string) => Promise<Result<EmailFull>>
-    batchModify: (request: BatchModifyRequest) => Promise<Result<BatchOperationResult>>
-  }
+    list: (options?: ListOptions) => Promise<Result<ListEmailsResult>>;
+    get: (emailId: string) => Promise<Result<EmailFull>>;
+    batchModify: (request: BatchModifyRequest) => Promise<Result<BatchOperationResult>>;
+  };
   storage: {
-    getUserRules: () => Promise<Result<UserRules>>
-    updateUserRules: (rules: UserRules) => Promise<Result<void>>
-  }
+    getUserRules: () => Promise<Result<UserRules>>;
+    updateUserRules: (rules: UserRules) => Promise<Result<void>>;
+  };
   llm: {
-    classify: (input: ClassifyInput) => Promise<Result<ClassifyOutput>>
-  }
+    classify: (input: ClassifyInput) => Promise<Result<ClassifyOutput>>;
+  };
 }
 ```
 
@@ -251,7 +252,7 @@ Task 2: CREATE src/main/index.ts
   - DEPENDENCIES: Import window management and IPC setup
   - PLACEMENT: Main process directory
 
-Task 3: CREATE src/main/window.ts  
+Task 3: CREATE src/main/window.ts
   - IMPLEMENT: BrowserWindow creation and management
   - FOLLOW pattern: PRPs/ai_docs/electron_react_architecture.md (window management)
   - NAMING: createMainWindow function export
@@ -266,7 +267,7 @@ Task 4: CREATE src/preload/index.ts
   - PLACEMENT: Preload directory
 
 Task 5: CREATE src/main/ipc.ts
-  - IMPLEMENT: IPC handlers for provider operations  
+  - IMPLEMENT: IPC handlers for provider operations
   - FOLLOW pattern: PRPs/ai_docs/electron_react_architecture.md (IPC communication)
   - NAMING: setupIPC function with provider instances
   - INTEGRATION: Use existing provider interfaces from @shared/types
@@ -314,7 +315,7 @@ Task 11: FIX .eslintrc.js configuration
   - PRESERVE: Existing naming conventions and custom rules
   - VALIDATE: Run eslint with no errors
 
-Task 12: FIX jest.config.js configuration  
+Task 12: FIX jest.config.js configuration
   - MODIFY: Fix moduleNameMapping typo and Jest configuration errors
   - FIND pattern: Current jest.config.js has correct structure but config errors
   - CHANGE: moduleNameMapping → moduleNameMapping
@@ -364,51 +365,49 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        external: ['better-sqlite3', 'keytar', 'googleapis']
-      }
-    }
+        external: ['better-sqlite3', 'keytar', 'googleapis'],
+      },
+    },
   },
   preload: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
   },
   renderer: {
     resolve: {
       alias: {
         '@renderer': resolve('src/renderer/src'),
         '@shared': resolve('src/shared'),
-        '@providers': resolve('src/providers')
-      }
+        '@providers': resolve('src/providers'),
+      },
     },
-    plugins: [react()]
-  }
-})
+    plugins: [react()],
+  },
+});
 
 // IPC Type-Safe Communication Pattern
 // CRITICAL: Must preserve existing Result<T> pattern from provider interfaces
 const api: ElectronAPI = {
   email: {
     list: (options) => ipcRenderer.invoke('email:list', options),
-    get: (emailId) => ipcRenderer.invoke('email:get', emailId)
-  }
-}
+    get: (emailId) => ipcRenderer.invoke('email:get', emailId),
+  },
+};
 
 // React Hook Error Handling Pattern
 // PATTERN: Convert Result<T> to thrown exceptions for React Query
 const listEmails = useCallback(async (options?: ListOptions) => {
-  const result = await window.electronAPI.email.list(options)
+  const result = await window.electronAPI.email.list(options);
   if (result.success) {
-    return result.data
+    return result.data;
   }
-  throw new Error(result.error?.message || 'Failed to list emails')
-}, [])
+  throw new Error(result.error?.message || 'Failed to list emails');
+}, []);
 
 // Stub Provider Implementation Pattern
 // RETURN: Consistent Result<T> with not implemented error
 export class GmailProviderStub implements EmailProvider {
   async list(options?: ListOptions): Promise<Result<ListEmailsResult>> {
-    return createErrorResult(
-      new ConfigurationError('GmailProvider not implemented yet')
-    )
+    return createErrorResult(new ConfigurationError('GmailProvider not implemented yet'));
   }
 }
 ```
@@ -495,7 +494,7 @@ npm run build:linux                  # Linux build
 # GitHub Actions validation (run locally with act if possible)
 # Push to feature branch → CI should run tests and builds
 
-# Release workflow validation  
+# Release workflow validation
 # Create and push tag: git tag v0.1.0 && git push origin v0.1.0
 # Release workflow should build and create GitHub release
 

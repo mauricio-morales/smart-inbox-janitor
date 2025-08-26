@@ -19,15 +19,12 @@
         "showReuseMessage": true,
         "clear": false
       },
-      "problemMatcher": [
-        "$tsc",
-        "$eslint-stylish"
-      ]
+      "problemMatcher": ["$tsc", "$eslint-stylish"]
     },
     {
       "label": "🧪 Code Quality Check",
       "detail": "Run linting, type checking, and formatting validation",
-      "type": "shell", 
+      "type": "shell",
       "command": "npm",
       "args": ["run", "ci:quality"],
       "group": "build",
@@ -36,10 +33,7 @@
         "reveal": "always",
         "panel": "shared"
       },
-      "problemMatcher": [
-        "$tsc",
-        "$eslint-stylish"
-      ]
+      "problemMatcher": ["$tsc", "$eslint-stylish"]
     },
     {
       "label": "🏗️ Build All Targets",
@@ -70,7 +64,7 @@
       "problemMatcher": []
     },
     {
-      "label": "📦 Package Check", 
+      "label": "📦 Package Check",
       "detail": "Validate package.json and dependencies",
       "type": "shell",
       "command": "npm",
@@ -109,10 +103,7 @@
         "reveal": "silent",
         "panel": "shared"
       },
-      "problemMatcher": [
-        "$tsc",
-        "$eslint-stylish"
-      ]
+      "problemMatcher": ["$tsc", "$eslint-stylish"]
     },
     {
       "label": "📱 Build macOS App",
@@ -166,6 +157,35 @@
       "runOptions": {
         "runOn": "folderOpen"
       }
+    },
+    {
+      "label": "🧪 Run Unit Tests",
+      "detail": "Run Jest unit tests with coverage",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "test:coverage"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🔄 Watch Unit Tests",
+      "detail": "Run Jest in watch mode for active development",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "test:watch"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new",
+        "focus": true
+      },
+      "problemMatcher": []
     }
   ]
 }

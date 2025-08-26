@@ -17,13 +17,15 @@ description: |
 
 **Use Case**: First-time app launch requiring secure credential setup before email processing
 
-**User Journey**: 
+**User Journey**:
+
 1. Launch app → Welcome screen explaining app purpose and security
 2. Click "Connect Gmail" → OAuth flow in secure browser window → Success confirmation
-3. Enter OpenAI API key → Real-time validation → Success confirmation  
+3. Enter OpenAI API key → Real-time validation → Success confirmation
 4. Review settings → Complete onboarding → Navigate to dashboard
 
-**Pain Points Addressed**: 
+**Pain Points Addressed**:
+
 - Complex OAuth setup made simple with guided flow
 - API key validation prevents runtime failures
 - Clear security messaging builds trust
@@ -65,7 +67,7 @@ _This PRP provides complete implementation context including existing patterns, 
 - url: https://developers.google.com/gmail/api/auth/web-server
   why: Complete OAuth 2.0 flow for desktop applications with code exchange patterns
   critical: Use "authorization code" flow with refresh tokens for persistent access
-  
+
 - url: https://developers.google.com/gmail/api/auth/scopes
   why: Specific OAuth scopes for Gmail operations (read, modify, labels)
   critical: Use minimal required scopes - gmail.readonly and gmail.modify
@@ -76,7 +78,7 @@ _This PRP provides complete implementation context including existing patterns, 
   pattern: Result<T> pattern with specific error types (AuthenticationError, ConfigurationError)
   gotcha: All methods must return Result<T> - never throw exceptions
 
-- file: src/main/security/SecureStorageManager.ts 
+- file: src/main/security/SecureStorageManager.ts
   why: Established patterns for secure OAuth token storage with hybrid encryption
   pattern: storeGmailTokens() and getGmailTokens() methods with CredentialStorageOptions
   gotcha: API keys must start with 'sk-' prefix for validation
@@ -223,7 +225,7 @@ Task 1: CREATE src/main/oauth/GmailOAuthManager.ts
   - DEPENDENCIES: googleapis package, existing CredentialEncryption service
   - PLACEMENT: New oauth directory in main process
 
-Task 2: CREATE src/main/oauth/OAuthWindow.ts  
+Task 2: CREATE src/main/oauth/OAuthWindow.ts
   - IMPLEMENT: Secure BrowserWindow configuration for OAuth flow
   - FOLLOW pattern: src/main/window.ts (BrowserWindow creation patterns)
   - NAMING: OAuthWindow class with createOAuthWindow() and handleCallback() methods
@@ -280,9 +282,12 @@ export class GmailOAuthManager {
   async initiateAuth(): Promise<Result<{ authUrl: string; codeVerifier: string }>> {
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
-      scope: ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.modify'],
+      scope: [
+        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/gmail.modify',
+      ],
       code_challenge: codeChallenge,
-      code_challenge_method: 'S256'
+      code_challenge_method: 'S256',
     });
     return createSuccessResult({ authUrl, codeVerifier });
   }
@@ -294,7 +299,7 @@ export class GmailOAuthManager {
   }
 }
 
-// OpenAI API Validation Pattern  
+// OpenAI API Validation Pattern
 export class OpenAIProvider {
   async validateConfiguration(config: OpenAIConfig): Promise<Result<boolean>> {
     // PATTERN: Simple API call to validate key without expensive operations
@@ -316,11 +321,11 @@ export class OAuthWindow {
       width: 500,
       height: 600,
       webPreferences: {
-        contextIsolation: true,      // CRITICAL: Prevent script injection
-        nodeIntegration: false,      // CRITICAL: No Node.js access in OAuth window
-        sandbox: true,               // CRITICAL: Enable process sandboxing
-        preload: undefined           // CRITICAL: No preload script for OAuth window
-      }
+        contextIsolation: true, // CRITICAL: Prevent script injection
+        nodeIntegration: false, // CRITICAL: No Node.js access in OAuth window
+        sandbox: true, // CRITICAL: Enable process sandboxing
+        preload: undefined, // CRITICAL: No preload script for OAuth window
+      },
     });
   }
 }
@@ -332,11 +337,11 @@ ipcMain.handle('gmail:initiateOAuth', async () => {
     if (!authResult.success) {
       return authResult;
     }
-    
+
     // Open OAuth window and handle callback
     const window = oAuthWindow.createOAuthWindow();
     window.loadURL(authResult.data.authUrl);
-    
+
     return createSuccessResult({ status: 'auth_initiated' });
   } catch (error) {
     // PATTERN: Consistent error handling with sanitized messages
@@ -349,24 +354,24 @@ ipcMain.handle('gmail:initiateOAuth', async () => {
 
 ```yaml
 OAUTH_FLOW:
-  - gmail_scopes: "readonly and modify for email operations"
-  - redirect_uri: "http://localhost:3000/oauth/callback" 
-  - token_storage: "SecureStorageManager with OS keychain encryption"
+  - gmail_scopes: 'readonly and modify for email operations'
+  - redirect_uri: 'http://localhost:3000/oauth/callback'
+  - token_storage: 'SecureStorageManager with OS keychain encryption'
 
 SECURITY:
-  - oauth_window: "Isolated BrowserWindow with no Node.js access"
-  - token_encryption: "Hybrid OS keychain + AES-256-GCM via CredentialEncryption"
-  - error_sanitization: "Remove sensitive data from error messages using existing patterns"
+  - oauth_window: 'Isolated BrowserWindow with no Node.js access'
+  - token_encryption: 'Hybrid OS keychain + AES-256-GCM via CredentialEncryption'
+  - error_sanitization: 'Remove sensitive data from error messages using existing patterns'
 
 API_INTEGRATION:
-  - gmail_client: "googleapis package with OAuth 2.0 authentication"
-  - openai_client: "openai package for API key validation and classification"
-  - connection_state: "Persistent tracking via SQLite storage with health checks"
+  - gmail_client: 'googleapis package with OAuth 2.0 authentication'
+  - openai_client: 'openai package for API key validation and classification'
+  - connection_state: 'Persistent tracking via SQLite storage with health checks'
 
 UI_UPDATES:
-  - remove: "Demo timeouts and stub error messages"
-  - add: "Real loading states, OAuth flow status, API validation feedback"
-  - follow: "Existing MUI component patterns and error display formats"
+  - remove: 'Demo timeouts and stub error messages'
+  - add: 'Real loading states, OAuth flow status, API validation feedback'
+  - follow: 'Existing MUI component patterns and error display formats'
 ```
 
 ## Validation Loop
@@ -408,7 +413,7 @@ npm run dev                      # Start development server
 # 1. Launch app → should show onboarding if not completed
 # 2. Click "Connect Gmail" → should open OAuth window
 # 3. Complete OAuth → should store tokens and show success
-# 4. Enter valid OpenAI key → should validate and proceed  
+# 4. Enter valid OpenAI key → should validate and proceed
 # 5. Complete onboarding → should redirect to dashboard
 # 6. Restart app → should skip onboarding (credentials persisted)
 
@@ -430,7 +435,7 @@ npm run ci:security            # Project security checks
 # Verify tokens are not exposed in logs or error messages
 # Test token refresh and rotation functionality
 
-# OAuth security validation  
+# OAuth security validation
 # Verify OAuth window isolation (no Node.js access)
 # Test PKCE code challenge/verifier flow
 # Verify secure redirect URI handling
@@ -497,7 +502,7 @@ npm run ci:security            # Project security checks
 ## Anti-Patterns to Avoid
 
 - ❌ Don't store OAuth tokens in plain text or expose them in logs
-- ❌ Don't use try-catch without converting to Result<T> pattern  
+- ❌ Don't use try-catch without converting to Result<T> pattern
 - ❌ Don't enable Node.js integration in OAuth BrowserWindow
 - ❌ Don't skip PKCE code challenge for OAuth security
 - ❌ Don't hardcode OAuth redirect URIs or API endpoints

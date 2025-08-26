@@ -109,14 +109,12 @@ routing: [React Router/Next.js router/hash routing]
 # Primary Mock Approach
 strategy: [MSW with faker.js/Static JSON files/Hardcoded objects]
 complexity: [Simple objects/Relational data/Complex nested structures]
-volume:
-  [Small dataset for demos/Medium for realistic testing/Large for performance]
+volume: [Small dataset for demos/Medium for realistic testing/Large for performance]
 
 # Data Requirements
 entities: [List key data models - User, Product, Order, etc.]
 relationships: [How entities connect - one-to-many, many-to-many]
-realistic_data:
-  [Use faker.js/Real-looking placeholder content/Domain-specific examples]
+realistic_data: [Use faker.js/Real-looking placeholder content/Domain-specific examples]
 ```
 
 ### Similar Examples & Patterns (If Available)

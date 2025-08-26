@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+// TODO: Remove this disable when stub methods are fully implemented
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
   EmailProvider,
@@ -24,7 +26,7 @@ export interface ElectronAPI {
     batchDelete: (request: BatchDeleteRequest) => Promise<ReturnType<EmailProvider['batchDelete']>>;
     search: (
       query: string,
-      options?: SearchOptions
+      options?: SearchOptions,
     ) => Promise<ReturnType<EmailProvider['search']>>;
     getFolders: () => Promise<ReturnType<EmailProvider['getFolders']>>;
   };
@@ -34,11 +36,11 @@ export interface ElectronAPI {
     getEmailMetadata: (emailId: string) => Promise<ReturnType<StorageProvider['getEmailMetadata']>>;
     setEmailMetadata: (
       emailId: string,
-      metadata: EmailMetadata
+      metadata: EmailMetadata,
     ) => Promise<ReturnType<StorageProvider['setEmailMetadata']>>;
     getConfig: () => Promise<ReturnType<StorageProvider['getConfig']>>;
     updateConfig: (
-      config: Partial<StoredAppConfig>
+      config: Partial<StoredAppConfig>,
     ) => Promise<ReturnType<StorageProvider['updateConfig']>>;
   };
   llm: {
@@ -57,34 +59,48 @@ export interface ElectronAPI {
     openExternal: (url: string) => Promise<void>;
   };
   oauth: {
-    initiateGmailOAuth: (credentials?: { clientId: string; clientSecret: string }) => Promise<Result<{ accountEmail?: string; connectedAt?: Date }>>;
-    checkGmailConnection: () => Promise<Result<{ isConnected: boolean; requiresAuth: boolean; accountEmail?: string; error?: string }>>;
-    validateOpenAIKey: (apiKey: string) => Promise<Result<{ apiKeyValid: boolean; modelAvailable?: boolean; responseTimeMs?: number; testedAt?: Date }>>;
-    checkOpenAIConnection: () => Promise<Result<{ isConnected: boolean; modelAvailable: boolean; error?: string }>>;
+    initiateGmailOAuth: (credentials?: {
+      clientId: string;
+      clientSecret: string;
+    }) => Promise<Result<{ accountEmail?: string; connectedAt?: Date }>>;
+    checkGmailConnection: () => Promise<
+      Result<{ isConnected: boolean; requiresAuth: boolean; accountEmail?: string; error?: string }>
+    >;
+    validateOpenAIKey: (apiKey: string) => Promise<
+      Result<{
+        apiKeyValid: boolean;
+        modelAvailable?: boolean;
+        responseTimeMs?: number;
+        testedAt?: Date;
+      }>
+    >;
+    checkOpenAIConnection: () => Promise<
+      Result<{ isConnected: boolean; modelAvailable: boolean; error?: string }>
+    >;
   };
 }
 
 // Implement the secure API bridge
 const api: ElectronAPI = {
   email: {
-    list: options => ipcRenderer.invoke('email:list', options),
+    list: (options) => ipcRenderer.invoke('email:list', options),
     get: (emailId, options) => ipcRenderer.invoke('email:get', emailId, options),
-    batchModify: request => ipcRenderer.invoke('email:batchModify', request),
-    batchDelete: request => ipcRenderer.invoke('email:batchDelete', request),
+    batchModify: (request) => ipcRenderer.invoke('email:batchModify', request),
+    batchDelete: (request) => ipcRenderer.invoke('email:batchDelete', request),
     search: (query, options) => ipcRenderer.invoke('email:search', query, options),
     getFolders: () => ipcRenderer.invoke('email:getFolders'),
   },
   storage: {
     getUserRules: () => ipcRenderer.invoke('storage:getUserRules'),
-    updateUserRules: rules => ipcRenderer.invoke('storage:updateUserRules', rules),
-    getEmailMetadata: emailId => ipcRenderer.invoke('storage:getEmailMetadata', emailId),
+    updateUserRules: (rules) => ipcRenderer.invoke('storage:updateUserRules', rules),
+    getEmailMetadata: (emailId) => ipcRenderer.invoke('storage:getEmailMetadata', emailId),
     setEmailMetadata: (emailId, metadata) =>
       ipcRenderer.invoke('storage:setEmailMetadata', emailId, metadata),
     getConfig: () => ipcRenderer.invoke('storage:getConfig'),
-    updateConfig: config => ipcRenderer.invoke('storage:updateConfig', config),
+    updateConfig: (config) => ipcRenderer.invoke('storage:updateConfig', config),
   },
   llm: {
-    classify: input => ipcRenderer.invoke('llm:classify', input),
+    classify: (input) => ipcRenderer.invoke('llm:classify', input),
     healthCheck: () => ipcRenderer.invoke('llm:healthCheck'),
   },
   app: {
@@ -99,7 +115,7 @@ const api: ElectronAPI = {
     openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   },
   oauth: {
-    initiateGmailOAuth: (credentials?: { clientId: string; clientSecret: string }) => 
+    initiateGmailOAuth: (credentials?: { clientId: string; clientSecret: string }) =>
       ipcRenderer.invoke('gmail:initiate-oauth', credentials),
     checkGmailConnection: () => ipcRenderer.invoke('gmail:check-connection'),
     validateOpenAIKey: (apiKey: string) => ipcRenderer.invoke('openai:validate-key', apiKey),

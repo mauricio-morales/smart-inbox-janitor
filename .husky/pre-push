@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# Source shell profile to get full PATH (helps with VS Code)
+if [ -f ~/.zshrc ]; then
+    source ~/.zshrc
+fi
+
+# Set PATH to include common locations for npm/node
+export PATH="/opt/homebrew/bin:/opt/homebrew/opt/node@20/bin:/usr/local/bin:$HOME/.npm-global/bin:$PATH"
+
+# Change to the project directory
+cd "$(dirname "$0")/.."
+
+echo "🔍 Running pre-push validation checks..."
+
+# 1. Run format first to fix formatting issues
+echo "🎨 Formatting code..."
+npm run format
+if [ $? -ne 0 ]; then
+  echo "❌ Formatting failed. Please check your code."
+  exit 1
+fi
+
+# 2. Run lint:fix after formatting
+echo "📝 Checking and fixing lint issues..."
+npm run lint:fix
+if [ $? -ne 0 ]; then
+  echo "❌ Lint errors found that couldn't be auto-fixed."
+  echo "💡 Please fix the remaining issues before pushing."
+  exit 1
+fi
+
+# 3. Run TypeScript type check
+echo "🔧 Checking TypeScript types..."
+npm run type-check
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript type check failed."
+  echo "💡 Please fix type errors before pushing."
+  exit 1
+fi
+
+# 4. Run tests (if they exist and don't take too long)
+echo "🧪 Running tests..."
+npm test -- --passWithNoTests --watchAll=false
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed."
+  echo "💡 Please fix failing tests before pushing."
+  exit 1
+fi
+
+echo "✅ All pre-push checks passed! Your code is ready to push. 🚀"

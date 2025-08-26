@@ -73,8 +73,8 @@ task_name:
     - Implementation details
     - With clear markers
   validation:
-    - command: "test command"
-    - expect: "success criteria"
+    - command: 'test command'
+    - expect: 'success criteria'
 ```
 
 ### Implementation Strategy

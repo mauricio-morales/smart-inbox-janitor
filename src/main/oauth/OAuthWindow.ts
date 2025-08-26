@@ -1,23 +1,23 @@
 /**
  * OAuth Window Manager for Smart Inbox Janitor
- * 
+ *
  * Provides secure BrowserWindow configuration and management for OAuth flows.
  * Implements proper security isolation to prevent script injection and maintain
  * a secure OAuth experience for desktop applications.
- * 
+ *
  * @module OAuthWindow
  */
 
 import { BrowserWindow, shell } from 'electron';
 import type * as Electron from 'electron';
 import { URL } from 'url';
-import { 
-  Result, 
-  createSuccessResult, 
+import {
+  Result,
+  createSuccessResult,
   createErrorResult,
   SecurityError,
   ValidationError,
-  NetworkError 
+  NetworkError,
 } from '@shared/types';
 
 /**
@@ -54,7 +54,7 @@ export interface OAuthWindowOptions {
 
 /**
  * OAuth Window Manager
- * 
+ *
  * Creates and manages secure BrowserWindows for OAuth authentication flows.
  * Implements comprehensive security measures to prevent script injection and
  * unauthorized access while providing a smooth user experience.
@@ -65,6 +65,7 @@ export class OAuthWindow {
 
   private window: BrowserWindow | null = null;
   private readonly redirectUri: string;
+  // eslint-disable-next-line no-unused-vars
   private authCallback: ((result: Result<OAuthCallbackResult>) => void) | null = null;
 
   constructor(redirectUri: string) {
@@ -73,7 +74,7 @@ export class OAuthWindow {
 
   /**
    * Create secure OAuth BrowserWindow with proper security isolation
-   * 
+   *
    * @param options - Window configuration options
    * @returns Result containing the created BrowserWindow
    */
@@ -101,26 +102,25 @@ export class OAuthWindow {
         titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
         webPreferences: {
           // CRITICAL SECURITY SETTINGS
-          contextIsolation: true,        // Prevent script injection
-          nodeIntegration: false,        // No Node.js access in OAuth window
+          contextIsolation: true, // Prevent script injection
+          nodeIntegration: false, // No Node.js access in OAuth window
           nodeIntegrationInWorker: false, // No Node.js in web workers
           nodeIntegrationInSubFrames: false, // No Node.js in subframes
-          sandbox: true,                 // Enable process sandboxing
-          experimentalFeatures: false,   // Disable experimental web features
-          enableBlinkFeatures: '',       // Disable Blink features
-          disableBlinkFeatures: '',      // Additional security
-          webSecurity: true,             // Maintain web security
+          sandbox: true, // Enable process sandboxing
+          experimentalFeatures: false, // Disable experimental web features
+          enableBlinkFeatures: '', // Disable Blink features
+          disableBlinkFeatures: '', // Additional security
+          webSecurity: true, // Maintain web security
           allowRunningInsecureContent: false, // Block insecure content
-          plugins: false,                // Disable plugins
-          java: false,                   // Disable Java
-          images: true,                  // Allow images for OAuth UI
-          textAreasAreResizable: false,  // Prevent textarea manipulation
-          webgl: false,                  // Disable WebGL
-          webaudio: false,               // Disable Web Audio API
-          spellcheck: false,             // Disable spellcheck
-          scrollBounce: false,           // Disable scroll bounce
-          preload: undefined             // CRITICAL: No preload script for OAuth window
-        }
+          plugins: false, // Disable plugins
+          images: true, // Allow images for OAuth UI
+          textAreasAreResizable: false, // Prevent textarea manipulation
+          webgl: false, // Disable WebGL
+          webaudio: false, // Disable Web Audio API
+          spellcheck: false, // Disable spellcheck
+          scrollBounce: false, // Disable scroll bounce
+          preload: undefined, // CRITICAL: No preload script for OAuth window
+        },
       };
 
       this.window = new BrowserWindow(windowOptions);
@@ -136,31 +136,33 @@ export class OAuthWindow {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
         new SecurityError(`Failed to create OAuth window: ${message}`, {
-          operation: 'createOAuthWindow'
-        })
+          operation: 'createOAuthWindow',
+        }),
       );
     }
   }
 
   /**
    * Navigate OAuth window to authorization URL and handle callback
-   * 
+   *
    * @param authUrl - OAuth authorization URL
    * @param timeoutMs - Timeout for OAuth flow in milliseconds
    * @returns Promise resolving to OAuth callback result
    */
   async navigateAndWaitForCallback(
     authUrl: string,
-    timeoutMs = 5 * 60 * 1000 // 5 minutes default
+    timeoutMs = 5 * 60 * 1000, // 5 minutes default
   ): Promise<Result<OAuthCallbackResult>> {
     return new Promise((resolve) => {
       try {
         if (!this.window || this.window.isDestroyed()) {
-          resolve(createErrorResult(
-            new SecurityError('OAuth window not available', {
-              operation: 'navigateAndWaitForCallback'
-            })
-          ));
+          resolve(
+            createErrorResult(
+              new SecurityError('OAuth window not available', {
+                operation: 'navigateAndWaitForCallback',
+              }),
+            ),
+          );
           return;
         }
 
@@ -174,12 +176,13 @@ export class OAuthWindow {
         // Set up timeout
         const timeoutId = global.setTimeout(() => {
           this.cleanup();
-          resolve(createErrorResult(
-            new NetworkError('OAuth flow timed out', {
-              operation: 'navigateAndWaitForCallback',
-              timeoutMs
-            })
-          ));
+          resolve(
+            createErrorResult(
+              new NetworkError('OAuth flow timed out', {
+                operation: 'navigateAndWaitForCallback',
+              }),
+            ),
+          );
         }, timeoutMs);
 
         // Set up callback handler
@@ -196,48 +199,50 @@ export class OAuthWindow {
         this.window.on('closed', () => {
           global.clearTimeout(timeoutId);
           if (this.authCallback) {
-            this.authCallback(createErrorResult(
-              new ValidationError('OAuth window closed by user', {
-                operation: 'navigateAndWaitForCallback',
-                userCancelled: true
-              })
-            ));
+            this.authCallback(
+              createErrorResult(
+                new ValidationError('OAuth window closed by user', {
+                  operation: 'navigateAndWaitForCallback',
+                }),
+              ),
+            );
           }
         });
-
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        resolve(createErrorResult(
-          new SecurityError(`OAuth navigation failed: ${message}`, {
-            operation: 'navigateAndWaitForCallback'
-          })
-        ));
+        resolve(
+          createErrorResult(
+            new SecurityError(`OAuth navigation failed: ${message}`, {
+              operation: 'navigateAndWaitForCallback',
+            }),
+          ),
+        );
       }
     });
   }
 
   /**
    * Handle OAuth callback URL and extract authorization code
-   * 
+   *
    * @param callbackUrl - Full callback URL from OAuth provider
    * @returns Result containing parsed callback data
    */
   handleCallback(callbackUrl: string): Result<OAuthCallbackResult> {
     try {
       const url = new URL(callbackUrl);
-      
+
       // Validate that this is our redirect URI
       const baseUrl = `${url.protocol}//${url.host}${url.pathname}`;
       const expectedBaseUrl = new URL(this.redirectUri);
       const expectedBase = `${expectedBaseUrl.protocol}//${expectedBaseUrl.host}${expectedBaseUrl.pathname}`;
-      
+
       if (baseUrl !== expectedBase) {
         return createErrorResult(
           new SecurityError('Invalid redirect URI in callback', {
             operation: 'handleCallback',
             provided: baseUrl,
-            expected: expectedBase
-          })
+            expected: expectedBase,
+          }),
         );
       }
 
@@ -252,28 +257,31 @@ export class OAuthWindow {
         return createErrorResult(
           new ValidationError(`OAuth error: ${error}`, {
             operation: 'handleCallback',
-            error,
-            errorDescription: errorDescription ?? undefined
-          })
+          }),
         );
       }
 
       // Validate required parameters
-      if (code === null || code === undefined || code.length === 0 || state === null || state === undefined || state.length === 0) {
+      if (
+        code === null ||
+        code === undefined ||
+        code.length === 0 ||
+        state === null ||
+        state === undefined ||
+        state.length === 0
+      ) {
         return createErrorResult(
           new ValidationError('Missing required OAuth parameters', {
             operation: 'handleCallback',
-            hasCode: Boolean(code),
-            hasState: Boolean(state)
-          })
+          }),
         );
       }
 
       const result: OAuthCallbackResult = {
         code,
         state,
-        error,
-        errorDescription: errorDescription ?? undefined
+        error: error ?? undefined,
+        errorDescription: errorDescription ?? undefined,
       };
 
       return createSuccessResult(result);
@@ -282,8 +290,7 @@ export class OAuthWindow {
       return createErrorResult(
         new ValidationError(`Failed to parse OAuth callback: ${message}`, {
           operation: 'handleCallback',
-          callbackUrl: callbackUrl.substring(0, 100) // Truncate for security
-        })
+        }),
       );
     }
   }
@@ -308,7 +315,7 @@ export class OAuthWindow {
   private setupSecurityHandlers(): void {
     if (!this.window) return;
 
-    const {webContents} = this.window;
+    const { webContents } = this.window;
 
     // Prevent new window creation
     webContents.setWindowOpenHandler(() => {
@@ -316,18 +323,19 @@ export class OAuthWindow {
     });
 
     // Handle certificate errors
-    webContents.on('certificate-error', (event, url, error, certificate, callback) => {
+    webContents.on('certificate-error', (event, _url, error, _certificate, callback) => {
       // Deny all certificate errors for security
       event.preventDefault();
       callback(false);
-      
+
       if (this.authCallback) {
-        this.authCallback(createErrorResult(
-          new SecurityError(`Certificate error during OAuth: ${error}`, {
-            operation: 'oauth-certificate-error',
-            url: new URL(url).origin // Only include origin for security
-          })
-        ));
+        this.authCallback(
+          createErrorResult(
+            new SecurityError(`Certificate error during OAuth: ${error}`, {
+              operation: 'oauth-certificate-error',
+            }),
+          ),
+        );
       }
     });
 
@@ -339,18 +347,19 @@ export class OAuthWindow {
     // Block file:// protocols and other dangerous protocols
     webContents.on('will-navigate', (event, navigationUrl) => {
       const url = new URL(navigationUrl);
-      
+
       // Only allow https and our localhost redirect
       if (url.protocol !== 'https:' && !navigationUrl.startsWith(this.redirectUri)) {
         event.preventDefault();
-        
+
         if (this.authCallback) {
-          this.authCallback(createErrorResult(
-            new SecurityError('Blocked navigation to unsafe URL', {
-              operation: 'oauth-navigation-blocked',
-              protocol: url.protocol
-            })
-          ));
+          this.authCallback(
+            createErrorResult(
+              new SecurityError('Blocked navigation to unsafe URL', {
+                operation: 'oauth-navigation-blocked',
+              }),
+            ),
+          );
         }
       }
     });
@@ -362,13 +371,13 @@ export class OAuthWindow {
   private setupNavigationHandlers(): void {
     if (!this.window) return;
 
-    const {webContents} = this.window;
+    const { webContents } = this.window;
 
     // Handle navigation to redirect URI
     webContents.on('will-redirect', (event, url) => {
       if (url.startsWith(this.redirectUri)) {
         event.preventDefault();
-        
+
         // Parse callback and notify
         const callbackResult = this.handleCallback(url);
         if (this.authCallback) {
@@ -381,7 +390,7 @@ export class OAuthWindow {
     webContents.on('will-navigate', (event, url) => {
       if (url.startsWith(this.redirectUri)) {
         event.preventDefault();
-        
+
         // Parse callback and notify
         const callbackResult = this.handleCallback(url);
         if (this.authCallback) {
@@ -393,7 +402,7 @@ export class OAuthWindow {
     // Handle external links
     webContents.on('new-window', (event: Electron.Event, url: string) => {
       event.preventDefault();
-      
+
       // Only open external links in system browser for Google domains
       const urlObj = new URL(url);
       if (urlObj.hostname.endsWith('.google.com') || urlObj.hostname.endsWith('.googleapis.com')) {
@@ -408,14 +417,14 @@ export class OAuthWindow {
   private validateAuthUrl(authUrl: string): Result<void> {
     try {
       const url = new URL(authUrl);
-      
+
       // Must be HTTPS
       if (url.protocol !== 'https:') {
         return createErrorResult(
           new SecurityError('Authorization URL must use HTTPS', {
             operation: 'validateAuthUrl',
-            protocol: url.protocol
-          })
+            protocol: url.protocol,
+          }),
         );
       }
 
@@ -424,8 +433,7 @@ export class OAuthWindow {
         return createErrorResult(
           new SecurityError('Authorization URL must be Google domain', {
             operation: 'validateAuthUrl',
-            hostname: url.hostname
-          })
+          }),
         );
       }
 
@@ -434,8 +442,8 @@ export class OAuthWindow {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
         new ValidationError(`Invalid authorization URL: ${message}`, {
-          operation: 'validateAuthUrl'
-        })
+          operation: 'validateAuthUrl',
+        }),
       );
     }
   }

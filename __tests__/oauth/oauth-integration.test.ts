@@ -1,6 +1,6 @@
 /**
  * Integration Tests for OAuth Flow
- * 
+ *
  * End-to-end tests covering the complete OAuth authentication flow,
  * IPC handler integration, and provider initialization scenarios.
  */
@@ -21,7 +21,9 @@ jest.mock('../../src/providers/email/gmail/GmailProvider');
 jest.mock('../../src/providers/llm/openai/OpenAIProvider');
 
 const mockIpcMain = ipcMain as jest.Mocked<typeof ipcMain>;
-const MockSecureStorageManager = SecureStorageManager as jest.MockedClass<typeof SecureStorageManager>;
+const MockSecureStorageManager = SecureStorageManager as jest.MockedClass<
+  typeof SecureStorageManager
+>;
 const MockGmailProvider = GmailProvider as jest.MockedClass<typeof GmailProvider>;
 const MockOpenAIProvider = OpenAIProvider as jest.MockedClass<typeof OpenAIProvider>;
 
@@ -34,7 +36,7 @@ function createMockIpcEvent(): IpcMainInvokeEvent {
     senderFrame: {} as any,
     returnValue: undefined,
     preventDefault: jest.fn(),
-    reply: jest.fn()
+    reply: jest.fn(),
   };
 }
 
@@ -49,7 +51,9 @@ describe('OAuth Integration', () => {
 
     // Mock SecureStorageManager
     mockSecureStorage = new MockSecureStorageManager() as jest.Mocked<SecureStorageManager>;
-    mockSecureStorage.storeGmailTokens = jest.fn().mockResolvedValue(createSuccessResult(undefined));
+    mockSecureStorage.storeGmailTokens = jest
+      .fn()
+      .mockResolvedValue(createSuccessResult(undefined));
     mockSecureStorage.getGmailTokens = jest.fn().mockResolvedValue(createSuccessResult(null));
     mockSecureStorage.storeOpenAIKey = jest.fn().mockResolvedValue(createSuccessResult(undefined));
     mockSecureStorage.getOpenAIConfig = jest.fn().mockResolvedValue(createSuccessResult(null));
@@ -58,34 +62,40 @@ describe('OAuth Integration', () => {
     mockGmailProvider = new MockGmailProvider() as jest.Mocked<GmailProvider>;
     mockGmailProvider.getOAuthManager = jest.fn();
     mockGmailProvider.setStorageManager = jest.fn();
-    mockGmailProvider.connect = jest.fn().mockResolvedValue(createSuccessResult({
-      connected: true,
-      connectedAt: new Date(),
-      providerInfo: {
-        provider: 'gmail',
-        accountEmail: 'test@gmail.com'
-      }
-    }));
+    mockGmailProvider.connect = jest.fn().mockResolvedValue(
+      createSuccessResult({
+        connected: true,
+        connectedAt: new Date(),
+        providerInfo: {
+          provider: 'gmail',
+          accountEmail: 'test@gmail.com',
+        },
+      }),
+    );
 
     // Mock OpenAIProvider
     mockOpenAIProvider = new MockOpenAIProvider() as jest.Mocked<OpenAIProvider>;
-    mockOpenAIProvider.validateConfiguration = jest.fn().mockResolvedValue(createSuccessResult(true));
+    mockOpenAIProvider.validateConfiguration = jest
+      .fn()
+      .mockResolvedValue(createSuccessResult(true));
     mockOpenAIProvider.initialize = jest.fn().mockResolvedValue(createSuccessResult(undefined));
     mockOpenAIProvider.setStorageManager = jest.fn();
-    mockOpenAIProvider.testConnection = jest.fn().mockResolvedValue(createSuccessResult({
-      connected: true,
-      responseTimeMs: 150,
-      apiKeyValid: true,
-      modelAvailable: true,
-      testedAt: new Date()
-    }));
+    mockOpenAIProvider.testConnection = jest.fn().mockResolvedValue(
+      createSuccessResult({
+        connected: true,
+        responseTimeMs: 150,
+        apiKeyValid: true,
+        modelAvailable: true,
+        testedAt: new Date(),
+      }),
+    );
 
     // Mock storage provider
     mockStorageProvider = {
       getUserRules: jest.fn().mockResolvedValue(createSuccessResult({})),
       updateUserRules: jest.fn().mockResolvedValue(createSuccessResult(undefined)),
       getConfig: jest.fn().mockResolvedValue(createSuccessResult({})),
-      updateConfig: jest.fn().mockResolvedValue(createSuccessResult(undefined))
+      updateConfig: jest.fn().mockResolvedValue(createSuccessResult(undefined)),
     };
 
     // Setup IPC handlers
@@ -96,25 +106,30 @@ describe('OAuth Integration', () => {
     it('should complete full OAuth flow successfully', async () => {
       // Mock OAuth manager
       const mockOAuthManager = {
-        initiateAuth: jest.fn().mockReturnValue(createSuccessResult({
-          authUrl: 'https://accounts.google.com/oauth/authorize',
-          codeVerifier: 'test-verifier',
-          state: 'test-state'
-        })),
-        exchangeCode: jest.fn().mockResolvedValue(createSuccessResult({
-          accessToken: 'ya29.test-token',
-          refreshToken: 'test-refresh-token',
-          expiryDate: Date.now() + 3600000,
-          scope: 'gmail-scope',
-          tokenType: 'Bearer'
-        }))
+        initiateAuth: jest.fn().mockReturnValue(
+          createSuccessResult({
+            authUrl: 'https://accounts.google.com/oauth/authorize',
+            codeVerifier: 'test-verifier',
+            state: 'test-state',
+          }),
+        ),
+        exchangeCode: jest.fn().mockResolvedValue(
+          createSuccessResult({
+            accessToken: 'ya29.test-token',
+            refreshToken: 'test-refresh-token',
+            expiryDate: Date.now() + 3600000,
+            scope: 'gmail-scope',
+            tokenType: 'Bearer',
+          }),
+        ),
       };
 
       mockGmailProvider.getOAuthManager.mockReturnValue(mockOAuthManager as any);
 
       // Get the IPC handler
-      const gmailOAuthHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'gmail:initiate-oauth')?.[1];
+      const gmailOAuthHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'gmail:initiate-oauth',
+      )?.[1];
 
       expect(gmailOAuthHandler).toBeDefined();
 
@@ -122,11 +137,13 @@ describe('OAuth Integration', () => {
       jest.doMock('../../src/main/oauth/OAuthWindow', () => ({
         OAuthWindow: jest.fn().mockImplementation(() => ({
           createOAuthWindow: jest.fn().mockReturnValue(createSuccessResult({})),
-          navigateAndWaitForCallback: jest.fn().mockResolvedValue(createSuccessResult({
-            code: 'auth-code',
-            state: 'test-state'
-          }))
-        }))
+          navigateAndWaitForCallback: jest.fn().mockResolvedValue(
+            createSuccessResult({
+              code: 'auth-code',
+              state: 'test-state',
+            }),
+          ),
+        })),
       }));
 
       // Execute OAuth flow
@@ -135,7 +152,7 @@ describe('OAuth Integration', () => {
       expect(result.success).toBe(true);
       expect(result.data).toMatchObject({
         accountEmail: 'test@gmail.com',
-        connectedAt: expect.any(Date)
+        connectedAt: expect.any(Date),
       });
 
       // Verify flow steps
@@ -145,7 +162,7 @@ describe('OAuth Integration', () => {
         'auth-code',
         'test-verifier',
         'test-state',
-        'test-state'
+        'test-state',
       );
       expect(mockSecureStorage.storeGmailTokens).toHaveBeenCalled();
       expect(mockGmailProvider.setStorageManager).toHaveBeenCalledWith(mockSecureStorage);
@@ -158,8 +175,9 @@ describe('OAuth Integration', () => {
     it('should handle OAuth initialization failure', async () => {
       mockGmailProvider.getOAuthManager.mockReturnValue(null);
 
-      const gmailOAuthHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'gmail:initiate-oauth')?.[1];
+      const gmailOAuthHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'gmail:initiate-oauth',
+      )?.[1];
 
       const result = await gmailOAuthHandler!(createMockIpcEvent(), 'test-api-key');
 
@@ -170,38 +188,45 @@ describe('OAuth Integration', () => {
 
     it('should handle token storage failure', async () => {
       const mockOAuthManager = {
-        initiateAuth: jest.fn().mockReturnValue(createSuccessResult({
-          authUrl: 'https://accounts.google.com/oauth/authorize',
-          codeVerifier: 'test-verifier',
-          state: 'test-state'
-        })),
-        exchangeCode: jest.fn().mockResolvedValue(createSuccessResult({
-          accessToken: 'ya29.test-token',
-          refreshToken: 'test-refresh-token',
-          expiryDate: Date.now() + 3600000,
-          scope: 'gmail-scope',
-          tokenType: 'Bearer'
-        }))
+        initiateAuth: jest.fn().mockReturnValue(
+          createSuccessResult({
+            authUrl: 'https://accounts.google.com/oauth/authorize',
+            codeVerifier: 'test-verifier',
+            state: 'test-state',
+          }),
+        ),
+        exchangeCode: jest.fn().mockResolvedValue(
+          createSuccessResult({
+            accessToken: 'ya29.test-token',
+            refreshToken: 'test-refresh-token',
+            expiryDate: Date.now() + 3600000,
+            scope: 'gmail-scope',
+            tokenType: 'Bearer',
+          }),
+        ),
       };
 
       mockGmailProvider.getOAuthManager.mockReturnValue(mockOAuthManager as any);
       mockSecureStorage.storeGmailTokens.mockResolvedValue(
-        createErrorResult(createProviderError(new Error('Storage failed'), 'STORAGE_ERROR'))
+        createErrorResult(createProviderError(new Error('Storage failed'), 'STORAGE_ERROR')),
       );
 
       // Mock OAuthWindow
       jest.doMock('../../src/main/oauth/OAuthWindow', () => ({
         OAuthWindow: jest.fn().mockImplementation(() => ({
           createOAuthWindow: jest.fn().mockReturnValue(createSuccessResult({})),
-          navigateAndWaitForCallback: jest.fn().mockResolvedValue(createSuccessResult({
-            code: 'auth-code',
-            state: 'test-state'
-          }))
-        }))
+          navigateAndWaitForCallback: jest.fn().mockResolvedValue(
+            createSuccessResult({
+              code: 'auth-code',
+              state: 'test-state',
+            }),
+          ),
+        })),
       }));
 
-      const gmailOAuthHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'gmail:initiate-oauth')?.[1];
+      const gmailOAuthHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'gmail:initiate-oauth',
+      )?.[1];
 
       const result = await gmailOAuthHandler!(createMockIpcEvent(), 'test-api-key');
 
@@ -214,16 +239,19 @@ describe('OAuth Integration', () => {
 
   describe('Gmail Connection Check Integration', () => {
     it('should return connected status when tokens exist', async () => {
-      mockSecureStorage.getGmailTokens.mockResolvedValue(createSuccessResult({
-        accessToken: 'ya29.test-token',
-        refreshToken: 'test-refresh-token',
-        expiryDate: Date.now() + 3600000,
-        scope: 'gmail-scope',
-        tokenType: 'Bearer'
-      }));
+      mockSecureStorage.getGmailTokens.mockResolvedValue(
+        createSuccessResult({
+          accessToken: 'ya29.test-token',
+          refreshToken: 'test-refresh-token',
+          expiryDate: Date.now() + 3600000,
+          scope: 'gmail-scope',
+          tokenType: 'Bearer',
+        }),
+      );
 
-      const checkHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'gmail:check-connection')?.[1];
+      const checkHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'gmail:check-connection',
+      )?.[1];
 
       const result = await checkHandler!(createMockIpcEvent(), 'test-api-key');
 
@@ -231,7 +259,7 @@ describe('OAuth Integration', () => {
       expect(result.data).toMatchObject({
         isConnected: true,
         requiresAuth: false,
-        accountEmail: 'test@gmail.com'
+        accountEmail: 'test@gmail.com',
       });
 
       expect(mockGmailProvider.setStorageManager).toHaveBeenCalledWith(mockSecureStorage);
@@ -241,35 +269,9 @@ describe('OAuth Integration', () => {
     it('should return requires auth when no tokens exist', async () => {
       mockSecureStorage.getGmailTokens.mockResolvedValue(createSuccessResult(null));
 
-      const checkHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'gmail:check-connection')?.[1];
-
-      const result = await checkHandler!(createMockIpcEvent(), 'test-api-key');
-
-      expect(result.success).toBe(true);
-      expect(result.data).toMatchObject({
-        isConnected: false,
-        requiresAuth: true
-      });
-
-      expect(mockGmailProvider.connect).not.toHaveBeenCalled();
-    });
-
-    it('should handle connection failure with expired tokens', async () => {
-      mockSecureStorage.getGmailTokens.mockResolvedValue(createSuccessResult({
-        accessToken: 'ya29.expired-token',
-        refreshToken: 'test-refresh-token',
-        expiryDate: Date.now() - 3600000, // Expired
-        scope: 'gmail-scope',
-        tokenType: 'Bearer'
-      }));
-
-      mockGmailProvider.connect.mockResolvedValue(
-        createErrorResult(createProviderError(new Error('Token expired'), 'AUTHENTICATION_ERROR'))
-      );
-
-      const checkHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'gmail:check-connection')?.[1];
+      const checkHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'gmail:check-connection',
+      )?.[1];
 
       const result = await checkHandler!(createMockIpcEvent(), 'test-api-key');
 
@@ -277,7 +279,37 @@ describe('OAuth Integration', () => {
       expect(result.data).toMatchObject({
         isConnected: false,
         requiresAuth: true,
-        error: 'Token expired'
+      });
+
+      expect(mockGmailProvider.connect).not.toHaveBeenCalled();
+    });
+
+    it('should handle connection failure with expired tokens', async () => {
+      mockSecureStorage.getGmailTokens.mockResolvedValue(
+        createSuccessResult({
+          accessToken: 'ya29.expired-token',
+          refreshToken: 'test-refresh-token',
+          expiryDate: Date.now() - 3600000, // Expired
+          scope: 'gmail-scope',
+          tokenType: 'Bearer',
+        }),
+      );
+
+      mockGmailProvider.connect.mockResolvedValue(
+        createErrorResult(createProviderError(new Error('Token expired'), 'AUTHENTICATION_ERROR')),
+      );
+
+      const checkHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'gmail:check-connection',
+      )?.[1];
+
+      const result = await checkHandler!(createMockIpcEvent(), 'test-api-key');
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({
+        isConnected: false,
+        requiresAuth: true,
+        error: 'Token expired',
       });
     });
   });
@@ -286,8 +318,9 @@ describe('OAuth Integration', () => {
     it('should validate and store OpenAI API key successfully', async () => {
       const testApiKey = 'sk-test-api-key-1234567890';
 
-      const validateHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'openai:validate-key')?.[1];
+      const validateHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'openai:validate-key',
+      )?.[1];
 
       const result = await validateHandler!(createMockIpcEvent(), testApiKey);
 
@@ -296,14 +329,14 @@ describe('OAuth Integration', () => {
         apiKeyValid: true,
         modelAvailable: true,
         responseTimeMs: 150,
-        testedAt: expect.any(Date)
+        testedAt: expect.any(Date),
       });
 
       expect(mockOpenAIProvider.validateConfiguration).toHaveBeenCalledWith({
         apiKey: testApiKey,
         model: 'gpt-4o-mini',
         temperature: 0.1,
-        maxTokens: 1000
+        maxTokens: 1000,
       });
       expect(mockSecureStorage.storeOpenAIKey).toHaveBeenCalledWith(testApiKey);
       expect(mockOpenAIProvider.initialize).toHaveBeenCalled();
@@ -314,8 +347,9 @@ describe('OAuth Integration', () => {
     it('should reject invalid API key format', async () => {
       const invalidApiKey = 'invalid-key-format';
 
-      const validateHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'openai:validate-key')?.[1];
+      const validateHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'openai:validate-key',
+      )?.[1];
 
       const result = await validateHandler!(createMockIpcEvent(), invalidApiKey);
 
@@ -326,13 +360,14 @@ describe('OAuth Integration', () => {
 
     it('should handle OpenAI validation failure', async () => {
       const testApiKey = 'sk-invalid-api-key';
-      
+
       mockOpenAIProvider.validateConfiguration.mockResolvedValue(
-        createErrorResult(createProviderError(new Error('Invalid API key'), 'VALIDATION_ERROR'))
+        createErrorResult(createProviderError(new Error('Invalid API key'), 'VALIDATION_ERROR')),
       );
 
-      const validateHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'openai:validate-key')?.[1];
+      const validateHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'openai:validate-key',
+      )?.[1];
 
       const result = await validateHandler!(createMockIpcEvent(), testApiKey);
 
@@ -342,13 +377,14 @@ describe('OAuth Integration', () => {
 
     it('should handle storage failure during OpenAI setup', async () => {
       const testApiKey = 'sk-test-api-key-1234567890';
-      
+
       mockSecureStorage.storeOpenAIKey.mockResolvedValue(
-        createErrorResult(createProviderError(new Error('Storage failed'), 'STORAGE_ERROR'))
+        createErrorResult(createProviderError(new Error('Storage failed'), 'STORAGE_ERROR')),
       );
 
-      const validateHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'openai:validate-key')?.[1];
+      const validateHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'openai:validate-key',
+      )?.[1];
 
       const result = await validateHandler!(createMockIpcEvent(), testApiKey);
 
@@ -359,15 +395,18 @@ describe('OAuth Integration', () => {
 
   describe('OpenAI Connection Check Integration', () => {
     it('should return configured status when API key exists', async () => {
-      mockSecureStorage.getOpenAIConfig.mockResolvedValue(createSuccessResult({
-        apiKey: 'sk-test-key',
-        model: 'gpt-4o-mini',
-        temperature: 0.1,
-        maxTokens: 1000
-      }));
+      mockSecureStorage.getOpenAIConfig.mockResolvedValue(
+        createSuccessResult({
+          apiKey: 'sk-test-key',
+          model: 'gpt-4o-mini',
+          temperature: 0.1,
+          maxTokens: 1000,
+        }),
+      );
 
-      const checkHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'openai:check-connection')?.[1];
+      const checkHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'openai:check-connection',
+      )?.[1];
 
       const result = await checkHandler!(createMockIpcEvent(), 'test-api-key');
 
@@ -375,7 +414,7 @@ describe('OAuth Integration', () => {
       expect(result.data).toMatchObject({
         isConfigured: true,
         requiresSetup: false,
-        modelAvailable: true
+        modelAvailable: true,
       });
 
       expect(mockOpenAIProvider.setStorageManager).toHaveBeenCalledWith(mockSecureStorage);
@@ -386,34 +425,9 @@ describe('OAuth Integration', () => {
     it('should return requires setup when no API key exists', async () => {
       mockSecureStorage.getOpenAIConfig.mockResolvedValue(createSuccessResult(null));
 
-      const checkHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'openai:check-connection')?.[1];
-
-      const result = await checkHandler!(createMockIpcEvent(), 'test-api-key');
-
-      expect(result.success).toBe(true);
-      expect(result.data).toMatchObject({
-        isConfigured: false,
-        requiresSetup: true
-      });
-
-      expect(mockOpenAIProvider.initialize).not.toHaveBeenCalled();
-    });
-
-    it('should handle initialization failure with stored config', async () => {
-      mockSecureStorage.getOpenAIConfig.mockResolvedValue(createSuccessResult({
-        apiKey: 'sk-invalid-key',
-        model: 'gpt-4o-mini',
-        temperature: 0.1,
-        maxTokens: 1000
-      }));
-
-      mockOpenAIProvider.initialize.mockResolvedValue(
-        createErrorResult(createProviderError(new Error('Invalid API key'), 'AUTHENTICATION_ERROR'))
-      );
-
-      const checkHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'openai:check-connection')?.[1];
+      const checkHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'openai:check-connection',
+      )?.[1];
 
       const result = await checkHandler!(createMockIpcEvent(), 'test-api-key');
 
@@ -421,7 +435,38 @@ describe('OAuth Integration', () => {
       expect(result.data).toMatchObject({
         isConfigured: false,
         requiresSetup: true,
-        error: 'Invalid API key'
+      });
+
+      expect(mockOpenAIProvider.initialize).not.toHaveBeenCalled();
+    });
+
+    it('should handle initialization failure with stored config', async () => {
+      mockSecureStorage.getOpenAIConfig.mockResolvedValue(
+        createSuccessResult({
+          apiKey: 'sk-invalid-key',
+          model: 'gpt-4o-mini',
+          temperature: 0.1,
+          maxTokens: 1000,
+        }),
+      );
+
+      mockOpenAIProvider.initialize.mockResolvedValue(
+        createErrorResult(
+          createProviderError(new Error('Invalid API key'), 'AUTHENTICATION_ERROR'),
+        ),
+      );
+
+      const checkHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'openai:check-connection',
+      )?.[1];
+
+      const result = await checkHandler!(createMockIpcEvent(), 'test-api-key');
+
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({
+        isConfigured: false,
+        requiresSetup: true,
+        error: 'Invalid API key',
       });
     });
   });
@@ -432,8 +477,9 @@ describe('OAuth Integration', () => {
         throw new Error('Unexpected error');
       });
 
-      const gmailOAuthHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'gmail:initiate-oauth')?.[1];
+      const gmailOAuthHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'gmail:initiate-oauth',
+      )?.[1];
 
       const result = await gmailOAuthHandler!(createMockIpcEvent(), 'test-api-key');
 
@@ -445,11 +491,12 @@ describe('OAuth Integration', () => {
     it('should handle provider type mismatch', async () => {
       // Use a mock provider that's not GmailProvider
       const wrongProvider = { name: 'wrong-provider' };
-      
+
       setupIPC(wrongProvider as any, mockOpenAIProvider, mockStorageProvider, mockSecureStorage);
 
-      const gmailOAuthHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'gmail:initiate-oauth')?.[1];
+      const gmailOAuthHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'gmail:initiate-oauth',
+      )?.[1];
 
       const result = await gmailOAuthHandler!(createMockIpcEvent(), 'test-api-key');
 
@@ -463,29 +510,31 @@ describe('OAuth Integration', () => {
     it('should validate API key format before processing', async () => {
       const emptyApiKey = '';
 
-      const validateHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'openai:validate-key')?.[1];
+      const validateHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'openai:validate-key',
+      )?.[1];
 
       const result = await validateHandler!(createMockIpcEvent(), emptyApiKey);
 
       expect(result.success).toBe(false);
       expect(result.error.code).toBe('VALIDATION_ERROR');
-      
+
       // Should not call any provider methods with invalid input
       expect(mockOpenAIProvider.validateConfiguration).not.toHaveBeenCalled();
       expect(mockSecureStorage.storeOpenAIKey).not.toHaveBeenCalled();
     });
 
     it('should handle null/undefined API key gracefully', async () => {
-      const validateHandler = mockIpcMain.handle.mock.calls
-        .find(([event]) => event === 'openai:validate-key')?.[1];
+      const validateHandler = mockIpcMain.handle.mock.calls.find(
+        ([event]) => event === 'openai:validate-key',
+      )?.[1];
 
       const nullResult = await validateHandler!(createMockIpcEvent(), null);
       const undefinedResult = await validateHandler!(createMockIpcEvent(), undefined);
 
       expect(nullResult.success).toBe(false);
       expect(undefinedResult.success).toBe(false);
-      
+
       expect(nullResult.error.code).toBe('VALIDATION_ERROR');
       expect(undefinedResult.error.code).toBe('VALIDATION_ERROR');
     });

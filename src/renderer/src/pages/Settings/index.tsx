@@ -89,9 +89,9 @@ export function Settings(): React.JSX.Element {
 
   const handleSettingChange = (
     key: keyof SettingsState,
-    value: boolean | number | string
+    value: boolean | number | string,
   ): void => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
   const testConnection = (provider: string): void => {
@@ -137,7 +137,7 @@ export function Settings(): React.JSX.Element {
               control={
                 <Switch
                   checked={settings.autoProcessing}
-                  onChange={e => handleSettingChange('autoProcessing', e.target.checked)}
+                  onChange={(e) => handleSettingChange('autoProcessing', e.target.checked)}
                 />
               }
               label="Enable automatic email processing"
@@ -147,7 +147,7 @@ export function Settings(): React.JSX.Element {
               control={
                 <Switch
                   checked={settings.dangerousEmailAlert}
-                  onChange={e => handleSettingChange('dangerousEmailAlert', e.target.checked)}
+                  onChange={(e) => handleSettingChange('dangerousEmailAlert', e.target.checked)}
                 />
               }
               label="Alert for dangerous emails"
@@ -157,7 +157,7 @@ export function Settings(): React.JSX.Element {
               control={
                 <Switch
                   checked={settings.processInBackground}
-                  onChange={e => handleSettingChange('processInBackground', e.target.checked)}
+                  onChange={(e) => handleSettingChange('processInBackground', e.target.checked)}
                 />
               }
               label="Process emails in background"
@@ -167,7 +167,7 @@ export function Settings(): React.JSX.Element {
               label="Max Batch Size"
               type="number"
               value={settings.maxBatchSize}
-              onChange={e => handleSettingChange('maxBatchSize', parseInt(e.target.value) || 100)}
+              onChange={(e) => handleSettingChange('maxBatchSize', parseInt(e.target.value) || 100)}
               inputProps={{ min: 10, max: 1000 }}
               helperText="Number of emails to process in each batch (10-1000)"
             />
@@ -176,7 +176,7 @@ export function Settings(): React.JSX.Element {
               label="AI Confidence Threshold"
               type="number"
               value={settings.aiConfidenceThreshold}
-              onChange={e =>
+              onChange={(e) =>
                 handleSettingChange('aiConfidenceThreshold', parseFloat(e.target.value) || 0.8)
               }
               inputProps={{ min: 0.1, max: 1.0, step: 0.1 }}
@@ -236,7 +236,7 @@ export function Settings(): React.JSX.Element {
                   label="API Key"
                   type="password"
                   value={settings.openaiApiKey}
-                  onChange={e => handleSettingChange('openaiApiKey', e.target.value)}
+                  onChange={(e) => handleSettingChange('openaiApiKey', e.target.value)}
                   placeholder="sk-..."
                   helperText="Your OpenAI API key for email classification"
                 />

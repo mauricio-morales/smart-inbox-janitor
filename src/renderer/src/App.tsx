@@ -1,115 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { Dashboard } from './pages/Dashboard';
 import { Settings } from './pages/Settings';
 import { Onboarding } from './pages/Onboarding';
 import { Layout } from './components/Layout';
+import StartupStateMachine from './components/StartupStateMachine';
 
-// App-level state interface
+// App-level state interface (simplified)
 interface AppState {
-  isInitialized: boolean;
-  isOnboardingComplete: boolean;
-  loading: boolean;
-  error: string | null;
+  showDashboard: boolean;
+  initializationError: string | null;
 }
 
 function App(): React.JSX.Element {
   const [appState, setAppState] = useState<AppState>({
-    isInitialized: false,
-    isOnboardingComplete: false,
-    loading: true,
-    error: null,
+    showDashboard: false,
+    initializationError: null,
   });
 
-  // Initialize the application
-  useEffect(() => {
-    const initializeApp = async (): Promise<void> => {
-      try {
-        // Check if Electron API is available
-        if (
-          typeof globalThis === 'undefined' ||
-          !('window' in globalThis) ||
-          (globalThis as typeof globalThis & { window: { electronAPI?: unknown } }).window
-            .electronAPI == null
-        ) {
-          throw new Error('Electron API not available');
-        }
-
-        const windowObj = (
-          globalThis as typeof globalThis & {
-            window: {
-              electronAPI: {
-                storage: {
-                  getConfig(): Promise<{
-                    success: boolean;
-                    data?: { onboardingComplete?: boolean };
-                  }>;
-                };
-              };
-            };
-          }
-        ).window;
-        // Check both config and actual OAuth credentials
-        const configResult = await windowObj.electronAPI.storage.getConfig();
-        const gmailConnectionResult = await windowObj.electronAPI.oauth.checkGmailConnection();
-        const openaiConnectionResult = await windowObj.electronAPI.oauth.checkOpenAIConnection();
-
-        let onboardingComplete = false;
-        if (configResult.success && gmailConnectionResult.success && openaiConnectionResult.success) {
-          // Check if onboarding was marked complete AND we have valid credentials
-          const configComplete = Boolean(configResult.data?.values?.onboardingComplete);
-          const gmailConnected = Boolean(gmailConnectionResult.data?.isConnected);
-          const openaiConfigured = Boolean(
-            (openaiConnectionResult.data as any)?.isConfigured || 
-            (openaiConnectionResult.data as any)?.modelAvailable
-          );
-          
-          // Only consider onboarding complete if all components are properly configured
-          onboardingComplete = configComplete && gmailConnected && openaiConfigured;
-        }
-
-        setAppState({
-          isInitialized: true,
-          isOnboardingComplete: onboardingComplete,
-          loading: false,
-          error: null,
-        });
-      } catch (error) {
-        // Handle initialization errors (providers are stubs, so this is expected)
-        setAppState({
-          isInitialized: false,
-          isOnboardingComplete: false,
-          loading: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-    };
-
-    void initializeApp();
+  /**
+   * Handle dashboard ready callback from StartupStateMachine
+   * This replaces the complex useEffect logic with a simple callback
+   */
+  const handleDashboardReady = useCallback(() => {
+    console.log('[App] Dashboard ready callback received from StartupStateMachine');
+    setAppState({
+      showDashboard: true,
+      initializationError: null,
+    });
   }, []);
 
-  // Show loading state during initialization
-  if (appState.loading) {
-    return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        height="100vh"
-        flexDirection="column"
-        gap={2}
-      >
-        <CircularProgress size={60} />
-        <Typography variant="h6" color="textSecondary">
-          Initializing Smart Inbox Janitor...
-        </Typography>
-      </Box>
-    );
-  }
-
-  // Show error state if initialization failed
-  if (appState.error !== null) {
+  // Show initialization error if any
+  if (appState.initializationError !== null) {
     return (
       <Box
         display="flex"
@@ -124,7 +47,7 @@ function App(): React.JSX.Element {
           Initialization Error
         </Typography>
         <Typography variant="body1" color="textSecondary" textAlign="center">
-          {appState.error}
+          {appState.initializationError}
         </Typography>
         <Typography variant="body2" color="textSecondary" textAlign="center">
           Please restart the application or contact support if the problem persists.
@@ -133,48 +56,66 @@ function App(): React.JSX.Element {
     );
   }
 
+  // If dashboard is not ready, show StartupStateMachine
+  if (!appState.showDashboard) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 2,
+        }}
+      >
+        <Box
+          sx={{
+            maxWidth: 900,
+            width: '100%',
+            backgroundColor: 'white',
+            borderRadius: 2,
+            boxShadow: 3,
+            p: 3,
+          }}
+        >
+          <StartupStateMachine onDashboardReady={handleDashboardReady} />
+        </Box>
+      </Box>
+    );
+  }
+
+  // Dashboard is ready - show main application with routing
   return (
     <Router>
       <Routes>
-        {/* Onboarding flow - redirect if not completed */}
-        {!appState.isOnboardingComplete && (
-          <>
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="*" element={<Navigate to="/onboarding" replace />} />
-          </>
-        )}
-
-        {/* Main application routes - only available after onboarding */}
-        {appState.isOnboardingComplete && (
-          <>
-            <Route
-              path="/"
-              element={
-                <Layout>
-                  <Dashboard />
-                </Layout>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <Layout>
-                  <Dashboard />
-                </Layout>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <Layout>
-                  <Settings />
-                </Layout>
-              }
-            />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </>
-        )}
+        <Route
+          path="/"
+          element={
+            <Layout>
+              <Dashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <Layout>
+              <Dashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <Layout>
+              <Settings />
+            </Layout>
+          }
+        />
+        {/* Keep onboarding route accessible for manual navigation if needed */}
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Router>
   );

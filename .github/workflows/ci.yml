@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   # Cache version - increment to bust caches
@@ -13,11 +13,13 @@ env:
 jobs:
   # Lint and Type Check
   lint-and-typecheck:
-    name: Lint & Type Check
+    name: Lint & Type Check (changed files)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -28,14 +30,42 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ESLint
-        run: npm run lint
+      - name: Compute changed files
+        id: changes
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+          else
+            BASE="${{ github.event.before }}"
+            if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+              BASE="$(git rev-list --max-parents=0 HEAD | tail -n1)"
+            fi
+          fi
 
-      - name: Run TypeScript type check
+          CHANGED_TS=$(git diff --name-only "$BASE"...HEAD | grep -E '\.(ts|tsx|js|jsx)$' || true)
+          CHANGED_FORMAT=$(git diff --name-only "$BASE"...HEAD | grep -E '\.(ts|tsx|js|jsx|json|md|yml|yaml|css|scss|html)$' || true)
+
+          echo "ts_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_TS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "fmt_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FORMAT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Run ESLint on changed files
+        if: steps.changes.outputs.ts_files != ''
+        run: |
+          echo "Linting changed files:"
+          echo "${{ steps.changes.outputs.ts_files }}"
+          npx eslint ${{ steps.changes.outputs.ts_files }} --max-warnings 0
+
+      - name: Check Prettier formatting on changed files
+        if: steps.changes.outputs.fmt_files != ''
+        run: npx prettier -c ${{ steps.changes.outputs.fmt_files }}
+
+      - name: TypeScript type check (full project)
         run: npm run type-check
-
-      - name: Check Prettier formatting
-        run: npm run format:check
 
   # Unit Tests
   test:

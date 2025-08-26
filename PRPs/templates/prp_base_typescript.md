@@ -186,12 +186,12 @@ export function use{Domain}Action(): {Domain}ActionResult {
 ```yaml
 DATABASE:
   - migration: "Add table 'feature_data' with proper indexes"
-  - client: "@/lib/database/client"
-  - pattern: "createClient() for client components, createServerClient() for server components"
+  - client: '@/lib/database/client'
+  - pattern: 'createClient() for client components, createServerClient() for server components'
 
 CONFIG:
   - add to: .env.local
-  - pattern: "NEXT_PUBLIC_* for client-side env vars"
+  - pattern: 'NEXT_PUBLIC_* for client-side env vars'
   - pattern: "FEATURE_TIMEOUT = process.env.FEATURE_TIMEOUT || '30000'"
 
 ROUTES:

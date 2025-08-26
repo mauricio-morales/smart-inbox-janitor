@@ -7,7 +7,7 @@ An AI-powered email triage assistant that helps you clean your mailbox safely an
 Smart Inbox Janitor helps users clean their mailbox through intelligent automation:
 
 1. **Fetch** batches of emails from your Gmail account
-2. **Score & explain** junk/spam/dangerous vs. keep classifications 
+2. **Score & explain** junk/spam/dangerous vs. keep classifications
 3. **Propose bulk actions** for efficient email management
 4. **Learn** from your explicit feedback to improve over time
 5. **Execute** chosen actions via Gmail API with full user approval
@@ -17,24 +17,28 @@ Smart Inbox Janitor helps users clean their mailbox through intelligent automati
 ## ✨ Key Features
 
 ### 🤖 AI-Powered Classification
+
 - **Smart categorization**: keep, newsletter, promotion, spam, dangerous_phishing, unknown
 - **Confidence scoring**: Clear likelihood ratings with explanations
 - **Bulk grouping**: Automatically groups similar emails for efficient processing
 - **Learning system**: Adapts to your preferences over time
 
 ### 🔒 Privacy & Security
+
 - **Local storage**: All data stored locally on your device
 - **Sanitized processing**: Blocks remote content while analyzing
 - **Encrypted credentials**: Secure token storage using OS keychain
 - **No cloud dependencies**: Your email data never leaves your device
 
 ### ⚡ Efficient Processing
+
 - **Batch processing**: Handles thousands of emails efficiently
 - **Resumable sessions**: Stop and resume processing anytime
 - **Rate limiting**: Respects Gmail API limits with intelligent retry
 - **Cost optimization**: Uses GPT-4o-mini for cost-effective classification
 
 ### 🎛️ Premium User Experience
+
 - **Zero-configuration Gmail**: Simply sign in with existing credentials
 - **Guided OpenAI setup**: Step-by-step wizard for API key configuration
 - **Embedded authentication**: No external browser navigation required
@@ -43,20 +47,24 @@ Smart Inbox Janitor helps users clean their mailbox through intelligent automati
 ## 🏗️ Architecture
 
 ### Email Provider Support
+
 - **Primary**: Gmail (full API integration)
 - **Future**: IMAP and other providers via extensible interface
 
 ### AI Backend
+
 - **Phase 1**: OpenAI GPT-4o-mini (fast, cost-effective)
 - **Future**: Claude, Llama, and local models via pluggable interface
 
 ### Data Storage
+
 - **Desktop**: SQLite with encrypted credentials
 - **Future Browser**: IndexedDB with same interface for web compatibility
 
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js and npm installed
 - Gmail account
 - OpenAI API key
@@ -64,13 +72,14 @@ Smart Inbox Janitor helps users clean their mailbox through intelligent automati
 ### Setup Process
 
 1. **Clone and install**:
+
    ```bash
    git clone https://github.com/mauricio-morales/smart-inbox-janitor.git
    cd smart-inbox-janitor
    npm install
    ```
 
-2. **Gmail Authentication**: 
+2. **Gmail Authentication**:
    - Click "Connect Gmail" in the app
    - Sign in with your existing Gmail credentials
    - No developer configuration required
@@ -105,6 +114,7 @@ The AI categorizes emails into six types:
 - **REPORT_DANGEROUS**: Report phishing/spam then delete
 
 All actions include:
+
 - ✅ **Bulk previews** with impact counts
 - 🔄 **Undo capability** from Gmail trash
 - 📝 **Rule suggestions** for future automation
@@ -129,6 +139,7 @@ Smart Inbox Janitor adapts to your preferences:
 ## 🏃‍♂️ Development
 
 ### Tech Stack
+
 - **Framework**: Electron + React + TypeScript
 - **Database**: SQLite with better-sqlite3
 - **Authentication**: Google OAuth with secure token storage
@@ -136,6 +147,7 @@ Smart Inbox Janitor adapts to your preferences:
 - **UI**: TailwindCSS with modern components
 
 ### Project Structure
+
 ```
 smart-inbox-janitor/
 ├── src/
@@ -148,6 +160,7 @@ smart-inbox-janitor/
 ```
 
 ### Contributing
+
 1. Fork the repository
 2. Create a feature branch
 3. Follow TypeScript and React best practices
@@ -157,18 +170,21 @@ smart-inbox-janitor/
 ## 📈 Roadmap
 
 ### Phase 1: Core Foundation ✅
+
 - Gmail integration with OAuth
 - GPT-4o-mini classification
 - SQLite local storage
 - Basic email processing workflow
 
 ### Phase 2: Enhanced UX 🚧
+
 - Advanced bulk operations
-- Rule management interface  
+- Rule management interface
 - Progress analytics
 - Performance optimization
 
 ### Phase 3: Extensibility 🔮
+
 - IMAP support for other providers
 - Additional LLM backends (Claude, local)
 - Browser-based version

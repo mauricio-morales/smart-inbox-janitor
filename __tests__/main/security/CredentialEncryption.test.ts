@@ -1,9 +1,9 @@
 /**
  * Comprehensive tests for CredentialEncryption OS keychain functionality
- * 
+ *
  * Tests the complete OS keychain storage and retrieval implementation
  * including cross-platform behavior, error handling, and security features.
- * 
+ *
  * @module CredentialEncryption.test
  */
 
@@ -19,11 +19,11 @@ jest.mock('electron', () => ({
   safeStorage: {
     isEncryptionAvailable: jest.fn(),
     encryptString: jest.fn(),
-    decryptString: jest.fn()
+    decryptString: jest.fn(),
   },
   app: {
-    getPath: jest.fn()
-  }
+    getPath: jest.fn(),
+  },
 }));
 
 jest.mock('../../../src/main/security/utils/SecureFileOperations');
@@ -50,22 +50,24 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
-    
+
     // Setup default mock implementations
     mockApp.getPath.mockReturnValue(mockUserDataPath);
     mockSafeStorage.isEncryptionAvailable.mockReturnValue(true);
     mockSafeStorage.encryptString.mockReturnValue(mockEncryptedKey);
     mockSafeStorage.decryptString.mockReturnValue('bW9jay1rZXktZGF0YS0zMi1ieXRlcy1sb25nLXRlc3Q='); // base64 of mock data
-    
+
     mockCryptoUtils.generateRandomBytes.mockReturnValue(mockKeyData);
     mockSecureFileOperations.writeFileAtomically.mockReturnValue(createSuccessResult(undefined));
-    mockSecureFileOperations.verifyFilePermissions.mockReturnValue(createSuccessResult({
-      exists: true,
-      correctPermissions: true,
-      actualMode: 0o600,
-      expectedMode: 0o600
-    }));
-    
+    mockSecureFileOperations.verifyFilePermissions.mockReturnValue(
+      createSuccessResult({
+        exists: true,
+        correctPermissions: true,
+        actualMode: 0o600,
+        expectedMode: 0o600,
+      }),
+    );
+
     mockFs.existsSync.mockReturnValue(true);
     mockFs.readFileSync.mockReturnValue(mockEncryptedKey);
 
@@ -94,8 +96,8 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
         {
           mode: 0o600,
           createParents: true,
-          dirMode: 0o700
-        }
+          dirMode: 0o700,
+        },
       );
 
       // Restore original platform
@@ -111,7 +113,9 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
       // Act & Assert
       expect(() => {
         (credentialEncryption as any).storeInOSKeychain(mockKeyId, mockKeyData);
-      }).toThrow('Linux OS keychain not implemented. Contributions welcome! Visit github.com/mauricio-morales/smart-inbox-janitor');
+      }).toThrow(
+        'Linux OS keychain not implemented. Contributions welcome! Visit github.com/mauricio-morales/smart-inbox-janitor',
+      );
 
       // Restore original platform
       Object.defineProperty(process, 'platform', { value: originalPlatform });
@@ -130,7 +134,9 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
     it('should handle file write errors gracefully', () => {
       // Arrange
       const writeError = new Error('File system error');
-      mockSecureFileOperations.writeFileAtomically.mockReturnValue(createErrorResult(writeError as any));
+      mockSecureFileOperations.writeFileAtomically.mockReturnValue(
+        createErrorResult(writeError as any),
+      );
 
       // Act & Assert
       expect(() => {
@@ -164,11 +170,11 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
       expect(result).toBe(expectedBase64Key);
       expect(mockSafeStorage.isEncryptionAvailable).toHaveBeenCalled();
       expect(mockFs.existsSync).toHaveBeenCalledWith(
-        path.join(mockUserDataPath, 'keychain', `sij-key-${mockKeyId}.enc`)
+        path.join(mockUserDataPath, 'keychain', `sij-key-${mockKeyId}.enc`),
       );
       expect(mockSecureFileOperations.verifyFilePermissions).toHaveBeenCalledWith(
         path.join(mockUserDataPath, 'keychain', `sij-key-${mockKeyId}.enc`),
-        0o600
+        0o600,
       );
       expect(mockSafeStorage.decryptString).toHaveBeenCalledWith(mockEncryptedKey);
     });
@@ -199,12 +205,14 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
 
     it('should return null when file permissions are incorrect', () => {
       // Arrange
-      mockSecureFileOperations.verifyFilePermissions.mockReturnValue(createSuccessResult({
-        exists: true,
-        correctPermissions: false,
-        actualMode: 0o644,
-        expectedMode: 0o600
-      }));
+      mockSecureFileOperations.verifyFilePermissions.mockReturnValue(
+        createSuccessResult({
+          exists: true,
+          correctPermissions: false,
+          actualMode: 0o644,
+          expectedMode: 0o600,
+        }),
+      );
 
       // Act
       const result = (credentialEncryption as any).retrieveFromOSKeychain(mockKeyId);
@@ -217,7 +225,7 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
     it('should return null when permission verification fails', () => {
       // Arrange
       mockSecureFileOperations.verifyFilePermissions.mockReturnValue(
-        createErrorResult(new Error('Permission check failed') as any)
+        createErrorResult(new Error('Permission check failed') as any),
       );
 
       // Act
@@ -271,7 +279,7 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
 
       // Assert
       expect(mockFs.existsSync).toHaveBeenCalledWith(
-        path.join(mockUserDataPath, 'keychain', 'sij-key-master.enc')
+        path.join(mockUserDataPath, 'keychain', 'sij-key-master.enc'),
       );
     });
   });
@@ -279,7 +287,7 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
   describe('Cross-platform behavior', () => {
     const platforms = ['darwin', 'win32', 'linux'];
 
-    platforms.forEach(platform => {
+    platforms.forEach((platform) => {
       it(`should handle ${platform} platform correctly`, () => {
         // Arrange
         const originalPlatform = process.platform;
@@ -325,11 +333,9 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
 
       // Assert
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Security Event: os_keychain_store')
+        expect.stringContaining('Security Event: os_keychain_store'),
       );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('success: true')
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('success: true'));
     });
 
     it('should log successful retrieve operations', () => {
@@ -338,11 +344,9 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
 
       // Assert
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Security Event: os_keychain_retrieve')
+        expect.stringContaining('Security Event: os_keychain_retrieve'),
       );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('success: true')
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('success: true'));
     });
 
     it('should not log sensitive data in error messages', () => {
@@ -360,12 +364,8 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
       }
 
       // Assert
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[REDACTED_API_KEY]')
-      );
-      expect(consoleWarnSpy).not.toHaveBeenCalledWith(
-        expect.stringContaining('sk-test123456789')
-      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('[REDACTED_API_KEY]'));
+      expect(consoleWarnSpy).not.toHaveBeenCalledWith(expect.stringContaining('sk-test123456789'));
 
       consoleWarnSpy.mockRestore();
     });

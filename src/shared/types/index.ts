@@ -1,9 +1,9 @@
 /**
  * Centralized type exports for Smart Inbox Janitor
- * 
+ *
  * This module provides a single entry point for importing all type definitions
  * while maintaining tree-shaking compatibility and logical organization.
- * 
+ *
  * @module SharedTypes
  */
 
@@ -72,9 +72,7 @@ export type {
   UserPreferences,
 } from './config.types.js';
 
-export {
-  DEFAULT_APP_CONFIG,
-} from './config.types.js';
+export { DEFAULT_APP_CONFIG } from './config.types.js';
 
 // Email provider types
 export type {

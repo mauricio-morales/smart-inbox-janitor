@@ -39,8 +39,8 @@ context:
       copy: [pattern name]
 
   gotchas:
-    - issue: "Library X requires Y"
-      fix: "Always do Z first"
+    - issue: 'Library X requires Y'
+      fix: 'Always do Z first'
 ```
 
 ## Task Examples with Validation

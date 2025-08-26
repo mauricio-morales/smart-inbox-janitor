@@ -1,10 +1,12 @@
 Quick refactoring check for Python code focusing on:
+
 - Vertical slice boundaries
 - Function complexity
 - Type safety with Pydantic v2
 - Single responsibility
 
 Scan for:
+
 1. Functions >20 lines that need decomposition
 2. long files that need decomposition
 3. Missing Pydantic models for I/O
@@ -13,11 +15,13 @@ Scan for:
 6. Missing type hints
 
 Desired architecture:
+
 - Vertical slice boundaries
 - Single responsibility
-- Type safety with Pydantic v2 
+- Type safety with Pydantic v2
 
 For each issue found, provide:
+
 - Location
 - Why it's a problem
 - Specific fix with code example

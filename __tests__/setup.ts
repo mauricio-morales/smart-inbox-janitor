@@ -1,6 +1,6 @@
 /**
  * Jest test setup file
- * 
+ *
  * This file is run before each test suite to configure the testing environment
  * for TypeScript interfaces and provider abstractions.
  */
@@ -37,11 +37,12 @@ declare module '@jest/types' {
 // Custom Jest matchers for Result pattern validation
 expect.extend({
   toBeValidResult(received: unknown) {
-    const pass = typeof received === 'object' && 
-                 received !== null && 
-                 'success' in received &&
-                 typeof (received as any).success === 'boolean';
-    
+    const pass =
+      typeof received === 'object' &&
+      received !== null &&
+      'success' in received &&
+      typeof (received as any).success === 'boolean';
+
     if (pass) {
       return {
         message: () => `expected ${JSON.stringify(received)} not to be a valid Result type`,
@@ -49,20 +50,22 @@ expect.extend({
       };
     } else {
       return {
-        message: () => `expected ${JSON.stringify(received)} to be a valid Result type with 'success' boolean property`,
+        message: () =>
+          `expected ${JSON.stringify(received)} to be a valid Result type with 'success' boolean property`,
         pass: false,
       };
     }
   },
 
   toBeValidProviderInterface(received: unknown) {
-    const pass = typeof received === 'object' && 
-                 received !== null && 
-                 'name' in received &&
-                 'version' in received &&
-                 typeof (received as any).name === 'string' &&
-                 typeof (received as any).version === 'string';
-    
+    const pass =
+      typeof received === 'object' &&
+      received !== null &&
+      'name' in received &&
+      'version' in received &&
+      typeof (received as any).name === 'string' &&
+      typeof (received as any).version === 'string';
+
     if (pass) {
       return {
         message: () => `expected ${JSON.stringify(received)} not to be a valid Provider interface`,
@@ -70,7 +73,8 @@ expect.extend({
       };
     } else {
       return {
-        message: () => `expected ${JSON.stringify(received)} to be a valid Provider interface with 'name' and 'version' string properties`,
+        message: () =>
+          `expected ${JSON.stringify(received)} to be a valid Provider interface with 'name' and 'version' string properties`,
         pass: false,
       };
     }
@@ -82,7 +86,7 @@ process.env.NODE_ENV = 'test';
 
 // Suppress specific warnings that are expected in test environment
 const originalWarnings = process.emitWarning;
-process.emitWarning = function(warning: string | Error, ...args: any[]) {
+process.emitWarning = function (warning: string | Error, ...args: any[]) {
   // Suppress deprecation warnings from dependencies during testing
   if (typeof warning === 'string' && warning.includes('better-sqlite3')) {
     return;
@@ -90,7 +94,7 @@ process.emitWarning = function(warning: string | Error, ...args: any[]) {
   if (typeof warning === 'object' && warning.name === 'DeprecationWarning') {
     return;
   }
-  
+
   // Call original with all arguments
   // @ts-ignore - complex overload handling for process.emitWarning
   return originalWarnings.call(process, warning, ...args);

@@ -1,10 +1,9 @@
 ---
-name: "OS Keychain Storage Implementation for Credential Encryption"
+name: 'OS Keychain Storage Implementation for Credential Encryption'
 description: |
   Complete the TODO implementations in CredentialEncryption.ts for OS keychain storage
   functionality, enabling secure credential storage on Windows and macOS platforms
   with proper fallback handling for Linux systems.
-
 ---
 
 ## Goal
@@ -13,7 +12,8 @@ description: |
 
 **Deliverable**: Complete implementation of `storeInOSKeychain()` and `retrieveFromOSKeychain()` methods in `src/main/security/CredentialEncryption.ts` with comprehensive error handling, cross-platform support, and full test coverage.
 
-**Success Definition**: 
+**Success Definition**:
+
 - Windows/macOS users can securely store/retrieve credentials using OS keychain
 - Linux users receive clear error message with contribution invitation
 - All existing tests pass + new tests achieve >95% coverage
@@ -26,14 +26,16 @@ description: |
 
 **Use Case**: Application startup requiring OAuth tokens, API keys, and encrypted credentials to be retrieved from secure OS-level storage without user password prompts
 
-**User Journey**: 
+**User Journey**:
+
 1. User launches Smart Inbox Janitor application
 2. Application attempts to retrieve stored credentials from OS keychain
 3. OS keychain provides transparent access (no password prompts)
 4. Application uses retrieved credentials for Gmail/OpenAI authentication
 5. New credentials are automatically stored in OS keychain for future sessions
 
-**Pain Points Addressed**: 
+**Pain Points Addressed**:
+
 - Eliminates need for users to re-enter API keys on every app restart
 - Provides enterprise-grade security without complexity
 - Prevents credential exposure in plaintext files or weak encryption
@@ -235,7 +237,7 @@ Task 2: MODIFY src/main/security/CredentialEncryption.ts - storeInOSKeychain() m
   - DEPENDENCIES: Import SecureFileOperations utility from Task 1
   - CRITICAL: Use app.getPath('userData'), atomic writes, file permissions 0o600
 
-Task 3: MODIFY src/main/security/CredentialEncryption.ts - retrieveFromOSKeychain() method  
+Task 3: MODIFY src/main/security/CredentialEncryption.ts - retrieveFromOSKeychain() method
   - IMPLEMENT: Complete TODO method at line 436 with graceful error handling
   - FOLLOW pattern: Existing decryptCredential() method error handling approach
   - NAMING: Keep existing method signature, return string | null as specified
@@ -251,7 +253,7 @@ Task 4: ADD Linux platform error handling with contribution invitation
 
 Task 5: CREATE __tests__/main/security/CredentialEncryption.test.ts
   - IMPLEMENT: Comprehensive test coverage for OS keychain methods
-  - FOLLOW pattern: __tests__/setup.ts custom matchers and Result<T> validation  
+  - FOLLOW pattern: __tests__/setup.ts custom matchers and Result<T> validation
   - NAMING: test_storeInOSKeychain_success, test_retrieveFromOSKeychain_platformErrors
   - COVERAGE: Happy path, error scenarios, cross-platform behavior, Linux fallback
   - PLACEMENT: Mirror source structure in __tests__ directory
@@ -259,7 +261,7 @@ Task 5: CREATE __tests__/main/security/CredentialEncryption.test.ts
 Task 6: CREATE __tests__/main/security/utils/SecureFileOperations.test.ts
   - IMPLEMENT: Unit tests for atomic file operations and permission handling
   - FOLLOW pattern: Existing test patterns with mocked file system operations
-  - MOCK: Node.js fs module methods for predictable test behavior  
+  - MOCK: Node.js fs module methods for predictable test behavior
   - COVERAGE: Atomic writes, permission setting, error recovery, path validation
   - PLACEMENT: Test utilities alongside code they test
 
@@ -282,20 +284,20 @@ private storeInOSKeychain(keyId: string, keyData: Buffer): void {
     }
     throw new Error('OS encryption not available');
   }
-  
+
   // PATTERN: Convert to base64 for string handling (follow existing patterns)
   const keyDataB64 = keyData.toString('base64');
-  
+
   // PATTERN: Use safeStorage.encryptString() for OS encryption
   const encryptedKey = safeStorage.encryptString(keyDataB64);
-  
+
   // PATTERN: Store in app.getPath('userData') with atomic operations
   const userDataPath = app.getPath('userData');
   const keyPath = path.join(userDataPath, 'keychain', `sij-key-${keyId}.enc`);
-  
+
   // CRITICAL: Atomic write pattern to prevent corruption
   SecureFileOperations.writeFileAtomically(keyPath, encryptedKey, { mode: 0o600 });
-  
+
   // CRITICAL: Security audit logging (without sensitive data)
   this.logSecurityEvent('os_keychain_store', keyId, true);
 }
@@ -305,26 +307,26 @@ private retrieveFromOSKeychain(keyId: string): string | null {
   if (!this.isOSEncryptionAvailable()) {
     return null; // Graceful degradation to fallback encryption
   }
-  
+
   try {
     const keyPath = path.join(app.getPath('userData'), 'keychain', `sij-key-${keyId}.enc`);
-    
+
     // PATTERN: Check existence before reading (avoid exceptions)
     if (!fs.existsSync(keyPath)) {
       return null;
     }
-    
+
     // PATTERN: Verify file permissions before sensitive operations
     SecureFileOperations.verifyFilePermissions(keyPath, 0o600);
-    
+
     const encryptedData = fs.readFileSync(keyPath);
     const decryptedKey = safeStorage.decryptString(encryptedData);
-    
+
     // CRITICAL: Validate decrypted data format
     if (!this.isValidBase64(decryptedKey)) {
       throw new Error('Invalid decrypted key format');
     }
-    
+
     this.logSecurityEvent('os_keychain_retrieve', keyId, true);
     return decryptedKey;
   } catch (error) {
@@ -338,20 +340,20 @@ private retrieveFromOSKeychain(keyId: string): string | null {
 export class SecureFileOperations {
   static writeFileAtomically(filePath: string, data: Buffer, options?: { mode?: number }): void {
     const tempPath = `${filePath}.tmp.${crypto.randomBytes(8).toString('hex')}`;
-    
+
     try {
       // PATTERN: Create parent directory if needed (follow SQLiteProvider pattern)
       const parentDir = path.dirname(filePath);
       if (!fs.existsSync(parentDir)) {
         fs.mkdirSync(parentDir, { recursive: true, mode: 0o700 });
       }
-      
+
       // PATTERN: Write to temp file first for atomicity
       fs.writeFileSync(tempPath, data, { mode: options?.mode ?? 0o600, flag: 'wx' });
-      
+
       // PATTERN: Set cross-platform permissions
       this.setCrossPlatformPermissions(tempPath, options?.mode ?? 0o600);
-      
+
       // CRITICAL: Atomic rename to final location
       fs.renameSync(tempPath, filePath);
     } catch (error) {
@@ -370,19 +372,19 @@ export class SecureFileOperations {
 ```yaml
 SECURITY:
   - add to: src/main/security/CredentialEncryption.ts
-  - pattern: "Complete existing TODO methods without breaking interface"
-  
+  - pattern: 'Complete existing TODO methods without breaking interface'
+
 TESTING:
   - add to: __tests__/main/security/
-  - pattern: "Follow __tests__/setup.ts custom matchers for Result<T> validation"
+  - pattern: 'Follow __tests__/setup.ts custom matchers for Result<T> validation'
 
 LOGGING:
   - add to: existing SecurityAuditEvent system
-  - pattern: "Use same event types and context as SecureStorageManager.ts"
+  - pattern: 'Use same event types and context as SecureStorageManager.ts'
 
 FILE_SYSTEM:
   - add to: app.getPath('userData')/keychain/ directory
-  - pattern: "Follow SQLiteProvider.ts directory creation and permission patterns"
+  - pattern: 'Follow SQLiteProvider.ts directory creation and permission patterns'
 ```
 
 ## Validation Loop
@@ -446,7 +448,7 @@ npm run ci:security                  # Security audit with npm audit
 
 # Cross-platform compatibility testing
 # Verify Windows DPAPI integration
-# Verify macOS Keychain integration  
+# Verify macOS Keychain integration
 # Verify Linux graceful degradation
 
 # Performance validation
@@ -467,14 +469,14 @@ npm run ci:security                  # Security audit with npm audit
 - [ ] All 4 validation levels completed successfully
 - [ ] All tests pass: `npm run test`
 - [ ] No linting errors: `npm run lint`
-- [ ] No type errors: `npm run type-check`  
+- [ ] No type errors: `npm run type-check`
 - [ ] No formatting issues: `npm run format:check`
 - [ ] Security audit clean: `npm run ci:security`
 
 ### Feature Validation
 
 - [ ] Windows DPAPI keychain storage working
-- [ ] macOS Keychain Services storage working  
+- [ ] macOS Keychain Services storage working
 - [ ] Linux shows clear contribution invitation message
 - [ ] Graceful fallback to encrypted file storage when keychain unavailable
 - [ ] All error scenarios handled with proper Result<T> returns

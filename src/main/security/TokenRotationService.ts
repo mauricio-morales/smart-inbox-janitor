@@ -1,15 +1,14 @@
 /**
  * Token Rotation Service for Smart Inbox Janitor
- * 
+ *
  * Automatic token rotation with scheduling and failure handling.
  * Integrates with SecureStorageManager for seamless credential lifecycle management
  * with 5-minute expiration buffer as specified in PRP requirements.
- * 
+ *
  * @module TokenRotationService
  */
 
 /* eslint-env node */
-/* global setInterval, clearInterval */
 
 import {
   Result,
@@ -19,7 +18,7 @@ import {
   ConfigurationError,
   GmailTokens,
   TokenRefreshRequest,
-  TokenRefreshResponse
+  TokenRefreshResponse,
 } from '@shared/types';
 import { SecureStorageManager } from './SecureStorageManager';
 
@@ -57,7 +56,7 @@ export interface RotationStatus {
 
 /**
  * Token Rotation Service
- * 
+ *
  * Provides automatic token rotation with:
  * - Scheduled rotation before expiration
  * - Exponential backoff retry logic
@@ -77,13 +76,13 @@ export class TokenRotationService {
     this.rotationStatus = {
       active: false,
       failedAttempts: 0,
-      currentlyRotating: []
+      currentlyRotating: [],
     };
   }
 
   /**
    * Initialize the token rotation service
-   * 
+   *
    * @param config - Optional rotation configuration
    * @returns Result indicating initialization success or failure
    */
@@ -92,7 +91,7 @@ export class TokenRotationService {
       // Update configuration
       this.config = {
         ...this.config,
-        ...config
+        ...config,
       };
 
       this.initialized = true;
@@ -105,14 +104,14 @@ export class TokenRotationService {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown initialization error';
       return createErrorResult(
-        new ConfigurationError(`Token rotation service initialization failed: ${message}`)
+        new ConfigurationError(`Token rotation service initialization failed: ${message}`),
       );
     }
   }
 
   /**
    * Start the automatic token rotation scheduler
-   * 
+   *
    * @returns Result indicating scheduler start success or failure
    */
   async startRotationScheduler(): Promise<Result<void>> {
@@ -138,14 +137,14 @@ export class TokenRotationService {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown scheduler error';
       return createErrorResult(
-        new SecurityError(`Failed to start token rotation scheduler: ${message}`)
+        new SecurityError(`Failed to start token rotation scheduler: ${message}`),
       );
     }
   }
 
   /**
    * Stop the automatic token rotation scheduler
-   * 
+   *
    * @returns Result indicating scheduler stop success or failure
    */
   stopRotationScheduler(): Result<void> {
@@ -162,14 +161,14 @@ export class TokenRotationService {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown scheduler error';
       return createErrorResult(
-        new SecurityError(`Failed to stop token rotation scheduler: ${message}`)
+        new SecurityError(`Failed to stop token rotation scheduler: ${message}`),
       );
     }
   }
 
   /**
    * Manually rotate tokens for a specific provider
-   * 
+   *
    * @param provider - Provider identifier (e.g., 'gmail')
    * @returns Result indicating rotation success or failure
    */
@@ -181,8 +180,8 @@ export class TokenRotationService {
         return createErrorResult(
           new SecurityError(`Token rotation already in progress for provider: ${provider}`, {
             provider,
-            currentlyRotating: this.rotationStatus.currentlyRotating
-          })
+            currentlyRotating: this.rotationStatus.currentlyRotating,
+          }),
         );
       }
 
@@ -195,29 +194,29 @@ export class TokenRotationService {
           default:
             return createErrorResult(
               new ConfigurationError(`Unsupported provider for token rotation: ${provider}`, {
-                provider
-              })
+                provider,
+              }),
             );
         }
       } finally {
         // Remove provider from currently rotating list
         this.rotationStatus.currentlyRotating = this.rotationStatus.currentlyRotating.filter(
-          p => p !== provider
+          (p) => p !== provider,
         );
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown rotation error';
       return createErrorResult(
         new SecurityError(`Failed to rotate tokens for ${provider}: ${message}`, {
-          provider
-        })
+          provider,
+        }),
       );
     }
   }
 
   /**
    * Get current rotation status
-   * 
+   *
    * @returns Current rotation status
    */
   getRotationStatus(): RotationStatus {
@@ -226,7 +225,7 @@ export class TokenRotationService {
 
   /**
    * Update rotation configuration
-   * 
+   *
    * @param config - Configuration updates
    * @returns Result indicating update success or failure
    */
@@ -234,7 +233,7 @@ export class TokenRotationService {
     try {
       this.config = {
         ...this.config,
-        ...config
+        ...config,
       };
 
       // Restart scheduler if configuration changed and service is active
@@ -250,33 +249,33 @@ export class TokenRotationService {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown configuration error';
       return createErrorResult(
-        new ConfigurationError(`Failed to update rotation configuration: ${message}`)
+        new ConfigurationError(`Failed to update rotation configuration: ${message}`),
       );
     }
   }
 
   /**
    * Shutdown the token rotation service
-   * 
+   *
    * @returns Result indicating shutdown success or failure
    */
   shutdown(): Result<void> {
     try {
       this.stopRotationScheduler();
-      
+
       this.rotationStatus = {
         active: false,
         failedAttempts: 0,
-        currentlyRotating: []
+        currentlyRotating: [],
       };
-      
+
       this.initialized = false;
 
       return createSuccessResult(undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown shutdown error';
       return createErrorResult(
-        new SecurityError(`Token rotation service shutdown failed: ${message}`)
+        new SecurityError(`Token rotation service shutdown failed: ${message}`),
       );
     }
   }
@@ -295,7 +294,7 @@ export class TokenRotationService {
     } catch {
       this.rotationStatus.failedAttempts++;
       // Token rotation check failed - incrementing failed attempts
-      
+
       // Implement exponential backoff for failures
       if (this.rotationStatus.failedAttempts >= this.config.maxRetryAttempts) {
         // Maximum rotation retry attempts reached, stopping scheduler
@@ -332,15 +331,17 @@ export class TokenRotationService {
     try {
       const tokensResult = await this.secureStorageManager.getGmailTokens();
       if (!tokensResult.success || !tokensResult.data) {
-        return createErrorResult(
-          new SecurityError('No Gmail tokens found for rotation')
-        );
+        return createErrorResult(new SecurityError('No Gmail tokens found for rotation'));
       }
 
       const currentTokens = tokensResult.data;
-      if (currentTokens.refreshToken === undefined || currentTokens.refreshToken === null || currentTokens.refreshToken === '') {
+      if (
+        currentTokens.refreshToken === undefined ||
+        currentTokens.refreshToken === null ||
+        currentTokens.refreshToken === ''
+      ) {
         return createErrorResult(
-          new SecurityError('No refresh token available for Gmail token rotation')
+          new SecurityError('No refresh token available for Gmail token rotation'),
         );
       }
 
@@ -349,7 +350,7 @@ export class TokenRotationService {
         provider: 'gmail',
         refreshToken: currentTokens.refreshToken,
         scopes: currentTokens.scope?.split(' ') ?? [],
-        forceRefresh: true
+        forceRefresh: true,
       };
 
       // Perform token refresh (placeholder implementation)
@@ -364,28 +365,26 @@ export class TokenRotationService {
         refreshToken: refreshResult.data.refreshToken ?? currentTokens.refreshToken,
         expiryDate: refreshResult.data.expiresAt.getTime(),
         scope: refreshResult.data.scope ?? currentTokens.scope,
-        tokenType: refreshResult.data.tokenType
+        tokenType: refreshResult.data.tokenType,
       };
 
       // Store the new tokens
       const storeResult = await this.secureStorageManager.storeGmailTokens(newTokens, {
         provider: 'gmail',
         shouldExpire: true,
-        metadata: { rotatedAt: new Date().toISOString() }
+        metadata: { rotatedAt: new Date().toISOString() },
       });
 
       return storeResult;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown rotation error';
-      return createErrorResult(
-        new SecurityError(`Gmail token rotation failed: ${message}`)
-      );
+      return createErrorResult(new SecurityError(`Gmail token rotation failed: ${message}`));
     }
   }
 
   /**
    * Perform token refresh with OAuth provider
-   * 
+   *
    * @param request - Token refresh request
    * @returns Result containing new tokens
    */
@@ -393,14 +392,14 @@ export class TokenRotationService {
     try {
       // Placeholder implementation for token refresh
       // In a real implementation, this would make HTTP requests to Google OAuth endpoints
-      
+
       // Simulate successful token refresh
       const response: TokenRefreshResponse = {
         accessToken: `ya29.${Math.random().toString(36).substring(2, 15)}`,
         refreshToken: request.refreshToken, // Usually unchanged
         expiresAt: new Date(Date.now() + 3600000), // 1 hour from now
         scope: request.scopes?.join(' '),
-        tokenType: 'Bearer'
+        tokenType: 'Bearer',
       };
 
       return createSuccessResult(response);
@@ -408,8 +407,8 @@ export class TokenRotationService {
       const message = error instanceof Error ? error.message : 'Unknown refresh error';
       return createErrorResult(
         new SecurityError(`Token refresh failed: ${message}`, {
-          provider: request.provider
-        })
+          provider: request.provider,
+        }),
       );
     }
   }
@@ -423,7 +422,7 @@ export class TokenRotationService {
       expirationBufferMs: 5 * 60 * 1000, // 5 minutes as specified in PRP
       maxRetryAttempts: 3,
       retryDelayMultiplier: 2,
-      enabled: true
+      enabled: true,
     };
   }
 

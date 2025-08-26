@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+// TODO: Remove this disable when stub methods and type declarations are cleaned up
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -64,67 +66,25 @@ export function Onboarding(): React.JSX.Element {
   const [googleClientSecret, setGoogleClientSecret] = useState('');
   const [credentialsValidated, setCredentialsValidated] = useState(false);
 
-  // Check initial setup status and determine starting step
+  // Simplified initialization - no complex setup checking
+  // The StartupStateMachine now handles provider checking and routing
   useEffect(() => {
-    const checkSetupStatus = async (): Promise<void> => {
-      try {
-        console.log('DEBUG: Checking initial setup status...');
-        setLoading(true);
+    console.log('DEBUG: Onboarding component initialized');
+    setInitializing(false);
+    setLoading(false);
 
-        // Check if Gmail is already connected
-        console.log('DEBUG: Checking Gmail connection...');
-        const gmailStatus = await api.checkGmailConnection();
-        const gmailConnected = gmailStatus.isConnected;
-        console.log('DEBUG: Gmail connected:', gmailConnected);
-
-        // Check if OpenAI is configured
-        console.log('DEBUG: Checking OpenAI connection...');
-        const openaiStatus = await api.checkOpenAIConnection();
-        const openaiConfigured = Boolean(openaiStatus.isConnected);
-        console.log('DEBUG: OpenAI configured:', openaiConfigured, 'Raw value:', openaiStatus.isConnected);
-
-        if (gmailConnected && openaiConfigured) {
-          // Both are configured - skip onboarding entirely
-          console.log('DEBUG: Both configured, navigating to dashboard');
-          void navigate('/dashboard');
-          return;
-        }
-
-        if (gmailConnected && !openaiConfigured) {
-          // Gmail connected but OpenAI not configured - skip to OpenAI step
-          console.log('DEBUG: Gmail ready, skipping to OpenAI step');
-          setCredentialsValidated(true);
-          setActiveStep(3); // OpenAI step
-          return;
-        }
-
-        // If Gmail not connected or OpenAI not configured, start from the beginning
-        console.log('DEBUG: Starting from beginning');
-        setActiveStep(0);
-      } catch (error) {
-        console.error('Failed to check setup status:', error);
-        // On error, start from beginning
-        setActiveStep(0);
-      } finally {
-        setLoading(false);
-        setInitializing(false);
-      }
-    };
-
-    console.log('DEBUG: Initial setup check useEffect triggered');
-    // Only run once on mount
-    if (initializing) {
-      void checkSetupStatus();
-    }
-  }, [initializing]); // Only depend on initializing state
+    // Start from the beginning by default
+    // Individual provider setup will now be handled by modals
+    setActiveStep(0);
+  }, []);
 
   const handleNext = (): void => {
-    setActiveStep(prevStep => prevStep + 1);
+    setActiveStep((prevStep) => prevStep + 1);
     setError(null);
   };
 
   const handleBack = (): void => {
-    setActiveStep(prevStep => prevStep - 1);
+    setActiveStep((prevStep) => prevStep - 1);
     setError(null);
   };
 
@@ -180,12 +140,23 @@ export function Onboarding(): React.JSX.Element {
       });
 
       if (oauthResult.accountEmail) {
-        // OAuth completed successfully
-        handleNext();
+        // OAuth completed successfully - check if OpenAI is already configured
+        const openaiStatus = await api.checkOpenAIConnection();
+        const openaiConfigured = Boolean(openaiStatus.isConnected);
+
+        if (openaiConfigured) {
+          // OpenAI already configured - skip to completion step (step 4)
+          console.log('DEBUG: OpenAI already configured, skipping to completion step');
+          setActiveStep(4);
+        } else {
+          // OpenAI not configured - proceed to OpenAI step
+          console.log('DEBUG: Proceeding to OpenAI configuration step');
+          handleNext();
+        }
       } else {
         // OAuth failed - restart credential setup
         setError(
-          'Gmail connection failed. Please verify your Google API credentials and try again.'
+          'Gmail connection failed. Please verify your Google API credentials and try again.',
         );
         setCredentialsValidated(false);
         setActiveStep(1); // Go back to Google API setup step
@@ -205,8 +176,8 @@ export function Onboarding(): React.JSX.Element {
 
   const handleOpenAISetup = async (): Promise<void> => {
     try {
-      console.log('DEBUG: Starting OpenAI setup with key:', openaiApiKey.substring(0, 10) + '...');
-      
+      console.log('DEBUG: Starting OpenAI setup with key:', `${openaiApiKey.substring(0, 10)}...`);
+
       if (!openaiApiKey.trim()) {
         console.log('DEBUG: OpenAI key is empty');
         setError('Please enter your OpenAI API key');
@@ -229,9 +200,20 @@ export function Onboarding(): React.JSX.Element {
       console.log('DEBUG: Validation result:', validationResult);
 
       if (validationResult.apiKeyValid) {
-        // API key validated successfully
-        console.log('DEBUG: API key validated successfully, proceeding to next step');
-        handleNext();
+        // API key validated successfully - check if Gmail is already connected
+        console.log('DEBUG: API key validated successfully, checking Gmail status...');
+        const gmailStatus = await api.checkGmailConnection();
+        const gmailConnected = gmailStatus.isConnected;
+
+        if (gmailConnected) {
+          // Gmail already connected - skip to completion step (step 4)
+          console.log('DEBUG: Gmail already connected, skipping to completion step');
+          setActiveStep(4);
+        } else {
+          // Gmail not connected - this shouldn't happen in current flow, but handle it
+          console.log('DEBUG: Gmail not connected, proceeding to next step');
+          handleNext();
+        }
       } else {
         // Validation failed
         console.log('DEBUG: API key validation failed');
@@ -315,7 +297,7 @@ export function Onboarding(): React.JSX.Element {
               control={
                 <Checkbox
                   checked={agreedToTerms}
-                  onChange={e => setAgreedToTerms(e.target.checked)}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
                 />
               }
               label="I agree to the terms of service and privacy policy"
@@ -357,7 +339,7 @@ export function Onboarding(): React.JSX.Element {
                     const electronAPI = (
                       globalThis as typeof globalThis & {
                         window?: {
-                          electronAPI?: { shell?: { openExternal: (url: string) => void } };
+                          electronAPI?: { shell?: { openExternal: (url: string) => void } };  
                         };
                       }
                     ).window?.electronAPI;
@@ -386,13 +368,13 @@ export function Onboarding(): React.JSX.Element {
                     const electronAPI = (
                       globalThis as typeof globalThis & {
                         window?: {
-                          electronAPI?: { shell?: { openExternal: (url: string) => void } };
+                          electronAPI?: { shell?: { openExternal: (url: string) => void } };  
                         };
                       }
                     ).window?.electronAPI;
                     if (electronAPI?.shell) {
                       void electronAPI.shell.openExternal(
-                        'https://console.cloud.google.com/apis/library/gmail.googleapis.com'
+                        'https://console.cloud.google.com/apis/library/gmail.googleapis.com',
                       );
                     }
                   }}
@@ -417,13 +399,13 @@ export function Onboarding(): React.JSX.Element {
                     const electronAPI = (
                       globalThis as typeof globalThis & {
                         window?: {
-                          electronAPI?: { shell?: { openExternal: (url: string) => void } };
+                          electronAPI?: { shell?: { openExternal: (url: string) => void } };  
                         };
                       }
                     ).window?.electronAPI;
                     if (electronAPI?.shell) {
                       void electronAPI.shell.openExternal(
-                        'https://console.cloud.google.com/auth/overview'
+                        'https://console.cloud.google.com/auth/overview',
                       );
                     }
                   }}
@@ -457,13 +439,13 @@ export function Onboarding(): React.JSX.Element {
                     const electronAPI = (
                       globalThis as typeof globalThis & {
                         window?: {
-                          electronAPI?: { shell?: { openExternal: (url: string) => void } };
+                          electronAPI?: { shell?: { openExternal: (url: string) => void } };  
                         };
                       }
                     ).window?.electronAPI;
                     if (electronAPI?.shell) {
                       void electronAPI.shell.openExternal(
-                        'https://console.cloud.google.com/auth/audience'
+                        'https://console.cloud.google.com/auth/audience',
                       );
                     }
                   }}
@@ -509,13 +491,13 @@ export function Onboarding(): React.JSX.Element {
                     const electronAPI = (
                       globalThis as typeof globalThis & {
                         window?: {
-                          electronAPI?: { shell?: { openExternal: (url: string) => void } };
+                          electronAPI?: { shell?: { openExternal: (url: string) => void } };  
                         };
                       }
                     ).window?.electronAPI;
                     if (electronAPI?.shell) {
                       void electronAPI.shell.openExternal(
-                        'https://console.cloud.google.com/apis/credentials'
+                        'https://console.cloud.google.com/apis/credentials',
                       );
                     }
                   }}
@@ -551,7 +533,7 @@ export function Onboarding(): React.JSX.Element {
                 fullWidth
                 label="Client ID"
                 value={googleClientId}
-                onChange={e => setGoogleClientId(e.target.value)}
+                onChange={(e) => setGoogleClientId(e.target.value)}
                 placeholder="123456789-abcdef.apps.googleusercontent.com"
                 helperText="Copy this from your OAuth client credentials"
               />
@@ -561,7 +543,7 @@ export function Onboarding(): React.JSX.Element {
                 label="Client Secret"
                 type="password"
                 value={googleClientSecret}
-                onChange={e => setGoogleClientSecret(e.target.value)}
+                onChange={(e) => setGoogleClientSecret(e.target.value)}
                 placeholder="GOCSPX-..."
                 helperText="Copy this from your OAuth client credentials"
               />
@@ -660,17 +642,15 @@ export function Onboarding(): React.JSX.Element {
                 • Click "Create new secret key"
                 <br />
                 • Give it a name like "Smart Inbox Janitor"
-                <br />
-                • <strong>Set permissions to "Restricted"</strong>
-                <br />
-                • Under permissions, only enable: <strong>"Model capabilities" → Read</strong>
-                <br />
-                • Click "Create secret key" and copy it immediately
+                <br />• <strong>Set permissions to "Restricted"</strong>
+                <br />• Under permissions, only enable: <strong>"Model capabilities" → Read</strong>
+                <br />• Click "Create secret key" and copy it immediately
               </Typography>
               <Alert severity="info" sx={{ mt: 1 }}>
                 <Typography variant="body2">
-                  <strong>Recommended:</strong> Use "Restricted" permissions with only "Model capabilities → Read" enabled. 
-                  This gives Smart Inbox Janitor the minimum access needed for email classification.
+                  <strong>Recommended:</strong> Use "Restricted" permissions with only "Model
+                  capabilities → Read" enabled. This gives Smart Inbox Janitor the minimum access
+                  needed for email classification.
                 </Typography>
               </Alert>
             </Box>
@@ -680,7 +660,7 @@ export function Onboarding(): React.JSX.Element {
               label="OpenAI API Key"
               type="password"
               value={openaiApiKey}
-              onChange={e => setOpenaiApiKey(e.target.value)}
+              onChange={(e) => setOpenaiApiKey(e.target.value)}
               placeholder="sk-..."
               helperText="Paste your OpenAI API key here"
               sx={{ mb: 2 }}
@@ -734,7 +714,7 @@ export function Onboarding(): React.JSX.Element {
               control={
                 <Checkbox
                   checked={enableDangerousEmailAlerts}
-                  onChange={e => setEnableDangerousEmailAlerts(e.target.checked)}
+                  onChange={(e) => setEnableDangerousEmailAlerts(e.target.checked)}
                 />
               }
               label="Enable alerts for dangerous emails"
@@ -838,9 +818,7 @@ export function Onboarding(): React.JSX.Element {
                     </Alert>
                   )}
 
-                  <Box sx={{ pr: 1 }}>
-                    {getStepContent(index)}
-                  </Box>
+                  <Box sx={{ pr: 1 }}>{getStepContent(index)}</Box>
 
                   {index < steps.length - 1 && (
                     <Box

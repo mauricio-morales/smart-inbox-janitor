@@ -10,7 +10,7 @@ declare global {
   const document: Document;
   const setTimeout: (callback: () => void, ms: number) => number;
   const alert: (message: string) => void;
-  
+
   // Node.js types for Electron main process compatibility
   namespace NodeJS {
     interface Timeout {
