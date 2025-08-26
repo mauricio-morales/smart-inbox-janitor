@@ -28,9 +28,6 @@ void app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window);
   });
 
-  // Setup IPC handlers for provider operations
-  setupIPC(emailProvider, llmProvider, storageProvider, secureStorageManager);
-
   // Create the main application window
   createMainWindow();
 
@@ -42,26 +39,29 @@ void app.whenReady().then(async () => {
     }
   });
 
-  // Initialize providers after window is created
+  // Initialize providers before setting up IPC
   try {
     await storageProvider.initialize({ databasePath: './data/app.db' });
-    
+
     // Initialize secure storage manager with the storage provider
     console.log('Initializing secure storage manager...');
     const secureStorageInitResult = await secureStorageManager.initialize({
       storageProvider,
       enableTokenRotation: true,
       sessionId: `session-${Date.now()}`,
-      userId: 'default-user'
+      userId: 'default-user',
     });
-    
+
     if (!secureStorageInitResult.success) {
       console.error('Failed to initialize secure storage manager:', secureStorageInitResult.error);
       console.error('Error details:', JSON.stringify(secureStorageInitResult.error, null, 2));
     } else {
       console.log('Secure storage manager initialized successfully');
     }
-    
+
+    // Setup IPC handlers AFTER storage provider is initialized
+    setupIPC(emailProvider, llmProvider, storageProvider, secureStorageManager);
+
     // Note: Email and LLM providers will be initialized during OAuth flow
   } catch (error) {
     // Provider initialization failed - logged for debugging

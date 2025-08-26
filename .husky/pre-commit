@@ -1,2 +1,41 @@
-npm run lint:fix
-npm run format
+
+# Run lint-staged for formatting and auto-fixes
+npx lint-staged
+
+# After lint-staged, run the same checks that CI will run
+echo "🔍 Running pre-commit validation (matching CI checks)..."
+
+# Get staged files for additional validation
+STAGED_TS_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx)$' || true)
+STAGED_FMT_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx|json|md|yml|yaml|css|scss|html)$' || true)
+
+# 1. ESLint check with --max-warnings 0 (same as CI)
+if [ -n "$STAGED_TS_FILES" ]; then
+  echo "📝 Checking ESLint (no warnings allowed, same as CI)..."
+  npx eslint $STAGED_TS_FILES --max-warnings 0
+  if [ $? -ne 0 ]; then
+    echo "❌ ESLint found issues that would fail CI. Please fix them."
+    exit 1
+  fi
+fi
+
+# 2. Prettier format check (same as CI)
+if [ -n "$STAGED_FMT_FILES" ]; then
+  echo "🎨 Checking Prettier formatting (same as CI)..."
+  npx prettier -c $STAGED_FMT_FILES
+  if [ $? -ne 0 ]; then
+    echo "❌ Prettier found formatting issues that would fail CI."
+    echo "💡 Run 'npm run format' to fix them."
+    exit 1
+  fi
+fi
+
+# 3. TypeScript type check (same as CI - full project)
+echo "🔧 Running TypeScript type check (same as CI)..."
+npm run type-check
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript type check failed - this would fail CI."
+  exit 1
+fi
+
+echo "✅ All pre-commit checks passed! Your changes should pass CI."
