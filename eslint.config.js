@@ -11,7 +11,7 @@ module.exports = [
 
   // TypeScript source files configuration
   {
-    files: ['src/**/*.{ts,tsx}', '__tests__/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -168,6 +168,9 @@ module.exports = [
       '**/*.snap',
       'PRPs/',
       'git',
+      '__tests__/**/*',
+      '**/*.test.*',
+      '**/*.spec.*',
     ],
   },
 ];
