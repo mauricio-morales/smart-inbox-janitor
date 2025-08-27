@@ -136,7 +136,7 @@ export class GmailOAuthManager {
 
         code_challenge: codeChallenge,
 
-        code_challenge_method: 'S256',
+        code_challenge_method: 'S256' as any,
         state,
 
         include_granted_scopes: true,
@@ -152,7 +152,7 @@ export class GmailOAuthManager {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
-        new AuthenticationError(`Failed to initiate OAuth flow: ${message}`, {
+        new AuthenticationError(`Failed to initiate OAuth flow: ${message}`, false, {
           operation: 'initiateAuth',
           scopes: this.scopes.length,
         }),
@@ -187,7 +187,7 @@ export class GmailOAuthManager {
       // Validate state parameter for CSRF protection
       if (state !== expectedState) {
         return createErrorResult(
-          new ValidationError('Invalid state parameter - potential CSRF attack', {
+          new ValidationError('Invalid state parameter - potential CSRF attack', {}, {
             operation: 'exchangeCode',
             providedState: state.length,
             expectedState: expectedState.length,
@@ -198,7 +198,7 @@ export class GmailOAuthManager {
       // Validate inputs
       if (authCode.length === 0 || codeVerifier.length === 0) {
         return createErrorResult(
-          new ValidationError('Missing required parameters for token exchange', {
+          new ValidationError('Missing required parameters for token exchange', {}, {
             hasAuthCode: Boolean(authCode),
             hasCodeVerifier: Boolean(codeVerifier),
           }),
@@ -219,7 +219,7 @@ export class GmailOAuthManager {
         tokens.access_token.length === 0
       ) {
         return createErrorResult(
-          new AuthenticationError('No access token received from Google', {
+          new AuthenticationError('No access token received from Google', false, {
             operation: 'exchangeCode',
             hasRefreshToken: Boolean(tokens.refresh_token),
             hasIdToken: Boolean(tokens.id_token),
@@ -230,10 +230,10 @@ export class GmailOAuthManager {
       // Convert to our token format
       const gmailTokens: GmailTokens = {
         accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token ?? undefined,
+        refreshToken: tokens.refresh_token || undefined,
         expiryDate: tokens.expiry_date ?? Date.now() + 3600000, // Default 1 hour
         scope: tokens.scope,
-        tokenType: tokens.token_type,
+        tokenType: tokens.token_type || undefined,
       };
 
       return createSuccessResult(gmailTokens);
@@ -243,7 +243,7 @@ export class GmailOAuthManager {
       // Check for specific Google OAuth errors
       if (message.includes('invalid_grant')) {
         return createErrorResult(
-          new AuthenticationError('Authorization code expired or invalid', {
+          new AuthenticationError('Authorization code expired or invalid', false, {
             operation: 'exchangeCode',
             errorType: 'invalid_grant',
           }),
@@ -257,14 +257,14 @@ export class GmailOAuthManager {
         );
       } else if (message.includes('ENOTFOUND') || message.includes('ECONNREFUSED')) {
         return createErrorResult(
-          new NetworkError(`Network error during token exchange: ${message}`, {
+          new NetworkError(`Network error during token exchange: ${message}`, true, {
             operation: 'exchangeCode',
           }),
         );
       }
 
       return createErrorResult(
-        new AuthenticationError(`Token exchange failed: ${message}`, {
+        new AuthenticationError(`Token exchange failed: ${message}`, false, {
           operation: 'exchangeCode',
         }),
       );
@@ -292,7 +292,7 @@ export class GmailOAuthManager {
 
       if (refreshToken.length === 0) {
         return createErrorResult(
-          new ValidationError('Refresh token is required', {
+          new ValidationError('Refresh token is required', {}, {
             operation: 'refreshTokens',
           }),
         );
@@ -310,7 +310,7 @@ export class GmailOAuthManager {
         credentials.access_token.length === 0
       ) {
         return createErrorResult(
-          new AuthenticationError('No access token received from refresh', {
+          new AuthenticationError('No access token received from refresh', false, {
             operation: 'refreshTokens',
             hasRefreshToken: Boolean(credentials.refresh_token),
           }),
@@ -327,10 +327,10 @@ export class GmailOAuthManager {
       
       const gmailTokens: GmailTokens = {
         accessToken: credentials.access_token,
-        refreshToken: credentials.refresh_token ?? refreshToken, // Fallback pattern
-        expiryDate: credentials.expiry_date ?? Date.now() + 3600000,
+        refreshToken: (credentials.refresh_token as string | undefined) || refreshToken, // Fallback pattern
+        expiryDate: credentials.expiry_date || Date.now() + 3600000,
         scope: credentials.scope,
-        tokenType: credentials.token_type,
+        tokenType: credentials.token_type || undefined,
       };
 
       return createSuccessResult({
@@ -343,6 +343,7 @@ export class GmailOAuthManager {
       const failureReason = this.categorizeRefreshError(error);
       return createErrorResult(new AuthenticationError(
         `Token refresh failed: ${failureReason}`,
+        true,
         { 
           code: 'OAUTH_REFRESH_FAILED', 
           reason: failureReason,
@@ -364,7 +365,7 @@ export class GmailOAuthManager {
       // Check required fields
       if (!tokens.accessToken) {
         return createErrorResult(
-          new ValidationError('Access token is required', {
+          new ValidationError('Access token is required', {}, {
             operation: 'validateTokens',
           }),
         );
@@ -373,7 +374,7 @@ export class GmailOAuthManager {
       // Check token format (basic validation)
       if (!tokens.accessToken.startsWith('ya29.')) {
         return createErrorResult(
-          new ValidationError('Invalid access token format', {
+          new ValidationError('Invalid access token format', {}, {
             operation: 'validateTokens',
             tokenPrefix: tokens.accessToken.substring(0, 5),
           }),
@@ -384,7 +385,7 @@ export class GmailOAuthManager {
       const now = Date.now();
       if (tokens.expiryDate && tokens.expiryDate <= now) {
         return createErrorResult(
-          new ValidationError('Access token has expired', {
+          new ValidationError('Access token has expired', {}, {
             operation: 'validateTokens',
             expiryDate: new Date(tokens.expiryDate).toISOString(),
             now: new Date(now).toISOString(),
@@ -396,7 +397,7 @@ export class GmailOAuthManager {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
-        new ValidationError(`Token validation failed: ${message}`, {
+        new ValidationError(`Token validation failed: ${message}`, {}, {
           operation: 'validateTokens',
         }),
       );

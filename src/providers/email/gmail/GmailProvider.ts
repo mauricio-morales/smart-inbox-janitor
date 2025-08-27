@@ -319,6 +319,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
           email: profileResult.data.data.emailAddress ?? '',
           name: undefined, // Gmail API doesn't provide display name in profile
           profilePicture: undefined,
+          accountType: 'gmail',
         },
       };
 
@@ -489,23 +490,22 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
    * @returns Result indicating batch operation success or failure
    */
   async batchModify(request: BatchModifyRequest): Promise<Result<BatchOperationResult>> {
+    const startTime = Date.now();
     try {
       this.ensureConnected();
 
       if (!request.emailIds.length) {
         return createSuccessResult({
-          successful: [],
-          failed: [],
-          totalRequested: 0,
-          totalSuccessful: 0,
-          totalFailed: 0,
+          successCount: 0,
+          failureCount: 0,
+          processingTimeMs: Date.now() - startTime,
         });
       }
 
       // Gmail API supports batch modify up to 1000 messages
       const batchSize = 1000;
       const successful: string[] = [];
-      const failed: Array<{ emailId: string; error: string }> = [];
+      const failed: Array<{ readonly emailId: string; readonly error: string; readonly retryable?: boolean }> = [];
 
       for (let i = 0; i < request.emailIds.length; i += batchSize) {
         const batch = request.emailIds.slice(i, i + batchSize);
@@ -518,8 +518,8 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
             userId: 'me',
             requestBody: {
               ids: batch,
-              addLabelIds: request.addLabels,
-              removeLabelIds: request.removeLabels,
+              addLabelIds: request.addFolderIds,
+              removeLabelIds: request.removeFolderIds,
             },
           });
         });

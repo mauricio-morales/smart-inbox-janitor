@@ -362,6 +362,7 @@ export function setupIPC(
               clientId: credentials.clientId,
               clientSecret: credentials.clientSecret,
               redirectUri: 'http://localhost:8080',
+              scopes: ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.modify'],
             },
             maxResults: 100,
             pageSize: 50,
@@ -507,12 +508,12 @@ export function setupIPC(
         // At this point we know connectResult.success is true due to the check above
         const successResult = connectResult as {
           readonly success: true;
-          readonly data: { providerInfo?: { accountEmail?: string }; connectedAt?: Date };
+          readonly data: { accountInfo?: { email?: string }; connectedAt?: Date };
         };
         return {
           success: true,
           data: {
-            accountEmail: successResult.data?.providerInfo?.accountEmail,
+            accountEmail: successResult.data?.accountInfo?.email,
             connectedAt: successResult.data?.connectedAt,
           },
         };
@@ -590,6 +591,7 @@ export function setupIPC(
             clientId: credentialsResult.data.clientId,
             clientSecret: credentialsResult.data.clientSecret,
             redirectUri: 'http://localhost:8080',
+            scopes: ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.modify'],
           },
         };
         console.log('DEBUG: Using stored credentials for connection check');
@@ -629,10 +631,10 @@ export function setupIPC(
       let connectionAccountEmail: string | undefined;
       if (
         connectResult.success &&
-        connectResult.data?.providerInfo?.accountEmail !== undefined &&
-        connectResult.data?.providerInfo?.accountEmail !== ''
+        connectResult.data?.accountInfo?.email !== undefined &&
+        connectResult.data?.accountInfo?.email !== ''
       ) {
-        connectionAccountEmail = connectResult.data.providerInfo.accountEmail;
+        connectionAccountEmail = connectResult.data.accountInfo.email;
       }
 
       const finalResult = {

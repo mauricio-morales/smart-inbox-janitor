@@ -883,7 +883,6 @@ export class SecureStorageManager {
       // Decrypt credential
       const decryptionResult = this.credentialEncryption.decryptCredential(
         JSON.parse(encryptedCredentials),
-        'gmail-credentials',
       );
 
       if (!decryptionResult.success) {

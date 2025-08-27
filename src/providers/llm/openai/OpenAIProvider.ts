@@ -53,7 +53,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
 
   private config: OpenAIConfig | null = null;
   private client: OpenAI | null = null;
-  private storageManager: SecureStorageManager | null = null;
+  // private storageManager: SecureStorageManager | null = null; // TODO: Implement storage manager usage
   private initialized = false;
   private readonly usageStatsData = {
     totalRequests: 0,
@@ -255,6 +255,9 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
       }
 
       const modelsResult = await this.callWithErrorHandling(async () => {
+        if (!this.client) {
+          throw new Error('OpenAI client not initialized');
+        }
         return await this.client.models.list();
       });
 
@@ -278,7 +281,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown connection test error';
       return createErrorResult(
-        new NetworkError(`Connection test failed: ${message}`, {
+        new NetworkError(`Connection test failed: ${message}`, true, {
           operation: 'testConnection',
         }),
       );
@@ -297,7 +300,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
 
       if (!configToValidate) {
         return createErrorResult(
-          new ValidationError('No OpenAI configuration available', {
+          new ValidationError('No OpenAI configuration available', {}, {
             operation: 'validateConfiguration',
           }),
         );
@@ -328,7 +331,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown validation error';
       return createErrorResult(
-        new ValidationError(`Configuration validation failed: ${message}`, {
+        new ValidationError(`Configuration validation failed: ${message}`, {}, {
           operation: 'validateConfiguration',
         }),
       );
@@ -349,11 +352,11 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
         return createSuccessResult({
           items: [],
           batchMetadata: {
-            totalProcessed: 0,
-            totalTokens: 0,
-            estimatedCost: 0,
-            modelUsed: this.config?.model ?? 'gpt-4o-mini',
+            batchId: `classify-${Date.now()}`,
             processedAt: new Date(),
+            processingTimeMs: 0,
+            modelVersion: this.config?.model ?? 'gpt-4o-mini',
+            batchSize: 0,
           },
         });
       }
@@ -377,11 +380,11 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
             classifications.push({
               emailId: email.id,
               classification: 'unknown',
+              likelihood: 'low',
               confidence: 0,
-              reasoning: `Classification failed: ${batchResult.error.message}`,
+              reasons: [`Classification failed: ${batchResult.error.message}`],
+              bulkKey: 'failed',
               suggestedAction: 'KEEP',
-              riskLevel: 'low',
-              signals: [],
             });
           });
         }
@@ -395,11 +398,11 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
       const output: ClassifyOutput = {
         items: classifications,
         batchMetadata: {
-          totalProcessed: input.emails.length,
-          totalTokens,
-          estimatedCost,
-          modelUsed: this.config?.model ?? 'gpt-4o-mini',
+          batchId: `classify-${Date.now()}`,
           processedAt: new Date(),
+          processingTimeMs: Date.now() - Date.now(), // TODO: Track actual processing time
+          modelVersion: this.config?.model ?? 'gpt-4o-mini',
+          batchSize: input.emails.length,
         },
       };
 
@@ -407,7 +410,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown classification error';
       return createErrorResult(
-        new NetworkError(`Email classification failed: ${message}`, {
+        new NetworkError(`Email classification failed: ${message}`, true, {
           operation: 'classifyEmails',
           emailCount: input.emails.length,
         }),
@@ -437,6 +440,9 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
       const prompt = this.buildContentValidationPrompt(content);
 
       const completionResult = await this.callWithErrorHandling(async () => {
+        if (!this.client) {
+          throw new Error('OpenAI client not initialized');
+        }
         return await this.client.chat.completions.create({
           model: this.config?.model ?? 'gpt-4o-mini',
           messages: [{ role: 'user', content: prompt }],

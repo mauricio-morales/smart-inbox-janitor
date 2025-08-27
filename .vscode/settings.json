@@ -79,5 +79,6 @@
   "notifications.showWarnings": true,
 
   // Workspace trust
-  "security.workspace.trust.untrustedFiles": "open"
+  "security.workspace.trust.untrustedFiles": "open",
+  "kiroAgent.configureMCP": "Disabled"
 }
