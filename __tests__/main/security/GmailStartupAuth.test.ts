@@ -44,7 +44,12 @@ describe('GmailStartupAuth', () => {
   };
 
   beforeEach(() => {
-    mockOAuthManager = new GmailOAuthManager() as jest.Mocked<GmailOAuthManager>;
+    const mockOAuthConfig = {
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+      redirectUri: 'http://localhost:3000/callback',
+    };
+    mockOAuthManager = new GmailOAuthManager(mockOAuthConfig) as jest.Mocked<GmailOAuthManager>;
     mockSecureStorageManager = new SecureStorageManager() as jest.Mocked<SecureStorageManager>;
     
     // Mock audit logger
@@ -80,7 +85,7 @@ describe('GmailStartupAuth', () => {
       
       try {
         await failingAuth.validateAndRefreshTokens(); // This will call ensureInitialized
-        fail('Expected error to be thrown');
+        throw new Error('Expected error to be thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
         expect((error as Error).message).toContain('Initialization failed');
@@ -101,7 +106,9 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.validateAndRefreshTokens();
       
       expect(result.success).toBe(true);
-      expect(result.data).toBe(false);
+      if (result.success) {
+        expect(result.data).toBe(false);
+      }
       expect(mockSecurityAuditLogger.logSecurityEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           eventType: 'credential_retrieve',
@@ -123,7 +130,9 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.validateAndRefreshTokens();
       
       expect(result.success).toBe(true);
-      expect(result.data).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe(true);
+      }
       expect(mockSecurityAuditLogger.logSecurityEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           eventType: 'credential_retrieve',
@@ -159,7 +168,9 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.validateAndRefreshTokens();
       
       expect(result.success).toBe(true);
-      expect(result.data).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe(true);
+      }
       expect(mockOAuthManager.refreshTokens).toHaveBeenCalledWith('valid-refresh-token');
       expect(mockSecurityAuditLogger.logSecurityEvent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -185,7 +196,9 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.validateAndRefreshTokens();
       
       expect(result.success).toBe(true);
-      expect(result.data).toBe(false);
+      if (result.success) {
+        expect(result.data).toBe(false);
+      }
       expect(mockSecurityAuditLogger.logSecurityEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           eventType: 'authentication_failure',
@@ -206,7 +219,9 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.validateAndRefreshTokens();
       
       expect(result.success).toBe(false);
-      expect(result.error.message).toContain('Startup token validation failed');
+      if (!result.success) {
+        expect(result.error.message).toContain('Startup token validation failed');
+      }
       expect(mockSecurityAuditLogger.logSecurityEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           eventType: 'authentication_failure',
@@ -238,10 +253,12 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.handleStartupAuth();
       
       expect(result.success).toBe(true);
-      expect(result.data.success).toBe(true);
-      expect(result.data.authState.status).toBe('connected');
-      expect(result.data.needsReconfiguration).toBe(false);
-      expect(result.data.message).toBe('Gmail authentication is ready');
+      if (result.success) {
+        expect(result.data.success).toBe(true);
+        expect(result.data.authState.status).toBe('connected');
+        expect(result.data.needsReconfiguration).toBe(false);
+        expect(result.data.message).toBe('Gmail authentication is ready');
+      }
     });
 
     it('should return needs reconfiguration when tokens are invalid', async () => {
@@ -252,10 +269,12 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.handleStartupAuth();
       
       expect(result.success).toBe(true);
-      expect(result.data.success).toBe(false);
-      expect(result.data.authState.status).toBe('needs_reauth');
-      expect(result.data.needsReconfiguration).toBe(true);
-      expect(result.data.message).toBe('Gmail needs to be connected. Please sign in again.');
+      if (result.success) {
+        expect(result.data.success).toBe(false);
+        expect(result.data.authState.status).toBe('needs_reauth');
+        expect(result.data.needsReconfiguration).toBe(true);
+        expect(result.data.message).toBe('Gmail needs to be connected. Please sign in again.');
+      }
     });
 
     it('should handle validation errors gracefully', async () => {
@@ -266,10 +285,12 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.handleStartupAuth();
       
       expect(result.success).toBe(true);
-      expect(result.data.success).toBe(false);
-      expect(result.data.authState.status).toBe('needs_reauth');
-      expect(result.data.needsReconfiguration).toBe(true);
-      expect(result.data.message).toBe('Authentication validation failed. Please check your configuration.');
+      if (result.success) {
+        expect(result.data.success).toBe(false);
+        expect(result.data.authState.status).toBe('needs_reauth');
+        expect(result.data.needsReconfiguration).toBe(true);
+        expect(result.data.message).toBe('Authentication validation failed. Please check your configuration.');
+      }
     });
 
     it('should handle exceptions during startup auth', async () => {
@@ -280,9 +301,11 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.handleStartupAuth();
       
       expect(result.success).toBe(true);
-      expect(result.data.success).toBe(false);
-      expect(result.data.authState.status).toBe('needs_reauth');
-      expect(result.data.message).toContain('Startup authentication failed');
+      if (result.success) {
+        expect(result.data.success).toBe(false);
+        expect(result.data.authState.status).toBe('needs_reauth');
+        expect(result.data.message).toContain('Startup authentication failed');
+      }
     });
   });
 
@@ -299,8 +322,10 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.getAuthState();
       
       expect(result.success).toBe(true);
-      expect(result.data.status).toBe('needs_reauth');
-      expect(result.data.refreshAttempts).toBe(0);
+      if (result.success) {
+        expect(result.data.status).toBe('needs_reauth');
+        expect(result.data.refreshAttempts).toBe(0);
+      }
     });
 
     it('should return connected when tokens are valid', async () => {
@@ -312,8 +337,10 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.getAuthState();
       
       expect(result.success).toBe(true);
-      expect(result.data.status).toBe('connected');
-      expect(result.data.expiresAt).toBe(mockValidTokens.expiryDate);
+      if (result.success) {
+        expect(result.data.status).toBe('connected');
+        expect(result.data.expiresAt).toBe(mockValidTokens.expiryDate);
+      }
     });
 
     it('should return needs_reauth when tokens are expiring soon', async () => {
@@ -325,7 +352,9 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.getAuthState();
       
       expect(result.success).toBe(true);
-      expect(result.data.status).toBe('needs_reauth');
+      if (result.success) {
+        expect(result.data.status).toBe('needs_reauth');
+      }
     });
 
     it('should handle exceptions gracefully', async () => {
@@ -336,9 +365,11 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.getAuthState();
       
       expect(result.success).toBe(true);
-      expect(result.data.status).toBe('needs_reauth');
-      expect(result.data.lastError).toBeDefined();
-      expect(result.data.lastError?.code).toBe('AUTH_STATE_ERROR');
+      if (result.success) {
+        expect(result.data.status).toBe('needs_reauth');
+        expect(result.data.lastError).toBeDefined();
+        expect(result.data.lastError?.code).toBe('AUTH_STATE_ERROR');
+      }
     });
   });
 
@@ -376,7 +407,9 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.resetAuthState();
       
       expect(result.success).toBe(false);
-      expect(result.error.message).toContain('Removal failed');
+      if (!result.success) {
+        expect(result.error.message).toContain('Removal failed');
+      }
     });
 
     it('should handle exceptions during reset', async () => {
@@ -387,7 +420,9 @@ describe('GmailStartupAuth', () => {
       const result = await gmailStartupAuth.resetAuthState();
       
       expect(result.success).toBe(false);
-      expect(result.error.message).toContain('Failed to reset auth state');
+      if (!result.success) {
+        expect(result.error.message).toContain('Failed to reset auth state');
+      }
       expect(mockSecurityAuditLogger.logSecurityEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           eventType: 'credential_delete',
