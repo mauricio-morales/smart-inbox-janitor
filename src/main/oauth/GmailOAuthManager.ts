@@ -187,21 +187,29 @@ export class GmailOAuthManager {
       // Validate state parameter for CSRF protection
       if (state !== expectedState) {
         return createErrorResult(
-          new ValidationError('Invalid state parameter - potential CSRF attack', {}, {
-            operation: 'exchangeCode',
-            providedState: state.length,
-            expectedState: expectedState.length,
-          }),
+          new ValidationError(
+            'Invalid state parameter - potential CSRF attack',
+            {},
+            {
+              operation: 'exchangeCode',
+              providedState: state.length,
+              expectedState: expectedState.length,
+            },
+          ),
         );
       }
 
       // Validate inputs
       if (authCode.length === 0 || codeVerifier.length === 0) {
         return createErrorResult(
-          new ValidationError('Missing required parameters for token exchange', {}, {
-            hasAuthCode: Boolean(authCode),
-            hasCodeVerifier: Boolean(codeVerifier),
-          }),
+          new ValidationError(
+            'Missing required parameters for token exchange',
+            {},
+            {
+              hasAuthCode: Boolean(authCode),
+              hasCodeVerifier: Boolean(codeVerifier),
+            },
+          ),
         );
       }
 
@@ -278,9 +286,12 @@ export class GmailOAuthManager {
    * @param attemptNumber - Current attempt number for retry logic (default: 1)
    * @returns Result containing new Gmail tokens with refresh metadata
    */
-  async refreshTokens(refreshToken: string, attemptNumber = 1): Promise<Result<GmailTokens & { refreshMetadata: TokenRefreshMetadata }>> {
+  async refreshTokens(
+    refreshToken: string,
+    attemptNumber = 1,
+  ): Promise<Result<GmailTokens & { refreshMetadata: TokenRefreshMetadata }>> {
     const startTime = Date.now();
-    
+
     try {
       if (!this.oauth2Client) {
         return createErrorResult(
@@ -292,15 +303,19 @@ export class GmailOAuthManager {
 
       if (refreshToken.length === 0) {
         return createErrorResult(
-          new ValidationError('Refresh token is required', {}, {
-            operation: 'refreshTokens',
-          }),
+          new ValidationError(
+            'Refresh token is required',
+            {},
+            {
+              operation: 'refreshTokens',
+            },
+          ),
         );
       }
 
       // PATTERN: Follow existing oauth2Client setup (lines 278-290)
       this.oauth2Client.setCredentials({ refresh_token: refreshToken });
-      
+
       const { credentials } = await this.oauth2Client.refreshAccessToken();
 
       if (
@@ -322,9 +337,9 @@ export class GmailOAuthManager {
         refreshedAt: Date.now(),
         refreshMethod: 'automatic',
         refreshDurationMs: Date.now() - startTime,
-        attemptNumber
+        attemptNumber,
       };
-      
+
       const gmailTokens: GmailTokens = {
         accessToken: credentials.access_token,
         refreshToken: (credentials.refresh_token as string | undefined) || refreshToken, // Fallback pattern
@@ -335,22 +350,19 @@ export class GmailOAuthManager {
 
       return createSuccessResult({
         ...gmailTokens,
-        refreshMetadata
+        refreshMetadata,
       });
-      
     } catch (error) {
       // PATTERN: Error categorization for user-friendly handling
       const failureReason = this.categorizeRefreshError(error);
-      return createErrorResult(new AuthenticationError(
-        `Token refresh failed: ${failureReason}`,
-        true,
-        { 
-          code: 'OAUTH_REFRESH_FAILED', 
+      return createErrorResult(
+        new AuthenticationError(`Token refresh failed: ${failureReason}`, true, {
+          code: 'OAUTH_REFRESH_FAILED',
           reason: failureReason,
           attemptNumber,
-          refreshDurationMs: Date.now() - startTime 
-        }
-      ));
+          refreshDurationMs: Date.now() - startTime,
+        }),
+      );
     }
   }
 
@@ -365,19 +377,27 @@ export class GmailOAuthManager {
       // Check required fields
       if (!tokens.accessToken) {
         return createErrorResult(
-          new ValidationError('Access token is required', {}, {
-            operation: 'validateTokens',
-          }),
+          new ValidationError(
+            'Access token is required',
+            {},
+            {
+              operation: 'validateTokens',
+            },
+          ),
         );
       }
 
       // Check token format (basic validation)
       if (!tokens.accessToken.startsWith('ya29.')) {
         return createErrorResult(
-          new ValidationError('Invalid access token format', {}, {
-            operation: 'validateTokens',
-            tokenPrefix: tokens.accessToken.substring(0, 5),
-          }),
+          new ValidationError(
+            'Invalid access token format',
+            {},
+            {
+              operation: 'validateTokens',
+              tokenPrefix: tokens.accessToken.substring(0, 5),
+            },
+          ),
         );
       }
 
@@ -385,11 +405,15 @@ export class GmailOAuthManager {
       const now = Date.now();
       if (tokens.expiryDate && tokens.expiryDate <= now) {
         return createErrorResult(
-          new ValidationError('Access token has expired', {}, {
-            operation: 'validateTokens',
-            expiryDate: new Date(tokens.expiryDate).toISOString(),
-            now: new Date(now).toISOString(),
-          }),
+          new ValidationError(
+            'Access token has expired',
+            {},
+            {
+              operation: 'validateTokens',
+              expiryDate: new Date(tokens.expiryDate).toISOString(),
+              now: new Date(now).toISOString(),
+            },
+          ),
         );
       }
 
@@ -397,9 +421,13 @@ export class GmailOAuthManager {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
-        new ValidationError(`Token validation failed: ${message}`, {}, {
-          operation: 'validateTokens',
-        }),
+        new ValidationError(
+          `Token validation failed: ${message}`,
+          {},
+          {
+            operation: 'validateTokens',
+          },
+        ),
       );
     }
   }
@@ -445,41 +473,52 @@ export class GmailOAuthManager {
 
   /**
    * Categorize OAuth refresh errors for user-friendly handling
-   * 
+   *
    * @param error - Error from OAuth refresh attempt
    * @returns RefreshFailureReason for appropriate error handling
    */
   private categorizeRefreshError(error: unknown): RefreshFailureReason {
     const message = error instanceof Error ? error.message : 'Unknown error';
     const err = error as { code?: number; message?: string };
-    
+
     // Check for specific OAuth error patterns
-    if (message.includes('invalid_grant') || message.includes('Token has been expired or revoked')) {
+    if (
+      message.includes('invalid_grant') ||
+      message.includes('Token has been expired or revoked')
+    ) {
       return 'invalid_grant';
     }
-    
+
     if (message.includes('invalid_client') || message.includes('Unauthorized client')) {
       return 'client_misconfigured';
     }
-    
+
     if (message.includes('consent_required') || message.includes('consent_revoked')) {
       return 'consent_revoked';
     }
-    
+
     if (message.includes('insufficient_scope') || message.includes('scope')) {
       return 'insufficient_scope';
     }
-    
-    if (message.includes('rate_limit') || message.includes('too_many_requests') || err.code === 429) {
+
+    if (
+      message.includes('rate_limit') ||
+      message.includes('too_many_requests') ||
+      err.code === 429
+    ) {
       return 'rate_limit_exceeded';
     }
-    
+
     // Network-related errors
-    if (message.includes('ENOTFOUND') || message.includes('ECONNREFUSED') || 
-        message.includes('ETIMEDOUT') || message.includes('Network')) {
+    if (
+      message.includes('ENOTFOUND') ||
+      message.includes('ECONNREFUSED') ||
+      message.includes('ETIMEDOUT') ||
+      message.includes('Network')
+    ) {
       return 'network_error';
     }
-    
+
     // Default to unknown for unrecognized errors
     return 'unknown';
   }

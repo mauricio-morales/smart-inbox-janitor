@@ -147,7 +147,7 @@ export default function OpenAISetupModal({
   const openExternalUrl = () => {
     const electronAPI = (
       globalThis as typeof globalThis & {
-        window?: { electronAPI?: { shell?: { openExternal: (url: string) => void } } };  
+        window?: { electronAPI?: { shell?: { openExternal: (url: string) => void } } };
       }
     ).window?.electronAPI;
     if (electronAPI?.shell) {

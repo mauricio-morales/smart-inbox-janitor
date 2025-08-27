@@ -1,17 +1,13 @@
 /**
  * Test suite for GmailOAuthManager token refresh functionality
- * 
+ *
  * Tests comprehensive OAuth token refresh with error categorization,
  * retry logic, and metadata tracking as implemented in the PRP.
  */
 
 import { GmailOAuthManager } from '../../../src/main/oauth/GmailOAuthManager';
 import { OAuth2Client } from 'google-auth-library';
-import {
-  AuthenticationError,
-  ConfigurationError,
-  ValidationError,
-} from '@shared/types';
+import { AuthenticationError, ConfigurationError, ValidationError } from '@shared/types';
 
 // Mock google-auth-library
 jest.mock('google-auth-library');
@@ -41,10 +37,10 @@ describe('GmailOAuthManager - Token Refresh', () => {
       redirectUri: 'http://localhost:3000/callback',
     };
     gmailOAuthManager = new GmailOAuthManager(mockConfig);
-    
+
     // Mock the internal oauth2Client
     (gmailOAuthManager as any).oauth2Client = mockOAuth2Client;
-    
+
     // Initialize the manager
     gmailOAuthManager.initialize();
   });
@@ -60,7 +56,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
       });
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.accessToken).toBe('new-access-token');
@@ -71,7 +67,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
         expect(result.data.refreshMetadata.attemptNumber).toBe(1);
         expect(result.data.refreshMetadata.refreshDurationMs).toBeGreaterThanOrEqual(0);
       }
-      
+
       expect(mockOAuth2Client.setCredentials).toHaveBeenCalledWith({
         refresh_token: mockRefreshToken,
       });
@@ -83,7 +79,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
       });
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken, 3);
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.refreshMetadata.attemptNumber).toBe(3);
@@ -95,13 +91,13 @@ describe('GmailOAuthManager - Token Refresh', () => {
         ...mockCredentials,
         refresh_token: undefined,
       };
-      
+
       mockOAuth2Client.refreshAccessToken.mockResolvedValue({
         credentials: credentialsWithoutRefresh,
       });
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.refreshToken).toBe(mockRefreshToken); // Fallback to original
@@ -115,9 +111,9 @@ describe('GmailOAuthManager - Token Refresh', () => {
         redirectUri: 'http://localhost:3000/callback',
       };
       const uninitializedManager = new GmailOAuthManager(mockConfig);
-      
+
       const result = await uninitializedManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ConfigurationError);
@@ -127,7 +123,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
 
     it('should fail when refresh token is empty', async () => {
       const result = await gmailOAuthManager.refreshTokens('');
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(ValidationError);
@@ -144,7 +140,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
       });
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
@@ -159,7 +155,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
       mockOAuth2Client.refreshAccessToken.mockRejectedValue(invalidGrantError);
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
@@ -173,7 +169,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
       mockOAuth2Client.refreshAccessToken.mockRejectedValue(clientError);
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
@@ -186,7 +182,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
       mockOAuth2Client.refreshAccessToken.mockRejectedValue(consentError);
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
@@ -199,7 +195,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
       mockOAuth2Client.refreshAccessToken.mockRejectedValue(scopeError);
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
@@ -215,7 +211,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
       mockOAuth2Client.refreshAccessToken.mockRejectedValue(rateLimitError);
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
@@ -228,7 +224,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
       mockOAuth2Client.refreshAccessToken.mockRejectedValue(networkError);
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
@@ -241,7 +237,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
       mockOAuth2Client.refreshAccessToken.mockRejectedValue(unknownError);
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
@@ -274,7 +270,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
 
     it('should handle non-Error objects', () => {
       const categorizeError = (gmailOAuthManager as any).categorizeRefreshError;
-      
+
       expect(categorizeError({ message: 'invalid_grant' })).toBe('invalid_grant');
       expect(categorizeError({ message: null })).toBe('unknown');
       expect(categorizeError(null)).toBe('unknown');
@@ -286,15 +282,16 @@ describe('GmailOAuthManager - Token Refresh', () => {
     it('should measure refresh duration accurately', async () => {
       // Add delay to refresh operation
       mockOAuth2Client.refreshAccessToken.mockImplementation(
-        () => new Promise((resolve) => {
-          setTimeout(() => {
-            resolve({ credentials: mockCredentials });
-          }, 100);
-        }),
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({ credentials: mockCredentials });
+            }, 100);
+          }),
       );
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.refreshMetadata.refreshDurationMs).toBeGreaterThanOrEqual(100);
@@ -304,15 +301,15 @@ describe('GmailOAuthManager - Token Refresh', () => {
 
     it('should include proper timestamps', async () => {
       const beforeRefresh = Date.now();
-      
+
       mockOAuth2Client.refreshAccessToken.mockResolvedValue({
         credentials: mockCredentials,
       });
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       const afterRefresh = Date.now();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.refreshMetadata.refreshedAt).toBeGreaterThanOrEqual(beforeRefresh);
@@ -330,7 +327,7 @@ describe('GmailOAuthManager - Token Refresh', () => {
       });
 
       const result = await gmailOAuthManager.refreshTokens(mockRefreshToken);
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.scope).toBe('custom-scope');

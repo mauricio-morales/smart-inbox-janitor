@@ -1,18 +1,13 @@
 /**
  * Test suite for TokenRotationService startup functionality
- * 
+ *
  * Tests startup-specific token refresh operations, integration with
  * GmailStartupAuth patterns, and comprehensive metadata tracking.
  */
 
 import { TokenRotationService } from '../../../src/main/security/TokenRotationService';
 import { SecureStorageManager } from '../../../src/main/security/SecureStorageManager';
-import {
-  GmailTokens,
-  createSuccessResult,
-  createErrorResult,
-  SecurityError,
-} from '@shared/types';
+import { GmailTokens, createSuccessResult, createErrorResult, SecurityError } from '@shared/types';
 
 // Mock dependencies
 jest.mock('../../../src/main/security/SecureStorageManager');
@@ -65,22 +60,22 @@ describe('TokenRotationService - Startup Integration', () => {
 
     it('should succeed when no tokens exist (first run scenario)', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createErrorResult(new SecurityError('No tokens found'))
+        createErrorResult(new SecurityError('No tokens found')),
       );
 
       const result = await tokenRotationService.startupTokenRefresh();
-      
+
       expect(result.success).toBe(true);
       expect(mockSecureStorageManager.getGmailTokens).toHaveBeenCalled();
     });
 
     it('should succeed when tokens are still valid', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockValidTokens)
+        createSuccessResult(mockValidTokens),
       );
 
       const result = await tokenRotationService.startupTokenRefresh();
-      
+
       expect(result.success).toBe(true);
       expect(mockSecureStorageManager.getGmailTokens).toHaveBeenCalled();
       // Should not attempt refresh since tokens are valid
@@ -88,29 +83,26 @@ describe('TokenRotationService - Startup Integration', () => {
 
     it('should refresh tokens when they expire within buffer period', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockExpiringSoonTokens)
+        createSuccessResult(mockExpiringSoonTokens),
       );
 
       // Mock the performTokenRefresh method (which is private, so we need to spy on it)
-      const performTokenRefreshSpy = jest.spyOn(
-        tokenRotationService as any,
-        'performTokenRefresh'
-      );
-      
-      performTokenRefreshSpy.mockReturnValue(createSuccessResult({
-        accessToken: 'new-access-token',
-        refreshToken: 'new-refresh-token',
-        expiresAt: new Date(Date.now() + 3600000),
-        scope: 'https://www.googleapis.com/auth/gmail.readonly',
-        tokenType: 'Bearer',
-      }));
+      const performTokenRefreshSpy = jest.spyOn(tokenRotationService as any, 'performTokenRefresh');
 
-      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(
-        createSuccessResult(undefined)
+      performTokenRefreshSpy.mockReturnValue(
+        createSuccessResult({
+          accessToken: 'new-access-token',
+          refreshToken: 'new-refresh-token',
+          expiresAt: new Date(Date.now() + 3600000),
+          scope: 'https://www.googleapis.com/auth/gmail.readonly',
+          tokenType: 'Bearer',
+        }),
       );
+
+      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(createSuccessResult(undefined));
 
       const result = await tokenRotationService.startupTokenRefresh();
-      
+
       expect(result.success).toBe(true);
       expect(performTokenRefreshSpy).toHaveBeenCalledWith({
         provider: 'gmail',
@@ -118,7 +110,7 @@ describe('TokenRotationService - Startup Integration', () => {
         scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
         forceRefresh: true,
       });
-      
+
       expect(mockSecureStorageManager.storeGmailTokens).toHaveBeenCalledWith(
         expect.objectContaining({
           accessToken: 'new-access-token',
@@ -132,7 +124,7 @@ describe('TokenRotationService - Startup Integration', () => {
               refreshMethod: 'startup',
             }),
           }),
-        })
+        }),
       );
     });
 
@@ -141,44 +133,39 @@ describe('TokenRotationService - Startup Integration', () => {
         ...mockExpiredTokens,
         refreshToken: undefined,
       };
-      
+
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(tokensWithoutRefresh)
+        createSuccessResult(tokensWithoutRefresh),
       );
 
       const result = await tokenRotationService.startupTokenRefresh();
-      
+
       expect(result.success).toBe(false);
       expect(result.error.message).toContain('no refresh token available for startup refresh');
     });
 
     it('should fail when token refresh fails', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockExpiringSoonTokens)
+        createSuccessResult(mockExpiringSoonTokens),
       );
 
-      const performTokenRefreshSpy = jest.spyOn(
-        tokenRotationService as any,
-        'performTokenRefresh'
-      );
-      
+      const performTokenRefreshSpy = jest.spyOn(tokenRotationService as any, 'performTokenRefresh');
+
       performTokenRefreshSpy.mockReturnValue(
-        createErrorResult(new SecurityError('Refresh failed'))
+        createErrorResult(new SecurityError('Refresh failed')),
       );
 
       const result = await tokenRotationService.startupTokenRefresh();
-      
+
       expect(result.success).toBe(false);
       expect(result.error.message).toContain('Refresh failed');
     });
 
     it('should handle exceptions during startup refresh', async () => {
-      mockSecureStorageManager.getGmailTokens.mockRejectedValue(
-        new Error('Storage failure')
-      );
+      mockSecureStorageManager.getGmailTokens.mockRejectedValue(new Error('Storage failure'));
 
       const result = await tokenRotationService.startupTokenRefresh();
-      
+
       expect(result.success).toBe(false);
       expect(result.error.message).toContain('Startup token refresh failed');
       expect(result.error.message).toContain('Storage failure');
@@ -186,34 +173,31 @@ describe('TokenRotationService - Startup Integration', () => {
 
     it('should create startup-specific metadata', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockExpiredTokens)
+        createSuccessResult(mockExpiredTokens),
       );
 
-      const performTokenRefreshSpy = jest.spyOn(
-        tokenRotationService as any,
-        'performTokenRefresh'
-      );
-      
-      performTokenRefreshSpy.mockReturnValue(createSuccessResult({
-        accessToken: 'new-access-token',
-        refreshToken: 'new-refresh-token',
-        expiresAt: new Date(Date.now() + 3600000),
-        scope: 'https://www.googleapis.com/auth/gmail.readonly',
-        tokenType: 'Bearer',
-      }));
+      const performTokenRefreshSpy = jest.spyOn(tokenRotationService as any, 'performTokenRefresh');
 
-      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(
-        createSuccessResult(undefined)
+      performTokenRefreshSpy.mockReturnValue(
+        createSuccessResult({
+          accessToken: 'new-access-token',
+          refreshToken: 'new-refresh-token',
+          expiresAt: new Date(Date.now() + 3600000),
+          scope: 'https://www.googleapis.com/auth/gmail.readonly',
+          tokenType: 'Bearer',
+        }),
       );
+
+      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(createSuccessResult(undefined));
 
       const result = await tokenRotationService.startupTokenRefresh();
-      
+
       expect(result.success).toBe(true);
-      
+
       // Verify startup-specific metadata was created
       const storeCall = mockSecureStorageManager.storeGmailTokens.mock.calls[0];
       const metadata = storeCall[1]?.metadata;
-      
+
       expect(metadata).toEqual(
         expect.objectContaining({
           startupRefresh: true,
@@ -224,15 +208,15 @@ describe('TokenRotationService - Startup Integration', () => {
             attemptNumber: 1,
             previousExpiryDate: mockExpiredTokens.expiryDate,
           }),
-        })
+        }),
       );
     });
 
     it('should not be initialized error', async () => {
       const uninitializedService = new TokenRotationService(mockSecureStorageManager);
-      
+
       const result = await uninitializedService.startupTokenRefresh();
-      
+
       expect(result.success).toBe(false);
       expect(result.error.message).toContain('TokenRotationService not initialized');
     });
@@ -249,7 +233,7 @@ describe('TokenRotationService - Startup Integration', () => {
     it('should work alongside regular rotation service', async () => {
       // Test that startup refresh doesn't interfere with regular rotation
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockValidTokens)
+        createSuccessResult(mockValidTokens),
       );
 
       const startupResult = await tokenRotationService.startupTokenRefresh();
@@ -266,25 +250,22 @@ describe('TokenRotationService - Startup Integration', () => {
     it('should handle both startup and scheduled rotation', async () => {
       // Start with tokens that need refresh
       mockSecureStorageManager.getGmailTokens
-        .mockResolvedValueOnce(createSuccessResult(mockExpiringSoonTokens))  // Startup call
-        .mockResolvedValueOnce(createSuccessResult(mockValidTokens));        // Scheduled call
+        .mockResolvedValueOnce(createSuccessResult(mockExpiringSoonTokens)) // Startup call
+        .mockResolvedValueOnce(createSuccessResult(mockValidTokens)); // Scheduled call
 
-      const performTokenRefreshSpy = jest.spyOn(
-        tokenRotationService as any,
-        'performTokenRefresh'
-      );
-      
-      performTokenRefreshSpy.mockReturnValue(createSuccessResult({
-        accessToken: 'new-access-token',
-        refreshToken: 'new-refresh-token',
-        expiresAt: new Date(Date.now() + 3600000),
-        scope: 'https://www.googleapis.com/auth/gmail.readonly',
-        tokenType: 'Bearer',
-      }));
+      const performTokenRefreshSpy = jest.spyOn(tokenRotationService as any, 'performTokenRefresh');
 
-      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(
-        createSuccessResult(undefined)
+      performTokenRefreshSpy.mockReturnValue(
+        createSuccessResult({
+          accessToken: 'new-access-token',
+          refreshToken: 'new-refresh-token',
+          expiresAt: new Date(Date.now() + 3600000),
+          scope: 'https://www.googleapis.com/auth/gmail.readonly',
+          tokenType: 'Bearer',
+        }),
       );
+
+      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(createSuccessResult(undefined));
 
       // Perform startup refresh
       const startupResult = await tokenRotationService.startupTokenRefresh();
@@ -301,25 +282,22 @@ describe('TokenRotationService - Startup Integration', () => {
 
     it('should preserve different metadata for different refresh methods', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockExpiringSoonTokens)
+        createSuccessResult(mockExpiringSoonTokens),
       );
 
-      const performTokenRefreshSpy = jest.spyOn(
-        tokenRotationService as any,
-        'performTokenRefresh'
-      );
-      
-      performTokenRefreshSpy.mockReturnValue(createSuccessResult({
-        accessToken: 'new-access-token',
-        refreshToken: 'new-refresh-token',
-        expiresAt: new Date(Date.now() + 3600000),
-        scope: 'https://www.googleapis.com/auth/gmail.readonly',
-        tokenType: 'Bearer',
-      }));
+      const performTokenRefreshSpy = jest.spyOn(tokenRotationService as any, 'performTokenRefresh');
 
-      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(
-        createSuccessResult(undefined)
+      performTokenRefreshSpy.mockReturnValue(
+        createSuccessResult({
+          accessToken: 'new-access-token',
+          refreshToken: 'new-refresh-token',
+          expiresAt: new Date(Date.now() + 3600000),
+          scope: 'https://www.googleapis.com/auth/gmail.readonly',
+          tokenType: 'Bearer',
+        }),
       );
+
+      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(createSuccessResult(undefined));
 
       const result = await tokenRotationService.startupTokenRefresh();
       expect(result.success).toBe(true);
@@ -327,11 +305,11 @@ describe('TokenRotationService - Startup Integration', () => {
       // Verify the metadata indicates startup refresh
       const storeCall = mockSecureStorageManager.storeGmailTokens.mock.calls[0];
       const metadata = storeCall[1]?.metadata;
-      
+
       expect(metadata?.refreshMetadata).toEqual(
         expect.objectContaining({
           refreshMethod: 'startup',
-        })
+        }),
       );
     });
   });
@@ -346,62 +324,58 @@ describe('TokenRotationService - Startup Integration', () => {
         ...mockExpiringSoonTokens,
         scope: undefined,
       };
-      
+
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(tokensWithoutScope)
+        createSuccessResult(tokensWithoutScope),
       );
 
-      const performTokenRefreshSpy = jest.spyOn(
-        tokenRotationService as any,
-        'performTokenRefresh'
-      );
-      
-      performTokenRefreshSpy.mockReturnValue(createSuccessResult({
-        accessToken: 'new-access-token',
-        refreshToken: 'new-refresh-token',
-        expiresAt: new Date(Date.now() + 3600000),
-        scope: undefined,
-        tokenType: 'Bearer',
-      }));
+      const performTokenRefreshSpy = jest.spyOn(tokenRotationService as any, 'performTokenRefresh');
 
-      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(
-        createSuccessResult(undefined)
+      performTokenRefreshSpy.mockReturnValue(
+        createSuccessResult({
+          accessToken: 'new-access-token',
+          refreshToken: 'new-refresh-token',
+          expiresAt: new Date(Date.now() + 3600000),
+          scope: undefined,
+          tokenType: 'Bearer',
+        }),
       );
+
+      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(createSuccessResult(undefined));
 
       const result = await tokenRotationService.startupTokenRefresh();
-      
+
       expect(result.success).toBe(true);
       expect(performTokenRefreshSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           scopes: [], // Should handle undefined scope gracefully
-        })
+        }),
       );
     });
 
     it('should handle storage failures during token saving', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockExpiringSoonTokens)
+        createSuccessResult(mockExpiringSoonTokens),
       );
 
-      const performTokenRefreshSpy = jest.spyOn(
-        tokenRotationService as any,
-        'performTokenRefresh'
+      const performTokenRefreshSpy = jest.spyOn(tokenRotationService as any, 'performTokenRefresh');
+
+      performTokenRefreshSpy.mockReturnValue(
+        createSuccessResult({
+          accessToken: 'new-access-token',
+          refreshToken: 'new-refresh-token',
+          expiresAt: new Date(Date.now() + 3600000),
+          scope: 'https://www.googleapis.com/auth/gmail.readonly',
+          tokenType: 'Bearer',
+        }),
       );
-      
-      performTokenRefreshSpy.mockReturnValue(createSuccessResult({
-        accessToken: 'new-access-token',
-        refreshToken: 'new-refresh-token',
-        expiresAt: new Date(Date.now() + 3600000),
-        scope: 'https://www.googleapis.com/auth/gmail.readonly',
-        tokenType: 'Bearer',
-      }));
 
       mockSecureStorageManager.storeGmailTokens.mockResolvedValue(
-        createErrorResult(new SecurityError('Storage failed'))
+        createErrorResult(new SecurityError('Storage failed')),
       );
 
       const result = await tokenRotationService.startupTokenRefresh();
-      
+
       expect(result.success).toBe(false);
       expect(result.error.message).toContain('Storage failed');
     });

@@ -263,12 +263,10 @@ export function useElectronAPI(): {
 
     // Required API methods (stubs for interface compatibility)
 
-     
     deleteEmail: async (_: string): Promise<void> => {
       return Promise.reject(new Error('Delete email not implemented yet'));
     },
 
-     
     reportSpam: async (
       _: string[],
     ): Promise<{
@@ -285,7 +283,6 @@ export function useElectronAPI(): {
       });
     },
 
-     
     reportPhishing: async (
       _: string[],
     ): Promise<{

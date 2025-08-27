@@ -50,10 +50,7 @@ export class GmailStartupAuth {
   private readonly securityAuditLogger: SecurityAuditLogger;
   private initialized = false;
 
-  constructor(
-    oauthManager: GmailOAuthManager,
-    secureStorageManager: SecureStorageManager,
-  ) {
+  constructor(oauthManager: GmailOAuthManager, secureStorageManager: SecureStorageManager) {
     this.oauthManager = oauthManager;
     this.secureStorageManager = secureStorageManager;
     // Use the existing audit logger from secure storage manager
@@ -72,14 +69,14 @@ export class GmailStartupAuth {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown initialization error';
       return createErrorResult(
-        new ConfigurationError(`Gmail startup auth initialization failed: ${message}`)
+        new ConfigurationError(`Gmail startup auth initialization failed: ${message}`),
       );
     }
   }
 
   /**
    * Validate and refresh Gmail tokens during startup
-   * 
+   *
    * @returns Result indicating whether tokens are valid and ready
    */
   async validateAndRefreshTokens(): Promise<Result<boolean>> {
@@ -91,7 +88,7 @@ export class GmailStartupAuth {
         eventType: 'credential_retrieve',
         provider: 'gmail',
         success: true,
-        metadata: { operation: 'startup_token_validation', action: 'validate_and_refresh' }
+        metadata: { operation: 'startup_token_validation', action: 'validate_and_refresh' },
       });
 
       const tokensResult = await this.secureStorageManager.getGmailTokens();
@@ -101,7 +98,7 @@ export class GmailStartupAuth {
           eventType: 'credential_retrieve',
           provider: 'gmail',
           success: true,
-          metadata: { operation: 'startup_token_validation', result: 'no_tokens_found' }
+          metadata: { operation: 'startup_token_validation', result: 'no_tokens_found' },
         });
         return createSuccessResult(false);
       }
@@ -118,11 +115,11 @@ export class GmailStartupAuth {
           eventType: 'credential_retrieve',
           provider: 'gmail',
           success: true,
-          metadata: { 
+          metadata: {
             operation: 'startup_token_validation',
-            result: 'tokens_valid', 
-            expiresAt: new Date(tokens.expiryDate).toISOString()
-          }
+            result: 'tokens_valid',
+            expiresAt: new Date(tokens.expiryDate).toISOString(),
+          },
         });
         return createSuccessResult(true);
       }
@@ -132,19 +129,19 @@ export class GmailStartupAuth {
       if (refreshResult.success) {
         // Store refreshed tokens and continue
         await this.secureStorageManager.storeGmailTokens(refreshResult.data);
-        
+
         await this.securityAuditLogger.logSecurityEvent({
           eventType: 'token_rotation',
           provider: 'gmail',
           success: true,
-          metadata: { 
+          metadata: {
             operation: 'startup_token_refresh',
             result: 'automatic_refresh_success',
             refreshDurationMs: refreshResult.data.refreshMetadata.refreshDurationMs,
-            attemptNumber: refreshResult.data.refreshMetadata.attemptNumber
-          }
+            attemptNumber: refreshResult.data.refreshMetadata.attemptNumber,
+          },
         });
-        
+
         return createSuccessResult(true);
       } else {
         // Refresh failed - provider needs reconfiguration
@@ -153,11 +150,11 @@ export class GmailStartupAuth {
           provider: 'gmail',
           success: false,
           errorMessage: refreshResult.error.message,
-          metadata: { 
+          metadata: {
             operation: 'startup_token_refresh',
             error: refreshResult.error.code,
-            result: 'automatic_refresh_failed'
-          }
+            result: 'automatic_refresh_failed',
+          },
         });
         return createSuccessResult(false);
       }
@@ -169,13 +166,13 @@ export class GmailStartupAuth {
         provider: 'gmail',
         success: false,
         errorMessage: message,
-        metadata: { operation: 'startup_token_validation', result: 'validation_exception' }
+        metadata: { operation: 'startup_token_validation', result: 'validation_exception' },
       });
 
       return createErrorResult(
         new SecurityError(`Startup token validation failed: ${message}`, {
           provider: 'gmail',
-        })
+        }),
       );
     }
   }
@@ -190,29 +187,29 @@ export class GmailStartupAuth {
       this.ensureInitialized();
 
       const validationResult = await this.validateAndRefreshTokens();
-      
+
       if (!validationResult.success) {
         const authState: GmailAuthState = {
           status: 'needs_reauth',
           lastError: {
             code: validationResult.error.code,
             reason: 'unknown',
-            timestamp: Date.now()
-          }
+            timestamp: Date.now(),
+          },
         };
 
         const result: StartupAuthResult = {
           success: false,
           authState,
           needsReconfiguration: true,
-          message: 'Authentication validation failed. Please check your configuration.'
+          message: 'Authentication validation failed. Please check your configuration.',
         };
 
         return createSuccessResult(result);
       }
 
       const tokensValid = validationResult.data;
-      
+
       if (tokensValid) {
         // Get current token info for auth state
         const tokensResult = await this.secureStorageManager.getGmailTokens();
@@ -223,28 +220,28 @@ export class GmailStartupAuth {
           accountEmail: tokens?.scope?.includes('email') ? 'user@gmail.com' : undefined, // Would normally extract from token
           expiresAt: tokens?.expiryDate,
           lastRefreshAt: Date.now(),
-          refreshAttempts: 0
+          refreshAttempts: 0,
         };
 
         const result: StartupAuthResult = {
           success: true,
           authState,
           needsReconfiguration: false,
-          message: 'Gmail authentication is ready'
+          message: 'Gmail authentication is ready',
         };
 
         return createSuccessResult(result);
       } else {
         const authState: GmailAuthState = {
           status: 'needs_reauth',
-          refreshAttempts: 0
+          refreshAttempts: 0,
         };
 
         const result: StartupAuthResult = {
           success: false,
           authState,
           needsReconfiguration: true,
-          message: 'Gmail needs to be connected. Please sign in again.'
+          message: 'Gmail needs to be connected. Please sign in again.',
         };
 
         return createSuccessResult(result);
@@ -257,15 +254,15 @@ export class GmailStartupAuth {
         lastError: {
           code: 'STARTUP_AUTH_FAILED',
           reason: 'unknown',
-          timestamp: Date.now()
-        }
+          timestamp: Date.now(),
+        },
       };
 
       const result: StartupAuthResult = {
         success: false,
         authState,
         needsReconfiguration: true,
-        message: `Startup authentication failed: ${message}`
+        message: `Startup authentication failed: ${message}`,
       };
 
       return createSuccessResult(result);
@@ -285,18 +282,18 @@ export class GmailStartupAuth {
       if (!tokensResult.success || !tokensResult.data) {
         const authState: GmailAuthState = {
           status: 'needs_reauth',
-          refreshAttempts: 0
+          refreshAttempts: 0,
         };
         return createSuccessResult(authState);
       }
 
       const tokens = tokensResult.data;
       const isExpiringSoon = this.oauthManager.willExpireSoon(tokens);
-      
+
       const authState: GmailAuthState = {
         status: isExpiringSoon ? 'needs_reauth' : 'connected',
         expiresAt: tokens.expiryDate,
-        refreshAttempts: 0
+        refreshAttempts: 0,
       };
 
       return createSuccessResult(authState);
@@ -307,8 +304,8 @@ export class GmailStartupAuth {
         lastError: {
           code: `AUTH_STATE_ERROR: ${message}`,
           reason: 'unknown' as RefreshFailureReason,
-          timestamp: Date.now()
-        }
+          timestamp: Date.now(),
+        },
       };
 
       return createSuccessResult(authState);
@@ -328,7 +325,7 @@ export class GmailStartupAuth {
         eventType: 'credential_delete',
         provider: 'gmail',
         success: true,
-        metadata: { operation: 'startup_auth_reset', action: 'reset_auth_state' }
+        metadata: { operation: 'startup_auth_reset', action: 'reset_auth_state' },
       });
 
       const removeResult = await this.secureStorageManager.removeCredentials('gmail');
@@ -345,13 +342,13 @@ export class GmailStartupAuth {
         provider: 'gmail',
         success: false,
         errorMessage: message,
-        metadata: { operation: 'startup_auth_reset', action: 'reset_auth_state' }
+        metadata: { operation: 'startup_auth_reset', action: 'reset_auth_state' },
       });
 
       return createErrorResult(
         new SecurityError(`Failed to reset auth state: ${message}`, {
           provider: 'gmail',
-        })
+        }),
       );
     }
   }

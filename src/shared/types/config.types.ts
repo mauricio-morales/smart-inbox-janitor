@@ -130,12 +130,12 @@ export interface GmailTokens {
  * Token refresh failure reason for error categorization
  */
 export type RefreshFailureReason =
-  | 'invalid_grant'        // Refresh token revoked/expired
-  | 'consent_revoked'      // User removed app permissions
-  | 'insufficient_scope'   // Scope changes require re-auth
+  | 'invalid_grant' // Refresh token revoked/expired
+  | 'consent_revoked' // User removed app permissions
+  | 'insufficient_scope' // Scope changes require re-auth
   | 'client_misconfigured' // OAuth client credentials invalid
-  | 'network_error'        // Transient network issues
-  | 'rate_limit_exceeded'  // Too many refresh attempts
+  | 'network_error' // Transient network issues
+  | 'rate_limit_exceeded' // Too many refresh attempts
   | 'unknown';
 
 /**

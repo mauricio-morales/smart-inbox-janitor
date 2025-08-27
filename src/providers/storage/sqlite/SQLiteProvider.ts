@@ -1,10 +1,10 @@
 /**
  * SQLite Storage Provider with Encryption Support
- * 
+ *
  * Full implementation of StorageProvider interface with SQLCipher encryption
  * for secure local data persistence. Provides encrypted storage for email metadata,
  * user rules, classification history, and encrypted tokens.
- * 
+ *
  * @module SQLiteProvider
  */
 
@@ -38,7 +38,7 @@ import {
   ConfigurationError,
   StorageError,
   ValidationError,
-  DEFAULT_TIMEOUT_OPTIONS
+  DEFAULT_TIMEOUT_OPTIONS,
 } from '@shared/types';
 import { CryptoUtils } from '@shared/utils/crypto.utils';
 import * as path from 'path';
@@ -57,7 +57,7 @@ const TABLES = {
   ACTION_HISTORY: 'action_history',
   ENCRYPTED_TOKENS: 'encrypted_tokens',
   APP_CONFIG: 'app_config',
-  MIGRATIONS: 'migrations'
+  MIGRATIONS: 'migrations',
 } as const;
 
 /**
@@ -67,15 +67,15 @@ const CURRENT_SCHEMA_VERSION = 1;
 
 /**
  * SQLite Storage Provider with encryption support
- * 
+ *
  * Provides secure local storage using SQLite with optional SQLCipher encryption.
  * Implements all StorageProvider interface methods with proper error handling
  * and Result<T> pattern compliance.
  */
 export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
-  readonly name = 'sqlite'
-  readonly version = '1.0.0'
-  
+  readonly name = 'sqlite';
+  readonly version = '1.0.0';
+
   private db: Database.Database | null = null;
   private config: SQLiteStorageConfig | null = null;
   private encryptionEnabled = false;
@@ -86,45 +86,45 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
       if (!config.databasePath) {
         return createErrorResult(
           new ConfigurationError('Database path is required for SQLite provider', {
-            config
-          })
+            config,
+          }),
         );
       }
-      
+
       this.config = config;
-      
+
       // Ensure database directory exists
       const dbDir = path.dirname(this.config.databasePath);
       if (!fs.existsSync(dbDir)) {
         fs.mkdirSync(dbDir, { recursive: true });
       }
-      
+
       // Open database connection
       this.db = new Database(this.config.databasePath, {
-        timeout: this.config.timeoutMs ?? DEFAULT_TIMEOUT_OPTIONS.timeoutMs
+        timeout: this.config.timeoutMs ?? DEFAULT_TIMEOUT_OPTIONS.timeoutMs,
       });
-      
+
       // Configure database settings
       await this.configureDatabaseSettings();
-      
+
       // Set up encryption if enabled
       // Note: encryption configuration would be handled separately
       // await this.setupEncryption();
-      
+
       // Create tables and run migrations
       this.createTables();
       this.runMigrations();
-      
+
       this.initialized = true;
-      
+
       return Promise.resolve(createSuccessResult(undefined));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown initialization error';
       return createErrorResult(
         new ConfigurationError(`SQLite provider initialization failed: ${message}`, {
           databasePath: this.config?.databasePath,
-          encryptionEnabled: Boolean(this.config?.encryptionKey)
-        })
+          encryptionEnabled: Boolean(this.config?.encryptionKey),
+        }),
       );
     }
   }
@@ -132,52 +132,60 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
   healthCheck(): Promise<Result<HealthStatus>> {
     try {
       if (!this.initialized || this.db == null) {
-        return Promise.resolve(createSuccessResult({
-          healthy: false,
-          status: 'unhealthy',
-          message: 'Database not initialized',
-          timestamp: new Date(),
-          details: {
-            initialized: this.initialized,
-            databaseConnected: Boolean(this.db)
-          }
-        }));
+        return Promise.resolve(
+          createSuccessResult({
+            healthy: false,
+            status: 'unhealthy',
+            message: 'Database not initialized',
+            timestamp: new Date(),
+            details: {
+              initialized: this.initialized,
+              databaseConnected: Boolean(this.db),
+            },
+          }),
+        );
       }
-      
+
       // Test database connectivity
       const testQuery = this.db.prepare('SELECT 1 as test');
       const result = testQuery.get() as { test: number } | undefined;
-      
+
       if (result != null && result.test === 1) {
-        return Promise.resolve(createSuccessResult({
-          healthy: true,
-          status: 'healthy',
-          message: 'Database connection healthy',
-          timestamp: new Date(),
-          details: {
-            databasePath: this.config?.databasePath,
-            encryptionEnabled: this.encryptionEnabled,
-            schemaVersion: CURRENT_SCHEMA_VERSION
-          }
-        }));
+        return Promise.resolve(
+          createSuccessResult({
+            healthy: true,
+            status: 'healthy',
+            message: 'Database connection healthy',
+            timestamp: new Date(),
+            details: {
+              databasePath: this.config?.databasePath,
+              encryptionEnabled: this.encryptionEnabled,
+              schemaVersion: CURRENT_SCHEMA_VERSION,
+            },
+          }),
+        );
       } else {
-        return Promise.resolve(createSuccessResult({
-          healthy: false,
-          status: 'degraded',
-          message: 'Database test query failed',
-          timestamp: new Date(),
-          details: {}
-        }));
+        return Promise.resolve(
+          createSuccessResult({
+            healthy: false,
+            status: 'degraded',
+            message: 'Database test query failed',
+            timestamp: new Date(),
+            details: {},
+          }),
+        );
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown health check error';
-      return Promise.resolve(createSuccessResult({
-        healthy: false,
-        status: 'unhealthy',
-        message: `Health check failed: ${message}`,
-        timestamp: new Date(),
-        details: { error: message }
-      }));
+      return Promise.resolve(
+        createSuccessResult({
+          healthy: false,
+          status: 'unhealthy',
+          message: `Health check failed: ${message}`,
+          timestamp: new Date(),
+          details: { error: message },
+        }),
+      );
     }
   }
 
@@ -187,31 +195,30 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
         this.db.close();
         this.db = null;
       }
-      
+
       this.initialized = false;
       this.config = null;
       this.encryptionEnabled = false;
-      
+
       return Promise.resolve(createSuccessResult(undefined));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown shutdown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Database shutdown failed: ${message}`)
-      ));
+      return Promise.resolve(
+        createErrorResult(new StorageError(`Database shutdown failed: ${message}`)),
+      );
     }
   }
-
 
   getUserRules(): Promise<Result<UserRules>> {
     try {
       this.ensureInitialized();
-      
+
       const query = `
         SELECT * FROM ${TABLES.USER_RULES}
         WHERE active = 1
         ORDER BY created_at ASC
       `;
-      
+
       const db = this.getDb();
       const stmt = db.prepare(query);
       const rows = stmt.all() as Array<{
@@ -219,36 +226,36 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
         type: string;
         category: string;
         value: string;
-         
-        'created_at': string;
-         
-        'last_used': string | null;
-         
-        'usage_count': number;
+
+        created_at: string;
+
+        last_used: string | null;
+
+        usage_count: number;
         active: number;
       }>;
-      
+
       // Group rules by type and category
       const alwaysKeep = {
         senders: [],
         domains: [],
         listIds: [],
         subjectPatterns: [],
-        customRules: []
+        customRules: [],
       };
-      
+
       const autoTrash = {
         senders: [],
         domains: [],
         listIds: [],
         subjectPatterns: [],
         templates: [],
-        customRules: []
+        customRules: [],
       };
-      
+
       for (const row of rows) {
         const target = row.type === 'always_keep' ? alwaysKeep : autoTrash;
-        
+
         switch (row.category) {
           case 'sender':
             (target.senders as string[]).push(row.value);
@@ -267,55 +274,55 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
             break;
         }
       }
-      
+
       const userRules: UserRules = {
         alwaysKeep,
         autoTrash,
         lastUpdated: new Date(),
         stats: {
           totalRules: rows.length,
-          keepRules: rows.filter(r => r.type === 'always_keep').length,
-          trashRules: rows.filter(r => r.type === 'auto_trash').length,
+          keepRules: rows.filter((r) => r.type === 'always_keep').length,
+          trashRules: rows.filter((r) => r.type === 'auto_trash').length,
           totalApplications: rows.reduce((sum, r) => sum + r['usage_count'], 0),
           rulesByCategory: {
-            sender: rows.filter(r => r.category === 'sender').length,
-            domain: rows.filter(r => r.category === 'domain').length,
-            listid: rows.filter(r => r.category === 'listid').length,
-            subject: rows.filter(r => r.category === 'subject').length,
-            content: rows.filter(r => r.category === 'content').length,
-            custom: rows.filter(r => r.category === 'custom').length
-          }
-        }
+            sender: rows.filter((r) => r.category === 'sender').length,
+            domain: rows.filter((r) => r.category === 'domain').length,
+            listid: rows.filter((r) => r.category === 'listid').length,
+            subject: rows.filter((r) => r.category === 'subject').length,
+            content: rows.filter((r) => r.category === 'content').length,
+            custom: rows.filter((r) => r.category === 'custom').length,
+          },
+        },
       };
-      
+
       return Promise.resolve(createSuccessResult(userRules));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Failed to get user rules: ${message}`)
-      ));
+      return Promise.resolve(
+        createErrorResult(new StorageError(`Failed to get user rules: ${message}`)),
+      );
     }
   }
 
   updateUserRules(rules: UserRules): Promise<Result<void>> {
     try {
       this.ensureInitialized();
-      
+
       const db = this.getDb();
       const transaction = db.transaction(() => {
         // Clear existing rules
         const deleteStmt = db.prepare(`DELETE FROM ${TABLES.USER_RULES}`);
         deleteStmt.run();
-        
+
         // Insert new rules
         const insertStmt = db.prepare(`
           INSERT INTO ${TABLES.USER_RULES} (
             id, type, category, value, created_at, usage_count, active
           ) VALUES (?, ?, ?, ?, ?, ?, ?)
         `);
-        
+
         const now = new Date().toISOString();
-        
+
         // Insert always keep rules
         for (const sender of rules.alwaysKeep.senders) {
           insertStmt.run(
@@ -325,10 +332,10 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
             sender,
             now,
             0,
-            1
+            1,
           );
         }
-        
+
         for (const domain of rules.alwaysKeep.domains) {
           insertStmt.run(
             CryptoUtils.generateRandomString(16),
@@ -337,10 +344,10 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
             domain,
             now,
             0,
-            1
+            1,
           );
         }
-        
+
         for (const listId of rules.alwaysKeep.listIds) {
           insertStmt.run(
             CryptoUtils.generateRandomString(16),
@@ -349,10 +356,10 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
             listId,
             now,
             0,
-            1
+            1,
           );
         }
-        
+
         // Insert auto trash rules
         for (const sender of rules.autoTrash.senders) {
           insertStmt.run(
@@ -362,10 +369,10 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
             sender,
             now,
             0,
-            1
+            1,
           );
         }
-        
+
         for (const domain of rules.autoTrash.domains) {
           insertStmt.run(
             CryptoUtils.generateRandomString(16),
@@ -374,10 +381,10 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
             domain,
             now,
             0,
-            1
+            1,
           );
         }
-        
+
         for (const listId of rules.autoTrash.listIds) {
           insertStmt.run(
             CryptoUtils.generateRandomString(16),
@@ -386,34 +393,34 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
             listId,
             now,
             0,
-            1
+            1,
           );
         }
       });
-      
+
       transaction();
-      
+
       return Promise.resolve(createSuccessResult(undefined));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Failed to update user rules: ${message}`)
-      ));
+      return Promise.resolve(
+        createErrorResult(new StorageError(`Failed to update user rules: ${message}`)),
+      );
     }
   }
 
   getEmailMetadata(emailId: string): Promise<Result<EmailMetadata | null>> {
     try {
       this.ensureInitialized();
-      
+
       const db = this.getDb();
       const stmt = db.prepare(`SELECT * FROM ${TABLES.EMAIL_METADATA} WHERE id = ?`);
       const row = stmt.get(emailId) as Record<string, unknown> | undefined;
-      
+
       if (row == null) {
         return Promise.resolve(createSuccessResult(null));
       }
-      
+
       const metadata: EmailMetadata = {
         id: row.id as string,
         folderId: row.folder_id as string,
@@ -424,32 +431,41 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
         receivedDate: new Date(row.received_date as string),
         classification: row.classification as EmailClassification | undefined,
         confidence: row.confidence as number | undefined,
-        reasons: row.reasons != null ? JSON.parse(row.reasons as string) as string[] : undefined,
+        reasons: row.reasons != null ? (JSON.parse(row.reasons as string) as string[]) : undefined,
         bulkKey: row.bulk_key as string | undefined,
-        lastClassified: row.last_classified != null ? new Date(row.last_classified as string) : undefined,
+        lastClassified:
+          row.last_classified != null ? new Date(row.last_classified as string) : undefined,
         userAction: row.user_action as UserAction | undefined,
-        userActionTimestamp: row.user_action_timestamp != null ? new Date(row.user_action_timestamp as string) : undefined,
+        userActionTimestamp:
+          row.user_action_timestamp != null
+            ? new Date(row.user_action_timestamp as string)
+            : undefined,
         processingBatchId: row.processing_batch_id as string | undefined,
         sizeBytes: row.size_bytes as number | undefined,
         hasAttachments: Boolean(row.has_attachments),
-        metadata: row.metadata != null ? JSON.parse(row.metadata as string) as Record<string, unknown> : undefined
+        metadata:
+          row.metadata != null
+            ? (JSON.parse(row.metadata as string) as Record<string, unknown>)
+            : undefined,
       };
-      
+
       return Promise.resolve(createSuccessResult(metadata));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Failed to get email metadata: ${message}`, {
-          emailId
-        })
-      ));
+      return Promise.resolve(
+        createErrorResult(
+          new StorageError(`Failed to get email metadata: ${message}`, {
+            emailId,
+          }),
+        ),
+      );
     }
   }
 
   setEmailMetadata(emailId: string, metadata: EmailMetadata): Promise<Result<void>> {
     try {
       this.ensureInitialized();
-      
+
       const db = this.getDb();
       const stmt = db.prepare(`
         INSERT OR REPLACE INTO ${TABLES.EMAIL_METADATA} (
@@ -459,9 +475,9 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
           size_bytes, has_attachments, metadata, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      
+
       const now = new Date().toISOString();
-      
+
       stmt.run(
         emailId,
         metadata.folderId,
@@ -482,17 +498,19 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
         metadata.hasAttachments === true ? 1 : 0,
         metadata.metadata != null ? JSON.stringify(metadata.metadata) : null,
         now,
-        now
+        now,
       );
-      
+
       return Promise.resolve(createSuccessResult(undefined));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Failed to set email metadata: ${message}`, {
-          emailId
-        })
-      ));
+      return Promise.resolve(
+        createErrorResult(
+          new StorageError(`Failed to set email metadata: ${message}`, {
+            emailId,
+          }),
+        ),
+      );
     }
   }
 
@@ -501,82 +519,89 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
   getEncryptedTokens(): Promise<Result<Record<string, string>>> {
     try {
       this.ensureInitialized();
-      
+
       const query = `SELECT provider, encrypted_token FROM ${TABLES.ENCRYPTED_TOKENS}`;
       const db = this.getDb();
       const stmt = db.prepare(query);
-       
+
       const rows = stmt.all() as Array<{ provider: string; encrypted_token: string }>;
-      
+
       const tokens: Record<string, string> = {};
       for (const row of rows) {
         tokens[row.provider] = row.encrypted_token;
       }
-      
+
       return Promise.resolve(createSuccessResult(tokens));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Failed to get encrypted tokens: ${message}`)
-      ));
+      return Promise.resolve(
+        createErrorResult(new StorageError(`Failed to get encrypted tokens: ${message}`)),
+      );
     }
   }
 
   setEncryptedToken(provider: string, encryptedToken: string): Promise<Result<void>> {
     try {
       this.ensureInitialized();
-      
+
       const db = this.getDb();
       const stmt = db.prepare(`
         INSERT OR REPLACE INTO ${TABLES.ENCRYPTED_TOKENS} 
         (provider, encrypted_token, created_at, updated_at)
         VALUES (?, ?, ?, ?)
       `);
-      
+
       const now = new Date().toISOString();
       stmt.run(provider, encryptedToken, now, now);
-      
+
       return Promise.resolve(createSuccessResult(undefined));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Failed to set encrypted token for provider ${provider}: ${message}`, {
-          provider
-        })
-      ));
+      return Promise.resolve(
+        createErrorResult(
+          new StorageError(`Failed to set encrypted token for provider ${provider}: ${message}`, {
+            provider,
+          }),
+        ),
+      );
     }
   }
-  
+
   removeEncryptedToken(provider: string): Promise<Result<void>> {
     try {
       this.ensureInitialized();
-      
+
       const db = this.getDb();
       const stmt = db.prepare(`DELETE FROM ${TABLES.ENCRYPTED_TOKENS} WHERE provider = ?`);
       stmt.run(provider);
-      
+
       return Promise.resolve(createSuccessResult(undefined));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Failed to remove encrypted token for provider ${provider}: ${message}`, {
-          provider
-        })
-      ));
+      return Promise.resolve(
+        createErrorResult(
+          new StorageError(
+            `Failed to remove encrypted token for provider ${provider}: ${message}`,
+            {
+              provider,
+            },
+          ),
+        ),
+      );
     }
   }
-  
+
   addUserRule(rule: UserRule): Promise<Result<void>> {
     try {
       this.ensureInitialized();
-      
+
       const db = this.getDb();
       const stmt = db.prepare(`
         INSERT INTO ${TABLES.USER_RULES} (
           id, type, category, value, created_at, last_used, usage_count, active
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      
+
       stmt.run(
         rule.id,
         rule.type,
@@ -585,57 +610,65 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
         rule.createdAt.toISOString(),
         rule.lastUsed?.toISOString() ?? null,
         rule.usageCount,
-        rule.active === true ? 1 : 0
+        rule.active === true ? 1 : 0,
       );
-      
+
       return Promise.resolve(createSuccessResult(undefined));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Failed to add user rule: ${message}`, {
-          ruleId: rule.id
-        })
-      ));
+      return Promise.resolve(
+        createErrorResult(
+          new StorageError(`Failed to add user rule: ${message}`, {
+            ruleId: rule.id,
+          }),
+        ),
+      );
     }
   }
-  
+
   removeUserRule(ruleId: string): Promise<Result<void>> {
     try {
       this.ensureInitialized();
-      
+
       const db = this.getDb();
       const stmt = db.prepare(`DELETE FROM ${TABLES.USER_RULES} WHERE id = ?`);
       const result = stmt.run(ruleId);
-      
+
       if (result.changes === 0) {
-        return Promise.resolve(createErrorResult(
-          new ValidationError(`User rule not found: ${ruleId}`, {
-            ruleId: [ruleId]
-          })
-        ));
+        return Promise.resolve(
+          createErrorResult(
+            new ValidationError(`User rule not found: ${ruleId}`, {
+              ruleId: [ruleId],
+            }),
+          ),
+        );
       }
-      
+
       return Promise.resolve(createSuccessResult(undefined));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Failed to remove user rule: ${message}`, {
-          ruleId
-        })
-      ));
+      return Promise.resolve(
+        createErrorResult(
+          new StorageError(`Failed to remove user rule: ${message}`, {
+            ruleId,
+          }),
+        ),
+      );
     }
   }
 
   // Essential missing methods with simplified implementations
-  bulkSetEmailMetadata(entries: Array<{ id: string; metadata: EmailMetadata }>): Promise<Result<BulkOperationResult>> {
+  bulkSetEmailMetadata(
+    entries: Array<{ id: string; metadata: EmailMetadata }>,
+  ): Promise<Result<BulkOperationResult>> {
     try {
       this.ensureInitialized();
-      
+
       const db = this.getDb();
       const transaction = db.transaction(() => {
         let successCount = 0;
         const failures: Array<{ id: string; error: string }> = [];
-        
+
         for (const entry of entries) {
           try {
             const result = this.setEmailMetadataSync(entry.id, entry.metadata);
@@ -649,66 +682,70 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
             failures.push({ id: entry.id, error: message });
           }
         }
-        
+
         return { successCount, failures };
       });
-      
+
       const startTime = Date.now();
       const result = transaction();
       const processingTimeMs = Date.now() - startTime;
-      
-      return Promise.resolve(createSuccessResult({
-        successCount: result.successCount,
-        failureCount: result.failures.length,
-        failures: result.failures,
-        processingTimeMs
-      }));
+
+      return Promise.resolve(
+        createSuccessResult({
+          successCount: result.successCount,
+          failureCount: result.failures.length,
+          failures: result.failures,
+          processingTimeMs,
+        }),
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Bulk email metadata operation failed: ${message}`, {
-          entryCount: entries.length
-        })
-      ));
+      return Promise.resolve(
+        createErrorResult(
+          new StorageError(`Bulk email metadata operation failed: ${message}`, {
+            entryCount: entries.length,
+          }),
+        ),
+      );
     }
   }
 
   queryEmailMetadata(filters: EmailMetadataFilters): Promise<Result<EmailMetadataQueryResult>> {
     try {
       this.ensureInitialized();
-      
+
       let query = `SELECT * FROM ${TABLES.EMAIL_METADATA} WHERE 1=1`;
       const params: unknown[] = [];
-      
+
       if (filters.folderIds != null && filters.folderIds.length > 0) {
         query += ` AND folder_id IN (${filters.folderIds.map(() => '?').join(',')})`;
         params.push(...filters.folderIds);
       }
-      
+
       if (filters.classifications != null && filters.classifications.length > 0) {
         query += ` AND classification IN (${filters.classifications.map(() => '?').join(',')})`;
         params.push(...filters.classifications);
       }
-      
+
       query += ` ORDER BY ${filters.sortBy ?? 'received_date'} ${filters.sortOrder ?? 'DESC'}`;
-      
+
       if (filters.limit != null) {
         query += ` LIMIT ?`;
         params.push(filters.limit);
       }
-      
+
       if (filters.offset != null) {
         query += ` OFFSET ?`;
         params.push(filters.offset);
       }
-      
+
       const startTime = Date.now();
       const db = this.getDb();
       const stmt = db.prepare(query);
       const rows = stmt.all(...params) as Record<string, unknown>[];
       const queryTimeMs = Date.now() - startTime;
-      
-      const items: EmailMetadata[] = rows.map(row => ({
+
+      const items: EmailMetadata[] = rows.map((row) => ({
         id: row.id as string,
         folderId: row.folder_id as string,
         folderName: row.folder_name as string | undefined,
@@ -718,65 +755,75 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
         receivedDate: new Date(row.received_date as string),
         classification: row.classification as EmailClassification | undefined,
         confidence: row.confidence as number | undefined,
-        reasons: row.reasons != null ? JSON.parse(row.reasons as string) as string[] : undefined,
+        reasons: row.reasons != null ? (JSON.parse(row.reasons as string) as string[]) : undefined,
         bulkKey: row.bulk_key as string | undefined,
-        lastClassified: row.last_classified != null ? new Date(row.last_classified as string) : undefined,
+        lastClassified:
+          row.last_classified != null ? new Date(row.last_classified as string) : undefined,
         userAction: row.user_action as UserAction | undefined,
-        userActionTimestamp: row.user_action_timestamp != null ? new Date(row.user_action_timestamp as string) : undefined,
+        userActionTimestamp:
+          row.user_action_timestamp != null
+            ? new Date(row.user_action_timestamp as string)
+            : undefined,
         processingBatchId: row.processing_batch_id as string | undefined,
         sizeBytes: row.size_bytes as number | undefined,
         hasAttachments: Boolean(row.has_attachments),
-        metadata: row.metadata != null ? JSON.parse(row.metadata as string) as Record<string, unknown> : undefined
+        metadata:
+          row.metadata != null
+            ? (JSON.parse(row.metadata as string) as Record<string, unknown>)
+            : undefined,
       }));
-      
-      return Promise.resolve(createSuccessResult({
-        items,
-        totalCount: items.length,
-        hasMore: filters.limit != null ? items.length === filters.limit : false,
-        queryTimeMs
-      }));
+
+      return Promise.resolve(
+        createSuccessResult({
+          items,
+          totalCount: items.length,
+          hasMore: filters.limit != null ? items.length === filters.limit : false,
+          queryTimeMs,
+        }),
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Email metadata query failed: ${message}`)
-      ));
+      return Promise.resolve(
+        createErrorResult(new StorageError(`Email metadata query failed: ${message}`)),
+      );
     }
   }
 
   deleteEmailMetadata(emailIds: string[]): Promise<Result<void>> {
     try {
       this.ensureInitialized();
-      
+
       const placeholders = emailIds.map(() => '?').join(',');
       const db = this.getDb();
       const stmt = db.prepare(`DELETE FROM ${TABLES.EMAIL_METADATA} WHERE id IN (${placeholders})`);
       stmt.run(...emailIds);
-      
+
       return Promise.resolve(createSuccessResult(undefined));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return Promise.resolve(createErrorResult(
-        new StorageError(`Failed to delete email metadata: ${message}`, {
-          emailIdCount: emailIds.length
-        })
-      ));
+      return Promise.resolve(
+        createErrorResult(
+          new StorageError(`Failed to delete email metadata: ${message}`, {
+            emailIdCount: emailIds.length,
+          }),
+        ),
+      );
     }
   }
 
   // Essential stub implementations for remaining interface methods
-   
+
   init(): Promise<Result<void>> {
     return this.initialize(this.config ?? { databasePath: ':memory:' });
   }
 
-   
   migrate(targetVersion?: number): Promise<Result<MigrationResult>> {
     // TODO: Implement database schema migration system
     // Why not implemented in this PR:
     // This PR focuses specifically on Gmail OAuth implementation. Database migrations
     // require careful planning for production data safety and should be implemented
     // as a separate feature with comprehensive testing.
-    // 
+    //
     // Implementation requirements:
     // 1. Create migration scripts for each schema version upgrade
     // 2. Implement rollback mechanisms for safe downgrades
@@ -786,22 +833,23 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     // 6. Implement dry-run mode for testing migrations safely
     // 7. Add comprehensive logging for migration operations
     // 8. Handle database corruption scenarios gracefully
-    return Promise.resolve(createSuccessResult({
-      fromVersion: 0,
-      toVersion: targetVersion ?? CURRENT_SCHEMA_VERSION,
-      migrationsApplied: [],
-      migrationTimeMs: 0,
-      success: true
-    }));
+    return Promise.resolve(
+      createSuccessResult({
+        fromVersion: 0,
+        toVersion: targetVersion ?? CURRENT_SCHEMA_VERSION,
+        migrationsApplied: [],
+        migrationTimeMs: 0,
+        success: true,
+      }),
+    );
   }
 
-   
   getClassificationHistory(): Promise<Result<ClassificationHistoryItem[]>> {
     // TODO: Implement classification history retrieval
     // Why not implemented in this PR:
     // This PR establishes the OAuth foundation. Classification history functionality
     // depends on the email classification system being fully operational first.
-    // 
+    //
     // Implementation requirements:
     // 1. Query classification_history table with proper indexing
     // 2. Add pagination support for large history datasets
@@ -811,13 +859,12 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult([]));
   }
 
-   
   addClassificationResult(): Promise<Result<void>> {
     // TODO: Implement classification result storage
     // Why not implemented in this PR:
     // Classification result storage requires the LLM integration to be completed
     // and the classification schema to be finalized. This PR focuses on OAuth setup.
-    // 
+    //
     // Implementation requirements:
     // 1. Insert classification results into classification_history table
     // 2. Validate classification data structure and confidence scores
@@ -827,13 +874,12 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult(undefined));
   }
 
-   
   updateClassificationFeedback(): Promise<Result<void>> {
     // TODO: Implement user feedback updates for classification results
     // Why not implemented in this PR:
     // User feedback system requires the UI components for feedback collection
     // and the machine learning feedback loop to be designed first.
-    // 
+    //
     // Implementation requirements:
     // 1. Update classification_history with user feedback (correct/incorrect)
     // 2. Track user corrections for improving classification accuracy
@@ -843,41 +889,41 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult(undefined));
   }
 
-   
   getProcessingState(): Promise<Result<ProcessingState>> {
     // TODO: Implement processing state retrieval from database
     // Why not implemented in this PR:
     // Processing state tracking requires the email processing pipeline to be
     // operational. This PR establishes OAuth authentication as a prerequisite.
-    // 
+    //
     // Implementation requirements:
     // 1. Query processing_state table for current session statistics
     // 2. Calculate aggregate statistics across multiple processing sessions
     // 3. Track API usage and cost metrics for different providers
     // 4. Handle concurrent processing sessions with proper state synchronization
     // 5. Implement state persistence for crash recovery scenarios
-    return Promise.resolve(createSuccessResult({
-      totalEmailsDiscovered: 0,
-      totalEmailsProcessed: 0,
-      totalEmailsActioned: 0,
-      sessionStats: {
-        sessionsCompleted: 0,
-        totalTimeSpent: 0,
-        totalApiCalls: 0,
-        totalCostUSD: 0
-      },
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
+    return Promise.resolve(
+      createSuccessResult({
+        totalEmailsDiscovered: 0,
+        totalEmailsProcessed: 0,
+        totalEmailsActioned: 0,
+        sessionStats: {
+          sessionsCompleted: 0,
+          totalTimeSpent: 0,
+          totalApiCalls: 0,
+          totalCostUSD: 0,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    );
   }
 
-   
   updateProcessingState(): Promise<Result<void>> {
     // TODO: Implement processing state updates
     // Why not implemented in this PR:
     // State updates depend on the email processing workflow being implemented.
     // This PR provides the authentication foundation needed for that workflow.
-    // 
+    //
     // Implementation requirements:
     // 1. Update processing_state table with incremental statistics
     // 2. Handle concurrent updates with proper locking mechanisms
@@ -887,13 +933,12 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult(undefined));
   }
 
-   
   getFolderStates(): Promise<Result<FolderState[]>> {
     // TODO: Implement folder state retrieval
     // Why not implemented in this PR:
     // Folder state management requires Gmail API integration to be completed
     // to map Gmail folders/labels to internal state tracking.
-    // 
+    //
     // Implementation requirements:
     // 1. Query folder_states table for Gmail folder synchronization status
     // 2. Map Gmail labels to internal folder representations
@@ -903,13 +948,12 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult([]));
   }
 
-   
   updateFolderState(): Promise<Result<void>> {
     // TODO: Implement folder state updates
     // Why not implemented in this PR:
     // Folder state updates require the Gmail synchronization logic to be
     // implemented first to understand what state changes need tracking.
-    // 
+    //
     // Implementation requirements:
     // 1. Update folder_states table with sync status and progress
     // 2. Handle folder hierarchy changes and label modifications
@@ -919,13 +963,12 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult(undefined));
   }
 
-   
   queueActions(): Promise<Result<void>> {
     // TODO: Implement action queuing for email operations
     // Why not implemented in this PR:
     // Action queuing requires the email action system (move, delete, label)
     // to be designed and the Gmail API operations to be fully implemented.
-    // 
+    //
     // Implementation requirements:
     // 1. Insert actions into action_queue table with proper prioritization
     // 2. Implement action deduplication to prevent duplicate operations
@@ -935,13 +978,12 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult(undefined));
   }
 
-   
   getPendingActions(): Promise<Result<ActionQueueItem[]>> {
     // TODO: Implement pending actions retrieval
     // Why not implemented in this PR:
     // Action queue management requires the complete action framework
     // including priority handling and batch processing capabilities.
-    // 
+    //
     // Implementation requirements:
     // 1. Query action_queue table for pending actions with proper ordering
     // 2. Implement action priority and dependency resolution
@@ -951,13 +993,12 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult([]));
   }
 
-   
   updateActionStatus(): Promise<Result<void>> {
     // TODO: Implement action status updates
     // Why not implemented in this PR:
     // Action status tracking requires the action execution engine to be
     // implemented to understand all possible action states and transitions.
-    // 
+    //
     // Implementation requirements:
     // 1. Update action_queue table with execution status and results
     // 2. Move completed actions to action_history for audit trail
@@ -967,13 +1008,12 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult(undefined));
   }
 
-   
   getActionHistory(): Promise<Result<ActionHistoryItem[]>> {
     // TODO: Implement action history retrieval
     // Why not implemented in this PR:
     // Action history depends on the action execution system being operational
     // and requires UI components for displaying action audit trails.
-    // 
+    //
     // Implementation requirements:
     // 1. Query action_history table with pagination and filtering
     // 2. Add search capabilities by action type, email, and date range
@@ -983,33 +1023,33 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult([]));
   }
 
-   
   getConfig(): Promise<Result<StoredAppConfig>> {
     // TODO: Implement application configuration retrieval
     // Why not implemented in this PR:
     // Configuration management requires the settings schema to be finalized
     // and the UI for configuration management to be completed.
-    // 
+    //
     // Implementation requirements:
     // 1. Query config table for application settings with proper defaults
     // 2. Implement configuration validation and schema versioning
     // 3. Add configuration encryption for sensitive settings
     // 4. Handle configuration migrations for schema changes
     // 5. Implement configuration caching for performance optimization
-    return Promise.resolve(createSuccessResult({
-      values: {},
-      lastUpdated: new Date(),
-      schemaVersion: CURRENT_SCHEMA_VERSION
-    }));
+    return Promise.resolve(
+      createSuccessResult({
+        values: {},
+        lastUpdated: new Date(),
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+      }),
+    );
   }
 
-   
   updateConfig(): Promise<Result<void>> {
     // TODO: Implement configuration updates
     // Why not implemented in this PR:
     // Configuration updates require the settings validation system and
     // the configuration change notification system to be implemented.
-    // 
+    //
     // Implementation requirements:
     // 1. Update config table with validated configuration changes
     // 2. Implement configuration change notifications to affected components
@@ -1019,13 +1059,12 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult(undefined));
   }
 
-   
   getConfigValue(): Promise<Result<null>> {
     // TODO: Implement individual configuration value retrieval
     // Why not implemented in this PR:
     // Individual config value access requires the configuration schema
     // definition and the settings management system to be completed.
-    // 
+    //
     // Implementation requirements:
     // 1. Query config table for specific configuration keys
     // 2. Implement configuration key validation and type checking
@@ -1035,13 +1074,12 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult(null));
   }
 
-   
   setConfigValue(): Promise<Result<void>> {
     // TODO: Implement individual configuration value updates
     // Why not implemented in this PR:
     // Configuration value setting requires validation rules and change
     // propagation mechanisms to be designed and implemented.
-    // 
+    //
     // Implementation requirements:
     // 1. Update config table with individual key-value pairs
     // 2. Implement configuration value validation and type enforcement
@@ -1051,13 +1089,12 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult(undefined));
   }
 
-   
   cleanup(): Promise<Result<CleanupResult>> {
     // TODO: Implement database cleanup and maintenance operations
     // Why not implemented in this PR:
     // Database cleanup requires understanding of data lifecycle policies
     // and retention requirements across all application features.
-    // 
+    //
     // Implementation requirements:
     // 1. Implement old data purging based on retention policies
     // 2. Add database vacuum and optimization operations
@@ -1065,41 +1102,43 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     // 4. Implement incremental cleanup to avoid blocking operations
     // 5. Add cleanup metrics and reporting for monitoring
     // 6. Handle cleanup failures gracefully with rollback capabilities
-    return Promise.resolve(createSuccessResult({
-      recordsDeleted: 0,
-      spaceFreedBytes: 0,
-      cleanupTimeMs: 0,
-      operations: []
-    }));
+    return Promise.resolve(
+      createSuccessResult({
+        recordsDeleted: 0,
+        spaceFreedBytes: 0,
+        cleanupTimeMs: 0,
+        operations: [],
+      }),
+    );
   }
 
-   
   getStatistics(): Promise<Result<DatabaseStatistics>> {
     // TODO: Implement database statistics collection
     // Why not implemented in this PR:
     // Statistics collection requires all database tables to be operational
     // and the monitoring/reporting system to be designed.
-    // 
+    //
     // Implementation requirements:
     // 1. Query database for table sizes, record counts, and index usage
     // 2. Calculate storage utilization and growth trends
     // 3. Add query performance statistics and slow query identification
     // 4. Implement statistics caching to avoid expensive calculations
     // 5. Add database health monitoring and alerting capabilities
-    return Promise.resolve(createSuccessResult({
-      totalSizeBytes: 0,
-      tableCount: 0,
-      recordCounts: {}
-    }));
+    return Promise.resolve(
+      createSuccessResult({
+        totalSizeBytes: 0,
+        tableCount: 0,
+        recordCounts: {},
+      }),
+    );
   }
 
-   
   exportData(): Promise<Result<ExportResult>> {
     // TODO: Implement data export functionality
     // Why not implemented in this PR:
     // Data export requires all data models to be finalized and comprehensive
     // testing to ensure export integrity and user privacy protection.
-    // 
+    //
     // Implementation requirements:
     // 1. Export all user data in portable formats (JSON, CSV)
     // 2. Implement data anonymization and privacy protection
@@ -1107,27 +1146,28 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     // 4. Handle large datasets with streaming and compression
     // 5. Implement export validation and integrity checking
     // 6. Add progress reporting for long-running exports
-    return Promise.resolve(createSuccessResult({
-      metadata: {
-        appVersion: '1.0.0',
-        schemaVersion: CURRENT_SCHEMA_VERSION,
-        format: 'json',
-        recordCounts: {},
-        compressed: false
-      },
-      data: {},
-      sizeBytes: 0,
-      createdAt: new Date()
-    }));
+    return Promise.resolve(
+      createSuccessResult({
+        metadata: {
+          appVersion: '1.0.0',
+          schemaVersion: CURRENT_SCHEMA_VERSION,
+          format: 'json',
+          recordCounts: {},
+          compressed: false,
+        },
+        data: {},
+        sizeBytes: 0,
+        createdAt: new Date(),
+      }),
+    );
   }
 
-   
   importData(): Promise<Result<ImportResult>> {
     // TODO: Implement data import functionality
     // Why not implemented in this PR:
     // Data import requires robust validation, conflict resolution, and
     // rollback mechanisms to protect user data integrity.
-    // 
+    //
     // Implementation requirements:
     // 1. Import data from various formats with schema validation
     // 2. Implement conflict resolution for duplicate and conflicting data
@@ -1136,13 +1176,15 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     // 5. Implement progress reporting and cancellation support
     // 6. Add data transformation and migration capabilities
     // 7. Validate imported data integrity and consistency
-    return Promise.resolve(createSuccessResult({
-      importedCounts: {},
-      skippedCounts: {},
-      errors: {},
-      importTimeMs: 0,
-      success: true
-    }));
+    return Promise.resolve(
+      createSuccessResult({
+        importedCounts: {},
+        skippedCounts: {},
+        errors: {},
+        importTimeMs: 0,
+        success: true,
+      }),
+    );
   }
 
   // Private helper methods
@@ -1157,9 +1199,9 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
           size_bytes, has_attachments, metadata, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      
+
       const now = new Date().toISOString();
-      
+
       const result = stmt.run(
         emailId,
         metadata.folderId,
@@ -1180,9 +1222,9 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
         metadata.hasAttachments === true ? 1 : 0,
         metadata.metadata != null ? JSON.stringify(metadata.metadata) : null,
         now,
-        now
+        now,
       );
-      
+
       return result.changes > 0;
     } catch {
       return false;
@@ -1191,24 +1233,23 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
 
   private configureDatabaseSettings(): Promise<void> {
     if (this.db == null) return Promise.resolve();
-    
+
     // Configure SQLite settings
     this.db.exec('PRAGMA journal_mode = WAL');
     this.db.exec('PRAGMA synchronous = NORMAL');
     this.db.exec('PRAGMA cache_size = 1000');
     this.db.exec('PRAGMA foreign_keys = ON');
-    
+
     if (this.config?.walMode === true) {
       this.db.exec('PRAGMA journal_mode = WAL');
     }
-    
+
     return Promise.resolve();
   }
 
-
   private createTables(): void {
     if (this.db == null) return;
-    
+
     // Create all required tables
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS ${TABLES.USER_RULES} (
@@ -1222,7 +1263,7 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
         active INTEGER DEFAULT 1
       )
     `);
-    
+
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS ${TABLES.EMAIL_METADATA} (
         id TEXT PRIMARY KEY,
@@ -1247,7 +1288,7 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
         updated_at TEXT NOT NULL
       )
     `);
-    
+
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS ${TABLES.ENCRYPTED_TOKENS} (
         provider TEXT PRIMARY KEY,
@@ -1256,7 +1297,7 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
         updated_at TEXT NOT NULL
       )
     `);
-    
+
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS ${TABLES.APP_CONFIG} (
         key TEXT PRIMARY KEY,
@@ -1265,12 +1306,20 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
         updated_at TEXT NOT NULL
       )
     `);
-    
+
     // Create indexes for better performance
-    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_email_metadata_folder ON ${TABLES.EMAIL_METADATA}(folder_id)`);
-    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_email_metadata_sender ON ${TABLES.EMAIL_METADATA}(sender_email)`);
-    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_email_metadata_received ON ${TABLES.EMAIL_METADATA}(received_date)`);
-    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_user_rules_type ON ${TABLES.USER_RULES}(type, active)`);
+    this.db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_email_metadata_folder ON ${TABLES.EMAIL_METADATA}(folder_id)`,
+    );
+    this.db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_email_metadata_sender ON ${TABLES.EMAIL_METADATA}(sender_email)`,
+    );
+    this.db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_email_metadata_received ON ${TABLES.EMAIL_METADATA}(received_date)`,
+    );
+    this.db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_user_rules_type ON ${TABLES.USER_RULES}(type, active)`,
+    );
   }
 
   private runMigrations(): void {

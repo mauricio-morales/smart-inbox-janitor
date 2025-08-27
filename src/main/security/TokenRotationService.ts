@@ -283,12 +283,12 @@ export class TokenRotationService {
 
   /**
    * Perform startup-specific token refresh for Gmail tokens
-   * 
+   *
    * This method provides startup-optimized token refresh with:
    * - Immediate validation of stored tokens
    * - Startup-specific refresh metadata tracking
    * - Integration with GmailStartupAuth service patterns
-   * 
+   *
    * @returns Result indicating startup refresh success or failure
    */
   async startupTokenRefresh(): Promise<Result<void>> {
@@ -348,10 +348,10 @@ export class TokenRotationService {
         const storeResult = await this.secureStorageManager.storeGmailTokens(newTokens, {
           provider: 'gmail',
           shouldExpire: true,
-          metadata: { 
+          metadata: {
             startupRefresh: true,
             refreshedAt: new Date().toISOString(),
-            refreshMetadata: refreshMetadata 
+            refreshMetadata: refreshMetadata,
           },
         });
 
@@ -470,9 +470,9 @@ export class TokenRotationService {
       const storeResult = await this.secureStorageManager.storeGmailTokens(newTokens, {
         provider: 'gmail',
         shouldExpire: true,
-        metadata: { 
+        metadata: {
           rotatedAt: new Date().toISOString(),
-          refreshMetadata: refreshMetadata 
+          refreshMetadata: refreshMetadata,
         },
       });
 

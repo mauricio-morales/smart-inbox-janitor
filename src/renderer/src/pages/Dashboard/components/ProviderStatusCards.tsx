@@ -29,7 +29,7 @@ interface ProviderStatusCardsProps {
   /** Array of provider statuses */
   providers: ProviderStatus[];
   /** Callback when a provider needs refreshing */
-  onRefreshProvider?: (providerId: string) => void;  
+  onRefreshProvider?: (providerId: string) => void;
   /** Callback when all providers should be refreshed */
   onRefreshAll?: () => void;
   /** Whether the component is currently loading */

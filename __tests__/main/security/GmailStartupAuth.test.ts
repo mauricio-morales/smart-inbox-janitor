@@ -1,6 +1,6 @@
 /**
  * Test suite for GmailStartupAuth
- * 
+ *
  * Tests startup-specific Gmail authentication service with comprehensive
  * token validation, refresh, and error handling scenarios.
  */
@@ -51,12 +51,12 @@ describe('GmailStartupAuth', () => {
     };
     mockOAuthManager = new GmailOAuthManager(mockOAuthConfig) as jest.Mocked<GmailOAuthManager>;
     mockSecureStorageManager = new SecureStorageManager() as jest.Mocked<SecureStorageManager>;
-    
+
     // Mock audit logger
     mockSecurityAuditLogger = {
       logSecurityEvent: jest.fn().mockResolvedValue(createSuccessResult(undefined)),
     };
-    
+
     // Set up audit logger mock on secure storage manager
     (mockSecureStorageManager as any).securityAuditLogger = mockSecurityAuditLogger;
 
@@ -70,19 +70,19 @@ describe('GmailStartupAuth', () => {
   describe('initialize', () => {
     it('should initialize successfully', async () => {
       const result = await gmailStartupAuth.initialize();
-      
+
       expect(result.success).toBe(true);
     });
 
     it('should handle initialization errors', async () => {
       // Create a new instance that will simulate initialization error
       const failingAuth = new GmailStartupAuth(mockOAuthManager, mockSecureStorageManager);
-      
+
       // Mock the internal method to throw an error
       jest.spyOn(failingAuth as any, 'ensureInitialized').mockImplementation(() => {
         throw new Error('Initialization failed');
       });
-      
+
       try {
         await failingAuth.validateAndRefreshTokens(); // This will call ensureInitialized
         throw new Error('Expected error to be thrown');
@@ -100,11 +100,11 @@ describe('GmailStartupAuth', () => {
 
     it('should return false when no tokens are stored', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createErrorResult(new SecurityError('No tokens found'))
+        createErrorResult(new SecurityError('No tokens found')),
       );
 
       const result = await gmailStartupAuth.validateAndRefreshTokens();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toBe(false);
@@ -115,20 +115,20 @@ describe('GmailStartupAuth', () => {
           provider: 'gmail',
           success: true,
           metadata: expect.objectContaining({
-            result: 'no_tokens_found'
-          })
-        })
+            result: 'no_tokens_found',
+          }),
+        }),
       );
     });
 
     it('should return true when tokens are valid and not expiring soon', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockValidTokens)
+        createSuccessResult(mockValidTokens),
       );
       mockOAuthManager.willExpireSoon.mockReturnValue(false);
 
       const result = await gmailStartupAuth.validateAndRefreshTokens();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toBe(true);
@@ -139,15 +139,15 @@ describe('GmailStartupAuth', () => {
           provider: 'gmail',
           success: true,
           metadata: expect.objectContaining({
-            result: 'tokens_valid'
-          })
-        })
+            result: 'tokens_valid',
+          }),
+        }),
       );
     });
 
     it('should refresh tokens when they expire soon', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockExpiredTokens)
+        createSuccessResult(mockExpiredTokens),
       );
       mockOAuthManager.willExpireSoon.mockReturnValue(true);
       mockOAuthManager.refreshTokens.mockResolvedValue(
@@ -158,15 +158,13 @@ describe('GmailStartupAuth', () => {
             refreshMethod: 'automatic' as const,
             refreshDurationMs: 500,
             attemptNumber: 1,
-          }
-        })
+          },
+        }),
       );
-      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(
-        createSuccessResult(undefined)
-      );
+      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(createSuccessResult(undefined));
 
       const result = await gmailStartupAuth.validateAndRefreshTokens();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toBe(true);
@@ -178,23 +176,23 @@ describe('GmailStartupAuth', () => {
           provider: 'gmail',
           success: true,
           metadata: expect.objectContaining({
-            result: 'automatic_refresh_success'
-          })
-        })
+            result: 'automatic_refresh_success',
+          }),
+        }),
       );
     });
 
     it('should return false when token refresh fails', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockExpiredTokens)
+        createSuccessResult(mockExpiredTokens),
       );
       mockOAuthManager.willExpireSoon.mockReturnValue(true);
       mockOAuthManager.refreshTokens.mockResolvedValue(
-        createErrorResult(new AuthenticationError('Refresh failed'))
+        createErrorResult(new AuthenticationError('Refresh failed')),
       );
 
       const result = await gmailStartupAuth.validateAndRefreshTokens();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toBe(false);
@@ -205,19 +203,17 @@ describe('GmailStartupAuth', () => {
           provider: 'gmail',
           success: false,
           metadata: expect.objectContaining({
-            result: 'automatic_refresh_failed'
-          })
-        })
+            result: 'automatic_refresh_failed',
+          }),
+        }),
       );
     });
 
     it('should handle exceptions during validation', async () => {
-      mockSecureStorageManager.getGmailTokens.mockRejectedValue(
-        new Error('Storage failure')
-      );
+      mockSecureStorageManager.getGmailTokens.mockRejectedValue(new Error('Storage failure'));
 
       const result = await gmailStartupAuth.validateAndRefreshTokens();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.message).toContain('Startup token validation failed');
@@ -228,9 +224,9 @@ describe('GmailStartupAuth', () => {
           provider: 'gmail',
           success: false,
           metadata: expect.objectContaining({
-            result: 'validation_exception'
-          })
-        })
+            result: 'validation_exception',
+          }),
+        }),
       );
     });
   });
@@ -242,16 +238,16 @@ describe('GmailStartupAuth', () => {
 
     it('should return success result when tokens are valid', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockValidTokens)
+        createSuccessResult(mockValidTokens),
       );
       mockOAuthManager.willExpireSoon.mockReturnValue(false);
 
-      jest.spyOn(gmailStartupAuth, 'validateAndRefreshTokens').mockResolvedValue(
-        createSuccessResult(true)
-      );
+      jest
+        .spyOn(gmailStartupAuth, 'validateAndRefreshTokens')
+        .mockResolvedValue(createSuccessResult(true));
 
       const result = await gmailStartupAuth.handleStartupAuth();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.success).toBe(true);
@@ -262,12 +258,12 @@ describe('GmailStartupAuth', () => {
     });
 
     it('should return needs reconfiguration when tokens are invalid', async () => {
-      jest.spyOn(gmailStartupAuth, 'validateAndRefreshTokens').mockResolvedValue(
-        createSuccessResult(false)
-      );
+      jest
+        .spyOn(gmailStartupAuth, 'validateAndRefreshTokens')
+        .mockResolvedValue(createSuccessResult(false));
 
       const result = await gmailStartupAuth.handleStartupAuth();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.success).toBe(false);
@@ -278,28 +274,30 @@ describe('GmailStartupAuth', () => {
     });
 
     it('should handle validation errors gracefully', async () => {
-      jest.spyOn(gmailStartupAuth, 'validateAndRefreshTokens').mockResolvedValue(
-        createErrorResult(new SecurityError('Validation failed'))
-      );
+      jest
+        .spyOn(gmailStartupAuth, 'validateAndRefreshTokens')
+        .mockResolvedValue(createErrorResult(new SecurityError('Validation failed')));
 
       const result = await gmailStartupAuth.handleStartupAuth();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.success).toBe(false);
         expect(result.data.authState.status).toBe('needs_reauth');
         expect(result.data.needsReconfiguration).toBe(true);
-        expect(result.data.message).toBe('Authentication validation failed. Please check your configuration.');
+        expect(result.data.message).toBe(
+          'Authentication validation failed. Please check your configuration.',
+        );
       }
     });
 
     it('should handle exceptions during startup auth', async () => {
-      jest.spyOn(gmailStartupAuth, 'validateAndRefreshTokens').mockRejectedValue(
-        new Error('Unexpected error')
-      );
+      jest
+        .spyOn(gmailStartupAuth, 'validateAndRefreshTokens')
+        .mockRejectedValue(new Error('Unexpected error'));
 
       const result = await gmailStartupAuth.handleStartupAuth();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.success).toBe(false);
@@ -316,11 +314,11 @@ describe('GmailStartupAuth', () => {
 
     it('should return needs_reauth when no tokens exist', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createErrorResult(new SecurityError('No tokens'))
+        createErrorResult(new SecurityError('No tokens')),
       );
 
       const result = await gmailStartupAuth.getAuthState();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.status).toBe('needs_reauth');
@@ -330,12 +328,12 @@ describe('GmailStartupAuth', () => {
 
     it('should return connected when tokens are valid', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockValidTokens)
+        createSuccessResult(mockValidTokens),
       );
       mockOAuthManager.willExpireSoon.mockReturnValue(false);
 
       const result = await gmailStartupAuth.getAuthState();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.status).toBe('connected');
@@ -345,12 +343,12 @@ describe('GmailStartupAuth', () => {
 
     it('should return needs_reauth when tokens are expiring soon', async () => {
       mockSecureStorageManager.getGmailTokens.mockResolvedValue(
-        createSuccessResult(mockExpiredTokens)
+        createSuccessResult(mockExpiredTokens),
       );
       mockOAuthManager.willExpireSoon.mockReturnValue(true);
 
       const result = await gmailStartupAuth.getAuthState();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.status).toBe('needs_reauth');
@@ -358,12 +356,10 @@ describe('GmailStartupAuth', () => {
     });
 
     it('should handle exceptions gracefully', async () => {
-      mockSecureStorageManager.getGmailTokens.mockRejectedValue(
-        new Error('Storage error')
-      );
+      mockSecureStorageManager.getGmailTokens.mockRejectedValue(new Error('Storage error'));
 
       const result = await gmailStartupAuth.getAuthState();
-      
+
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.status).toBe('needs_reauth');
@@ -379,12 +375,10 @@ describe('GmailStartupAuth', () => {
     });
 
     it('should successfully reset auth state', async () => {
-      mockSecureStorageManager.removeCredentials.mockResolvedValue(
-        createSuccessResult(undefined)
-      );
+      mockSecureStorageManager.removeCredentials.mockResolvedValue(createSuccessResult(undefined));
 
       const result = await gmailStartupAuth.resetAuthState();
-      
+
       expect(result.success).toBe(true);
       expect(mockSecureStorageManager.removeCredentials).toHaveBeenCalledWith('gmail');
       expect(mockSecurityAuditLogger.logSecurityEvent).toHaveBeenCalledWith(
@@ -393,19 +387,19 @@ describe('GmailStartupAuth', () => {
           provider: 'gmail',
           success: true,
           metadata: expect.objectContaining({
-            action: 'reset_auth_state'
-          })
-        })
+            action: 'reset_auth_state',
+          }),
+        }),
       );
     });
 
     it('should handle credential removal failures', async () => {
       mockSecureStorageManager.removeCredentials.mockResolvedValue(
-        createErrorResult(new SecurityError('Removal failed'))
+        createErrorResult(new SecurityError('Removal failed')),
       );
 
       const result = await gmailStartupAuth.resetAuthState();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.message).toContain('Removal failed');
@@ -413,12 +407,10 @@ describe('GmailStartupAuth', () => {
     });
 
     it('should handle exceptions during reset', async () => {
-      mockSecureStorageManager.removeCredentials.mockRejectedValue(
-        new Error('Storage error')
-      );
+      mockSecureStorageManager.removeCredentials.mockRejectedValue(new Error('Storage error'));
 
       const result = await gmailStartupAuth.resetAuthState();
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.message).toContain('Failed to reset auth state');
@@ -429,9 +421,9 @@ describe('GmailStartupAuth', () => {
           provider: 'gmail',
           success: false,
           metadata: expect.objectContaining({
-            action: 'reset_auth_state'
-          })
-        })
+            action: 'reset_auth_state',
+          }),
+        }),
       );
     });
   });
@@ -443,7 +435,7 @@ describe('GmailStartupAuth', () => {
 
     it('should shutdown successfully', async () => {
       const result = await gmailStartupAuth.shutdown();
-      
+
       expect(result.success).toBe(true);
     });
   });

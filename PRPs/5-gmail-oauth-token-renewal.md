@@ -8,7 +8,8 @@
 
 **Deliverable**: Complete OAuth token renewal system with proactive refresh logic, seamless error recovery, and user-friendly re-authentication flow integrated into existing provider architecture.
 
-**Success Definition**: 
+**Success Definition**:
+
 - Users never see errors for expired access tokens (only failed refresh scenarios)
 - Automatic token refresh occurs transparently during app initialization and health checks
 - Setup UI clearly indicates connection states with appropriate actions
@@ -20,13 +21,15 @@
 
 **Use Case**: User opens the app after several hours/days away and expects Gmail connection to work seamlessly without manual intervention
 
-**User Journey**: 
+**User Journey**:
+
 1. User launches Smart Inbox Janitor
 2. App automatically validates and refreshes Gmail tokens in background
 3. If refresh succeeds: User sees "Connected" status and can use Gmail features immediately
 4. If refresh fails: User sees clear "Sign in to Gmail again" prompt with single-click re-authentication
 
-**Pain Points Addressed**: 
+**Pain Points Addressed**:
+
 - Eliminates confusing technical OAuth error messages
 - Removes need for users to understand token expiration concepts
 - Provides clear recovery path when re-authentication is actually needed
@@ -42,17 +45,20 @@
 
 ### User-Visible Behavior
 
-**Transparent Token Refresh**: 
+**Transparent Token Refresh**:
+
 - App startup automatically refreshes expired/expiring tokens (≤2 minute buffer)
 - No user-facing errors or dialogs during successful refresh
 - Loading indicators during refresh process
 
-**Connection State UI**: 
+**Connection State UI**:
+
 - **Connected**: Green status with account email and last refresh timestamp
 - **Refreshing**: Spinner during automatic token renewal
 - **Needs Re-Auth**: Clear "Sign in to Gmail again" button with friendly messaging
 
 **Re-Authentication Flow**:
+
 - Single-click OAuth re-initiation preserving existing security (PKCE, secure storage)
 - Success updates connection state immediately
 - Failure shows specific guidance without technical error codes
@@ -60,16 +66,19 @@
 ### Technical Requirements
 
 **Proactive Token Management**:
+
 - Integration with existing TokenRotationService for automatic scheduling
 - Enhancement of GmailOAuthManager.refreshTokens() for comprehensive error handling
 - Atomic token updates through SecureStorageManager
 
 **Enhanced Error Categorization**:
+
 - Map OAuth error codes to technical error categories (invalid_grant, network_error, etc.)
 - Distinguish between transient network errors and permanent auth failures
 - Comprehensive security audit logging for all token operations
 
 **Provider Initialization Integration**:
+
 - Integration with startup provider initialization sequence in `src/main/index.ts`
 - Enhanced provider health check mechanisms
 - Proper error propagation to existing provider status systems
@@ -98,7 +107,7 @@ _This PRP provides complete implementation context including existing OAuth patt
   pattern: PKCE security, token validation (lines 366-408), willExpireSoon buffer (lines 417-426)
   gotcha: 5-minute buffer hardcoded, refresh token fallback pattern, Result<T> return type
 
-- file: src/main/security/SecureStorageManager.ts  
+- file: src/main/security/SecureStorageManager.ts
   why: Token storage patterns with encryption and audit logging
   pattern: storeGmailTokens() atomic operations (lines 172-259), security audit integration (lines 226-239)
   gotcha: All token operations must include security audit logging, encryption before storage
@@ -108,7 +117,7 @@ _This PRP provides complete implementation context including existing OAuth patt
   pattern: Scheduler integration (lines 117-143), automatic expiration detection (lines 309-325)
   gotcha: 5-minute buffer configuration (line 423), integration points for OAuth manager
 
-# MUST READ - Provider Integration Patterns  
+# MUST READ - Provider Integration Patterns
 - file: src/providers/email/gmail/GmailProvider.ts
   why: Provider-level OAuth integration and error handling patterns
   pattern: connect() method with automatic refresh (lines 236-334), callWithErrorHandling() (lines 906-975)
@@ -116,7 +125,7 @@ _This PRP provides complete implementation context including existing OAuth patt
 
 # MUST READ - Error Handling Architecture
 - file: src/shared/types/errors.types.ts
-  why: Comprehensive error type hierarchy and utility functions  
+  why: Comprehensive error type hierarchy and utility functions
   pattern: AuthenticationError, NetworkError, ValidationError classes, isRetryableError() helpers
   gotcha: GmailError specific error code mapping (lines 142-215), severity classification
 
@@ -131,7 +140,7 @@ _This PRP provides complete implementation context including existing OAuth patt
   pattern: Status chip with color coding, setup buttons, message display
   gotcha: ProviderStatus interface requirements, MUI v7 Grid syntax
 
-- file: src/renderer/src/machines/startupMachine.ts  
+- file: src/renderer/src/machines/startupMachine.ts
   why: XState integration for provider status management
   pattern: ProviderStatus interface, state transitions, setup type classification
   gotcha: setupType values: 'token_refresh' | 'full_reconfiguration' | 'initial_setup'
@@ -158,7 +167,7 @@ _This PRP provides complete implementation context including existing OAuth patt
   critical: offline access_type required, refresh_token only on first auth, error code meanings
 
 - url: https://developers.google.com/identity/protocols/oauth2/web-server#handlinganerrorresponse
-  why: Official OAuth error handling and recovery strategies  
+  why: Official OAuth error handling and recovery strategies
   critical: invalid_grant vs invalid_client distinction, retry vs re-auth scenarios
 
 - docfile: PRPs/ai_docs/gmail_oauth_refresh_patterns.md
@@ -176,7 +185,7 @@ src/
 │   │   └── OAuthWindow.ts                # Secure OAuth window management
 │   ├── security/
 │   │   ├── SecureStorageManager.ts       # Token storage with encryption
-│   │   ├── CredentialEncryption.ts       # OS keychain integration  
+│   │   ├── CredentialEncryption.ts       # OS keychain integration
 │   │   └── TokenRotationService.ts       # Automatic rotation scheduling
 │   └── ipc.ts                            # OAuth IPC handlers
 ├── providers/email/gmail/
@@ -186,7 +195,7 @@ src/
 │   │   ├── ProviderSetupCard.tsx         # Reusable provider status UI
 │   │   └── StartupStateMachine.tsx       # Startup orchestration
 │   ├── machines/
-│   │   └── startupMachine.ts             # XState provider status management  
+│   │   └── startupMachine.ts             # XState provider status management
 │   ├── services/
 │   │   └── StartupOrchestrator.ts        # Provider health check coordination
 │   └── pages/Setup/
@@ -219,7 +228,7 @@ src/
     ├── oauth/
     │   └── gmail-startup-auth.test.ts     # NEW: Startup auth integration tests
     ├── main/security/
-    │   └── GmailStartupAuth.test.ts       # NEW: Startup auth service tests  
+    │   └── GmailStartupAuth.test.ts       # NEW: Startup auth service tests
     └── main/
         └── startup-integration.test.ts    # NEW: Full startup flow tests
 ```
@@ -244,7 +253,7 @@ this.oauth2Client.setCredentials({ refresh_token: refreshToken });
 const bufferTime = currentTime + this.config.expirationBufferMs; // 5 minutes default
 // Must maintain compatibility with existing buffer configuration
 
-// CRITICAL: SecureStorageManager requires security audit logging  
+// CRITICAL: SecureStorageManager requires security audit logging
 // Lines 226-239 show audit pattern - ALL credential operations must log
 await this.securityAuditLogger.logEvent({
   eventType: 'credential_stored' | 'credential_retrieved',
@@ -268,7 +277,7 @@ await this.securityAuditLogger.logEvent({
 
 // CRITICAL: OAuth error code mapping for user-friendly messages
 // From errors.types.ts GmailError - specific codes require specific handling:
-// 'invalid_grant' -> needs full re-authentication  
+// 'invalid_grant' -> needs full re-authentication
 // 'invalid_client' -> configuration error
 // Network errors -> retry with backoff, don't require re-auth
 ```
@@ -295,12 +304,12 @@ interface GmailAuthState {
 }
 
 type RefreshFailureReason =
-  | 'invalid_grant'        // Refresh token revoked/expired
-  | 'consent_revoked'      // User removed app permissions
-  | 'insufficient_scope'   // Scope changes require re-auth
+  | 'invalid_grant' // Refresh token revoked/expired
+  | 'consent_revoked' // User removed app permissions
+  | 'insufficient_scope' // Scope changes require re-auth
   | 'client_misconfigured' // OAuth client credentials invalid
-  | 'network_error'        // Transient network issues
-  | 'rate_limit_exceeded'  // Too many refresh attempts
+  | 'network_error' // Transient network issues
+  | 'rate_limit_exceeded' // Too many refresh attempts
   | 'unknown';
 
 // EXTEND: src/shared/types/security.types.ts
@@ -372,13 +381,13 @@ Task 6: CREATE comprehensive test suite
 // Enhanced OAuth Manager Pattern - refreshTokens() with comprehensive error handling
 async refreshTokens(refreshToken: string, attemptNumber = 1): Promise<Result<GmailTokens & { refreshMetadata: TokenRefreshMetadata }>> {
   const startTime = Date.now();
-  
+
   try {
     // PATTERN: Follow existing oauth2Client setup (lines 278-290)
     this.oauth2Client.setCredentials({ refresh_token: refreshToken });
-    
+
     const { credentials } = await this.oauth2Client.refreshAccessToken();
-    
+
     // CRITICAL: Atomic token update with metadata
     const refreshMetadata: TokenRefreshMetadata = {
       refreshedAt: Date.now(),
@@ -386,14 +395,14 @@ async refreshTokens(refreshToken: string, attemptNumber = 1): Promise<Result<Gma
       refreshDurationMs: Date.now() - startTime,
       attemptNumber
     };
-    
+
     return createSuccessResult({
       accessToken: credentials.access_token!,
       refreshToken: credentials.refresh_token ?? refreshToken, // Fallback pattern
       expiryDate: credentials.expiry_date ?? Date.now() + 3600000,
       refreshMetadata
     });
-    
+
   } catch (error) {
     // PATTERN: Error categorization for user-friendly handling
     const failureReason = this.categorizeRefreshError(error);
@@ -413,19 +422,19 @@ async validateAndRefreshTokens(): Promise<Result<boolean>> {
     success: true,
     metadata: { operation: 'validate_and_refresh' }
   });
-  
+
   const tokensResult = await this.secureStorageManager.getGmailTokens();
   if (!tokensResult.success) {
     // No tokens available - provider needs initial setup
     return createSuccessResult(false);
   }
-  
+
   const tokens = tokensResult.data;
   if (!this.oauthManager.willExpireSoon(tokens)) {
     // Tokens still valid
     return createSuccessResult(true);
   }
-  
+
   // Tokens need refresh - attempt automatic renewal
   const refreshResult = await this.oauthManager.refreshTokens(tokens.refreshToken);
   if (refreshResult.success) {
@@ -449,7 +458,7 @@ async function initializeProviders() {
   try {
     // Initialize storage provider first
     await storageProvider.initialize({ databasePath: './data/app.db' });
-    
+
     // Initialize secure storage manager with storage provider
     const secureStorageInitResult = await secureStorageManager.initialize({
       storageProvider,
@@ -457,16 +466,16 @@ async function initializeProviders() {
       sessionId: `session-${Date.now()}`,
       userId: 'default-user',
     });
-    
+
     if (!secureStorageInitResult.success) {
       console.error('Failed to initialize secure storage manager');
       return;
     }
-    
+
     // ENHANCED: Validate and refresh Gmail tokens before provider initialization
     const gmailStartupAuth = new GmailStartupAuth(gmailOAuthManager, secureStorageManager);
     const tokenValidationResult = await gmailStartupAuth.validateAndRefreshTokens();
-    
+
     if (tokenValidationResult.success && tokenValidationResult.data) {
       // Tokens are valid - proceed with Gmail provider initialization
       const gmailInitResult = await emailProvider.initialize();
@@ -476,10 +485,10 @@ async function initializeProviders() {
     } else {
       console.log('Gmail tokens require reconfiguration - provider will need setup');
     }
-    
+
     // Setup IPC handlers after provider initialization attempts
     setupIPC(emailProvider, llmProvider, storageProvider, secureStorageManager);
-    
+
   } catch (error) {
     console.error('Provider initialization failed:', error);
   }
@@ -493,9 +502,9 @@ async connect(config?: GmailProviderConfig): Promise<Result<{ connected: boolean
     if (!tokensResult?.success) {
       return createErrorResult(new AuthenticationError('No Gmail tokens available'));
     }
-    
+
     const tokens = tokensResult.data;
-    
+
     // Check if tokens are expired and attempt refresh
     if (this.oauthManager?.willExpireSoon(tokens)) {
       const refreshResult = await this.oauthManager.refreshTokens(tokens.refreshToken);
@@ -514,13 +523,13 @@ async connect(config?: GmailProviderConfig): Promise<Result<{ connected: boolean
         }));
       }
     }
-    
+
     // Proceed with normal connection logic...
     const response = await this.gmail?.users.getProfile({ userId: 'me' });
     return createSuccessResult({ connected: true, connectedAt: new Date() });
-    
+
   } catch (error) {
-    return this.callWithErrorHandling('connect', error, () => 
+    return this.callWithErrorHandling('connect', error, () =>
       createErrorResult(new NetworkError('Gmail connection failed'))
     );
   }
@@ -532,28 +541,28 @@ async connect(config?: GmailProviderConfig): Promise<Result<{ connected: boolean
 ```yaml
 STARTUP_INTEGRATION:
   - integrate_with: src/renderer/src/services/StartupOrchestrator.ts
-  - pattern: "Add Gmail auth validation to checkAllProviders() method"
-  - timing: "Run proactive refresh before provider status check"
+  - pattern: 'Add Gmail auth validation to checkAllProviders() method'
+  - timing: 'Run proactive refresh before provider status check'
 
 IPC_HANDLERS:
   - add_to: src/main/ipc.ts
   - handlers: ['gmail:get-auth-state', 'gmail:refresh-connection', 'gmail:reset-auth']
-  - pattern: "Follow existing OAuth handler security patterns"
+  - pattern: 'Follow existing OAuth handler security patterns'
 
 PRELOAD_TYPES:
   - add_to: src/preload/index.ts
-  - pattern: "Extend oauth interface with auth state methods"
-  - security: "Maintain context isolation, Result<T> return types"
+  - pattern: 'Extend oauth interface with auth state methods'
+  - security: 'Maintain context isolation, Result<T> return types'
 
 TOKEN_ROTATION:
   - integrate_with: src/main/security/TokenRotationService.ts
-  - enhancement: "Add proactive refresh during startup sequence"
-  - preserve: "Existing 5-minute buffer configuration"
+  - enhancement: 'Add proactive refresh during startup sequence'
+  - preserve: 'Existing 5-minute buffer configuration'
 
 UI_STATE_MANAGEMENT:
   - integrate_with: src/renderer/src/machines/startupMachine.ts
-  - pattern: "Add gmail auth states to provider status interface"
-  - maintain: "Existing XState patterns and transitions"
+  - pattern: 'Add gmail auth states to provider status interface'
+  - maintain: 'Existing XState patterns and transitions'
 ```
 
 ## Validation Loop
@@ -573,7 +582,7 @@ npx eslint src/main/oauth/GmailOAuthManager.ts --fix
 npx eslint src/main/security/GmailAuthStateManager.ts --fix
 npx eslint src/renderer/src/machines/gmailAuthMachine.ts --fix
 
-# Format validation  
+# Format validation
 npm run format                              # Format all files
 npx prettier src/main/security/GmailAuthStateManager.ts --write
 npx prettier src/renderer/src/hooks/useGmailAuthState.ts --write
@@ -594,7 +603,7 @@ npm run test __tests__/main/security/TokenRotationService.test.ts
 # Integration Tests - Full OAuth flow with refresh
 npm run test __tests__/oauth/gmail-auth-integration.test.ts
 
-# UI Tests - React component and hook testing  
+# UI Tests - React component and hook testing
 npm run test __tests__/renderer/gmail-connection-flow.test.ts
 
 # Coverage validation - Maintain 90% global coverage
@@ -696,7 +705,7 @@ node scripts/test-network-resilience.js \
 
 - [ ] All 4 validation levels completed successfully
 - [ ] All tests pass: `npm run test`
-- [ ] No linting errors: `npm run lint` 
+- [ ] No linting errors: `npm run lint`
 - [ ] No type errors: `npm run type-check`
 - [ ] No formatting issues: `npm run format:check`
 - [ ] Coverage thresholds met: `npm run test:coverage`
@@ -704,7 +713,7 @@ node scripts/test-network-resilience.js \
 ### Feature Validation
 
 - [ ] Expired access tokens trigger automatic refresh with no user errors
-- [ ] Failed refresh scenarios show clear "Sign in again" messaging  
+- [ ] Failed refresh scenarios show clear "Sign in again" messaging
 - [ ] Setup UI displays all connection states (Connected/Refreshing/Needs Re-Auth)
 - [ ] Re-authentication flow works with single-click OAuth initiation
 - [ ] All existing OAuth security patterns preserved (PKCE, encryption, audit logging)

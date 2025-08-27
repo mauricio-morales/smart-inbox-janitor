@@ -135,9 +135,13 @@ export class OAuthWindow {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
-        new ValidationError(`Failed to create OAuth window: ${message}`, {}, {
-          operation: 'createOAuthWindow',
-        }),
+        new ValidationError(
+          `Failed to create OAuth window: ${message}`,
+          {},
+          {
+            operation: 'createOAuthWindow',
+          },
+        ),
       );
     }
   }
@@ -201,9 +205,13 @@ export class OAuthWindow {
           if (this.authCallback) {
             this.authCallback(
               createErrorResult(
-                new ValidationError('OAuth window closed by user', {}, {
-                  operation: 'navigateAndWaitForCallback',
-                }),
+                new ValidationError(
+                  'OAuth window closed by user',
+                  {},
+                  {
+                    operation: 'navigateAndWaitForCallback',
+                  },
+                ),
               ),
             );
           }
@@ -212,9 +220,13 @@ export class OAuthWindow {
         const message = error instanceof Error ? error.message : 'Unknown error';
         resolve(
           createErrorResult(
-            new ValidationError(`OAuth navigation failed: ${message}`, {}, {
-              operation: 'navigateAndWaitForCallback',
-            }),
+            new ValidationError(
+              `OAuth navigation failed: ${message}`,
+              {},
+              {
+                operation: 'navigateAndWaitForCallback',
+              },
+            ),
           ),
         );
       }
@@ -255,9 +267,13 @@ export class OAuthWindow {
       // Check for OAuth errors
       if (error !== null && error.length > 0) {
         return createErrorResult(
-          new ValidationError(`OAuth error: ${error}`, {}, {
-            operation: 'handleCallback',
-          }),
+          new ValidationError(
+            `OAuth error: ${error}`,
+            {},
+            {
+              operation: 'handleCallback',
+            },
+          ),
         );
       }
 
@@ -271,9 +287,13 @@ export class OAuthWindow {
         state.length === 0
       ) {
         return createErrorResult(
-          new ValidationError('Missing required OAuth parameters', {}, {
-            operation: 'handleCallback',
-          }),
+          new ValidationError(
+            'Missing required OAuth parameters',
+            {},
+            {
+              operation: 'handleCallback',
+            },
+          ),
         );
       }
 
@@ -288,9 +308,13 @@ export class OAuthWindow {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
-        new ValidationError(`Failed to parse OAuth callback: ${message}`, {}, {
-          operation: 'handleCallback',
-        }),
+        new ValidationError(
+          `Failed to parse OAuth callback: ${message}`,
+          {},
+          {
+            operation: 'handleCallback',
+          },
+        ),
       );
     }
   }
@@ -420,19 +444,27 @@ export class OAuthWindow {
       // Must be HTTPS
       if (url.protocol !== 'https:') {
         return createErrorResult(
-          new ValidationError('Authorization URL must use HTTPS', {}, {
-            operation: 'validateAuthUrl',
-            protocol: url.protocol,
-          }),
+          new ValidationError(
+            'Authorization URL must use HTTPS',
+            {},
+            {
+              operation: 'validateAuthUrl',
+              protocol: url.protocol,
+            },
+          ),
         );
       }
 
       // Must be Google OAuth endpoint
       if (!url.hostname.endsWith('.google.com') && !url.hostname.endsWith('.googleapis.com')) {
         return createErrorResult(
-          new ValidationError('Authorization URL must be Google domain', {}, {
-            operation: 'validateAuthUrl',
-          }),
+          new ValidationError(
+            'Authorization URL must be Google domain',
+            {},
+            {
+              operation: 'validateAuthUrl',
+            },
+          ),
         );
       }
 
@@ -440,9 +472,13 @@ export class OAuthWindow {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
-        new ValidationError(`Invalid authorization URL: ${message}`, {}, {
-          operation: 'validateAuthUrl',
-        }),
+        new ValidationError(
+          `Invalid authorization URL: ${message}`,
+          {},
+          {
+            operation: 'validateAuthUrl',
+          },
+        ),
       );
     }
   }
