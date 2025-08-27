@@ -68,9 +68,14 @@ module.exports = [
 
       /* --- Cleanup (autofix + warn) --- */
       'unused-imports/no-unused-imports': 'warn',
+      'no-unused-vars': 'warn',
       '@typescript-eslint/no-unused-vars': [
         'warn',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
       ],
     },
   },

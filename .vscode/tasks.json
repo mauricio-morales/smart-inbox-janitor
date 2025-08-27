@@ -153,10 +153,7 @@
         "showReuseMessage": false,
         "clear": true
       },
-      "problemMatcher": [],
-      "runOptions": {
-        "runOn": "folderOpen"
-      }
+      "problemMatcher": []
     },
     {
       "label": "🧪 Run Unit Tests",

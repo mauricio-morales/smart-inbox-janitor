@@ -13,16 +13,23 @@ import { ProviderError } from './base.types.js';
 /**
  * Base class for all provider errors with common functionality
  */
-export abstract class BaseProviderError implements ProviderError {
+export abstract class BaseProviderError extends Error implements ProviderError {
   public readonly timestamp: Date;
 
   constructor(
     public readonly code: string,
-    public readonly message: string,
+    message: string,
     public readonly retryable: boolean,
     public readonly details: Record<string, unknown> = {},
   ) {
+    super(message);
+    this.name = this.constructor.name;
     this.timestamp = new Date();
+
+    // Maintains proper stack trace for where our error was thrown (only available on V8)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
   }
 
   /**

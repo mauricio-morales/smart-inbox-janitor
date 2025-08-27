@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 // TODO: Remove this disable when stub methods are fully implemented
 import { contextBridge, ipcRenderer } from 'electron';
 import type {

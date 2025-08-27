@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 // TODO: Remove this disable when type declarations are cleaned up
 /**
  * GmailSetupModal component

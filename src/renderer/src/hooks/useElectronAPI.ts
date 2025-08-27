@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 // TODO: Remove this disable when stub methods are fully implemented
 import { useCallback } from 'react';
 import type { ElectronAPI } from '../../../preload';
