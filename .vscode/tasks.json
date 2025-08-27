@@ -157,10 +157,10 @@
     },
     {
       "label": "🧪 Run Unit Tests",
-      "detail": "Run Jest unit tests with coverage",
+      "detail": "Run Jest unit tests with coverage (matching CI)",
       "type": "shell",
       "command": "npm",
-      "args": ["run", "test:coverage"],
+      "args": ["test", "--", "--coverage", "--watchAll=false"],
       "group": "test",
       "presentation": {
         "echo": true,
