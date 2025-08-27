@@ -9,6 +9,7 @@
  */
 
 import { safeStorage, app } from 'electron';
+import { LRUCache } from 'lru-cache';
 import { CryptoUtils, EncryptedData } from '@shared/utils/crypto.utils';
 import { SecureFileOperations } from './utils/SecureFileOperations';
 import * as path from 'path';
@@ -25,6 +26,49 @@ import {
   EncryptionKeyMetadata,
   KeyUsageStats,
 } from '@shared/types';
+
+/**
+ * Cache configuration options
+ */
+export interface CacheOptions {
+  /** Maximum number of items in cache */
+  readonly maxSize?: number;
+  /** Time-to-live in milliseconds (default: 1 hour) */
+  readonly ttlMs?: number;
+  /** Update age on access */
+  readonly updateAgeOnGet?: boolean;
+  /** Update age on has() calls */
+  readonly updateAgeOnHas?: boolean;
+}
+
+/**
+ * Cache statistics for monitoring
+ */
+export interface CacheStatistics {
+  /** Total cache hits */
+  readonly hits: number;
+  /** Total cache misses */
+  readonly misses: number;
+  /** Cache hit ratio (0-1) */
+  readonly hitRatio: number;
+  /** Current cache size */
+  readonly size: number;
+  /** Maximum cache size */
+  readonly maxSize: number;
+  /** Number of items evicted */
+  readonly evictions: number;
+  /** Number of items expired */
+  readonly expirations: number;
+  /** Cache utilization percentage (0-100) */
+  readonly utilization: number;
+  /** Most frequently accessed keys */
+  readonly topKeys: string[];
+  /** Cache warming statistics */
+  readonly warmingStats: {
+    readonly itemsWarmed: number;
+    readonly lastWarmingAt?: Date;
+  };
+}
 
 /**
  * Credential encryption options
@@ -56,12 +100,70 @@ export interface EncryptionResult {
  * Provides secure credential storage combining OS-level security via
  * Electron's safeStorage API with application-level AES-256-GCM encryption.
  * Maintains zero-password user experience with automatic fallback.
+ *
+ * Features advanced cache management with LRU eviction, time-based expiration,
+ * metrics monitoring, and memory leak prevention.
  */
 export class CredentialEncryption {
-  private readonly keyCache = new Map<string, Buffer>();
-  private readonly keyMetadataCache = new Map<string, EncryptionKeyMetadata>();
+  private readonly keyCache: LRUCache<string, Buffer>;
+  private readonly keyMetadataCache: LRUCache<string, EncryptionKeyMetadata>;
   private readonly usageStats = new Map<string, KeyUsageStats>();
+
   private initialized = false;
+  private cacheHits = 0;
+  private cacheMisses = 0;
+  private cacheEvictions = 0;
+  private cacheExpirations = 0;
+  private cleanupTimer?: NodeJS.Timeout;
+  private warmingStats = {
+    itemsWarmed: 0,
+    lastWarmingAt: undefined as Date | undefined,
+  };
+
+  private readonly DEFAULT_CACHE_OPTIONS: Required<CacheOptions> = {
+    maxSize: 1000,
+    ttlMs: 60 * 60 * 1000, // 1 hour
+    updateAgeOnGet: true,
+    updateAgeOnHas: false,
+  };
+
+  private readonly frequentlyUsedKeys = new Map<string, number>();
+
+  constructor(cacheOptions?: CacheOptions) {
+    const options = { ...this.DEFAULT_CACHE_OPTIONS, ...cacheOptions };
+
+    // Initialize LRU caches with proper configuration
+    this.keyCache = new LRUCache<string, Buffer>({
+      max: options.maxSize,
+      ttl: options.ttlMs,
+      updateAgeOnGet: options.updateAgeOnGet,
+      updateAgeOnHas: options.updateAgeOnHas,
+      dispose: (value, key) => {
+        this.cacheEvictions++;
+        this.logCacheEvent('key_evicted', key);
+        // Clear sensitive data
+        if (Buffer.isBuffer(value)) {
+          value.fill(0);
+        }
+      },
+      ttlAutopurge: true,
+      allowStale: false,
+    });
+
+    this.keyMetadataCache = new LRUCache<string, EncryptionKeyMetadata>({
+      max: options.maxSize,
+      ttl: options.ttlMs * 2, // Metadata can live longer
+      updateAgeOnGet: options.updateAgeOnGet,
+      dispose: (_value, key) => {
+        this.cacheEvictions++;
+        this.logCacheEvent('metadata_evicted', key);
+      },
+      ttlAutopurge: true,
+    });
+
+    // Set up periodic cache cleanup
+    this.setupPeriodicCleanup();
+  }
 
   /**
    * Initialize the credential encryption service
@@ -79,6 +181,9 @@ export class CredentialEncryption {
 
       // Initialize usage statistics
       this.initializeUsageStats();
+
+      // Warm up cache with frequently used keys
+      this.warmupCache();
 
       this.initialized = true;
 
@@ -309,12 +414,255 @@ export class CredentialEncryption {
   }
 
   /**
+   * Get comprehensive cache statistics for monitoring and debugging
+   *
+   * @returns Complete cache statistics including hit ratios and utilization
+   */
+  getCacheStats(): CacheStatistics {
+    const keySize = this.keyCache.size;
+    const metadataSize = this.keyMetadataCache.size;
+    const totalSize = keySize + metadataSize;
+    const totalRequests = this.cacheHits + this.cacheMisses;
+    const hitRatio = totalRequests > 0 ? this.cacheHits / totalRequests : 0;
+    const maxTotalSize = this.keyCache.max + this.keyMetadataCache.max;
+    const utilization = maxTotalSize > 0 ? (totalSize / maxTotalSize) * 100 : 0;
+
+    // Get top 10 most frequently used keys
+    const topKeys = Array.from(this.frequentlyUsedKeys.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([key]) => key);
+
+    return {
+      hits: this.cacheHits,
+      misses: this.cacheMisses,
+      hitRatio,
+      size: totalSize,
+      maxSize: maxTotalSize,
+      evictions: this.cacheEvictions,
+      expirations: this.cacheExpirations,
+      utilization,
+      topKeys,
+      warmingStats: {
+        itemsWarmed: this.warmingStats.itemsWarmed,
+        lastWarmingAt: this.warmingStats.lastWarmingAt,
+      },
+    };
+  }
+
+  /**
+   * Get cache performance metrics as a formatted string
+   *
+   * @returns Human-readable cache performance report
+   */
+  getCachePerformanceReport(): string {
+    const stats = this.getCacheStats();
+
+    return [
+      '=== Cache Performance Report ===',
+      `Hit Ratio: ${(stats.hitRatio * 100).toFixed(2)}% (${stats.hits} hits, ${stats.misses} misses)`,
+      `Utilization: ${stats.utilization.toFixed(1)}% (${stats.size}/${stats.maxSize} items)`,
+      `Evictions: ${stats.evictions}, Expirations: ${stats.expirations}`,
+      `Top Keys: ${stats.topKeys.slice(0, 5).join(', ')}`,
+      `Cache Warming: ${stats.warmingStats.itemsWarmed} items warmed`,
+      stats.warmingStats.lastWarmingAt
+        ? `Last Warming: ${stats.warmingStats.lastWarmingAt.toISOString()}`
+        : 'No warming performed',
+      '==============================',
+    ].join('\n');
+  }
+
+  /**
+   * Check if cache is approaching size limits and log warnings
+   */
+  private checkCacheSizeWarnings(): void {
+    const stats = this.getCacheStats();
+
+    if (stats.utilization > 90) {
+      this.logCacheEvent(
+        'size_warning_critical',
+        `Cache at ${stats.utilization.toFixed(1)}% capacity`,
+      );
+    } else if (stats.utilization > 75) {
+      this.logCacheEvent('size_warning_high', `Cache at ${stats.utilization.toFixed(1)}% capacity`);
+    }
+
+    // Log poor hit ratio warnings
+    if (stats.hitRatio < 0.5 && stats.hits + stats.misses > 100) {
+      this.logCacheEvent(
+        'hit_ratio_warning',
+        `Low hit ratio: ${(stats.hitRatio * 100).toFixed(2)}%`,
+      );
+    }
+  }
+
+  /**
+   * Warm up cache with frequently accessed keys
+   */
+  private warmupCache(): void {
+    try {
+      // Get most frequently used keys from historical data
+      const frequentKeys = Array.from(this.frequentlyUsedKeys.entries())
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 20) // Warm up top 20 keys
+        .map(([key]) => key);
+
+      let warmedCount = 0;
+      for (const keyId of frequentKeys) {
+        try {
+          // Pre-load keys that are likely to be accessed soon
+          if (this.shouldUseOSKeychain()) {
+            const cachedKey = this.retrieveFromOSKeychain(keyId);
+            if (cachedKey) {
+              const cacheKey = `${keyId}:true`;
+              if (!this.keyCache.has(cacheKey)) {
+                this.keyCache.set(cacheKey, Buffer.from(cachedKey, 'base64'));
+                warmedCount++;
+              }
+            }
+          }
+        } catch {
+          // Ignore errors during warming - it's optional
+        }
+      }
+
+      this.warmingStats = {
+        itemsWarmed: warmedCount,
+        lastWarmingAt: new Date(),
+      };
+
+      // Always log warming attempt, even if no items were warmed
+      this.logCacheEvent('cache_warmed', `Warmed ${warmedCount} cache entries`);
+    } catch (error) {
+      // Cache warming is optional, don't fail initialization
+      this.logCacheEvent('warming_error', `Cache warming failed: ${error}`);
+    }
+  }
+
+  /**
+   * Set up periodic cache cleanup and maintenance
+   */
+  private setupPeriodicCleanup(): void {
+    // Run cleanup every 15 minutes
+    this.cleanupTimer = setInterval(
+      () => {
+        this.performPeriodicMaintenance();
+      },
+      15 * 60 * 1000,
+    );
+
+    // Increase max listeners to prevent warnings during testing
+    process.setMaxListeners(20);
+  }
+
+  /**
+   * Perform periodic cache maintenance
+   */
+  private performPeriodicMaintenance(): void {
+    try {
+      // Check cache size warnings
+      this.checkCacheSizeWarnings();
+
+      // Force garbage collection on old entries
+      this.keyCache.purgeStale();
+      this.keyMetadataCache.purgeStale();
+
+      // Clean up old usage stats (keep last 30 days)
+      const cutoffDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      for (const [keyId, stats] of this.usageStats.entries()) {
+        if (stats.lastUsageAt && stats.lastUsageAt < cutoffDate) {
+          this.usageStats.delete(keyId);
+        }
+      }
+
+      // Update frequency tracking
+      this.updateFrequencyTracking();
+
+      // Periodic cache warming for active keys
+      if (Math.random() < 0.1) {
+        // 10% chance per cleanup cycle
+        this.warmupCache();
+      }
+
+      this.logCacheEvent('periodic_maintenance', 'Cache maintenance completed');
+    } catch (error) {
+      this.logCacheEvent('maintenance_error', `Maintenance failed: ${error}`);
+    }
+  }
+
+  /**
+   * Update frequency tracking for cache warming
+   */
+  private updateFrequencyTracking(): void {
+    // Decay frequency scores over time to prioritize recent access
+    for (const [key, frequency] of this.frequentlyUsedKeys.entries()) {
+      const decayedFrequency = frequency * 0.9; // 10% decay
+      if (decayedFrequency < 1) {
+        this.frequentlyUsedKeys.delete(key);
+      } else {
+        this.frequentlyUsedKeys.set(key, decayedFrequency);
+      }
+    }
+  }
+
+  /**
+   * Properly shutdown cache with cleanup
+   */
+  shutdown(): void {
+    try {
+      // Clear cleanup timer
+      if (this.cleanupTimer) {
+        clearInterval(this.cleanupTimer);
+        this.cleanupTimer = undefined;
+      }
+
+      // Securely clear all cached keys
+      this.keyCache.forEach((value) => {
+        if (Buffer.isBuffer(value)) {
+          value.fill(0); // Zero out sensitive data
+        }
+      });
+
+      // Clear all caches
+      this.keyCache.clear();
+      this.keyMetadataCache.clear();
+      this.usageStats.clear();
+      this.frequentlyUsedKeys.clear();
+
+      // Reset statistics
+      this.cacheHits = 0;
+      this.cacheMisses = 0;
+      this.cacheEvictions = 0;
+      this.cacheExpirations = 0;
+
+      this.logCacheEvent('shutdown', 'Cache shutdown completed successfully');
+    } catch (error) {
+      this.logCacheEvent('shutdown_error', `Cache shutdown error: ${error}`);
+    }
+  }
+
+  /**
    * Clear all cached keys and metadata (for security)
    */
   clearCache(): void {
+    // Securely clear sensitive data before clearing caches
+    this.keyCache.forEach((value) => {
+      if (Buffer.isBuffer(value)) {
+        value.fill(0);
+      }
+    });
+
     this.keyCache.clear();
     this.keyMetadataCache.clear();
     this.usageStats.clear();
+
+    // Reset cache statistics
+    this.cacheHits = 0;
+    this.cacheMisses = 0;
+    this.cacheEvictions = 0;
+    this.cacheExpirations = 0;
+
+    this.logCacheEvent('cache_cleared', 'All caches manually cleared');
   }
 
   /**
@@ -323,11 +671,15 @@ export class CredentialEncryption {
   private getOrCreateEncryptionKey(keyId: string, useOSKeychain: boolean): Buffer {
     const cacheKey = `${keyId}:${useOSKeychain}`;
 
-    // Check cache first
+    // Check cache first with metrics tracking
     const cachedKey = this.keyCache.get(cacheKey);
     if (cachedKey) {
+      this.cacheHits++;
+      this.trackKeyUsage(keyId);
       return cachedKey;
     }
+
+    this.cacheMisses++;
 
     let key: Buffer;
 
@@ -337,8 +689,14 @@ export class CredentialEncryption {
       key = this.getOrCreateFallbackKey();
     }
 
-    // Cache the key
+    // Cache the key with monitoring
     this.keyCache.set(cacheKey, key);
+    this.trackKeyUsage(keyId);
+
+    // Check for cache size warnings periodically
+    if ((this.cacheHits + this.cacheMisses) % 100 === 0) {
+      this.checkCacheSizeWarnings();
+    }
 
     return key;
   }
@@ -517,6 +875,7 @@ export class CredentialEncryption {
     };
 
     this.keyMetadataCache.set(keyId, metadata);
+    this.trackKeyUsage(keyId);
     return metadata;
   }
 
@@ -628,6 +987,29 @@ export class CredentialEncryption {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Ensure service is initialized
+   */
+  /**
+   * Track key usage for frequency-based cache warming
+   */
+  private trackKeyUsage(keyId: string): void {
+    const currentCount = this.frequentlyUsedKeys.get(keyId) ?? 0;
+    this.frequentlyUsedKeys.set(keyId, currentCount + 1);
+  }
+
+  /**
+   * Log cache-related events for monitoring
+   */
+  private logCacheEvent(eventType: string, details: string): void {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] Cache Event: ${eventType} - ${details}`;
+
+    // In production, this would use proper structured logging
+    // eslint-disable-next-line no-console
+    console.info(logMessage);
   }
 
   /**

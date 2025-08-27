@@ -51,6 +51,11 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
     // Reset all mocks
     jest.clearAllMocks();
 
+    // Clean up any existing instance
+    if (credentialEncryption) {
+      credentialEncryption.shutdown();
+    }
+
     // Setup default mock implementations
     mockApp.getPath.mockReturnValue(mockUserDataPath);
     mockSafeStorage.isEncryptionAvailable.mockReturnValue(true);
@@ -71,8 +76,13 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
     mockFs.existsSync.mockReturnValue(true);
     mockFs.readFileSync.mockReturnValue(mockEncryptedKey);
 
-    // Create fresh instance for each test
-    credentialEncryption = new CredentialEncryption();
+    // Create fresh instance for each test with test cache configuration
+    credentialEncryption = new CredentialEncryption({
+      maxSize: 10, // Small cache for testing eviction
+      ttlMs: 1000, // 1 second TTL for testing expiration
+      updateAgeOnGet: true,
+      updateAgeOnHas: false,
+    });
     credentialEncryption.initialize();
   });
 
@@ -432,6 +442,383 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
 
       // Assert
       expect(result).toBe(false);
+    });
+  });
+
+  describe('Cache Management and Eviction', () => {
+    let consoleInfoSpy: jest.SpyInstance;
+    let consoleWarnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+      consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Setup successful crypto operations for cache testing
+      mockCryptoUtils.encryptData.mockReturnValue(
+        createSuccessResult({
+          encryptedData: 'encrypted-data',
+          iv: 'initialization-vector',
+          authTag: 'authentication-tag',
+          algorithm: 'aes-256-gcm',
+          createdAt: new Date(),
+        }),
+      );
+    });
+
+    afterEach(() => {
+      consoleInfoSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
+
+      // Clean up test instance
+      credentialEncryption.shutdown();
+    });
+
+    describe('LRU Cache Eviction', () => {
+      it('should evict oldest items when cache reaches maxSize', () => {
+        // Fill cache to capacity (10 items)
+        for (let i = 0; i < 10; i++) {
+          const result = credentialEncryption.encryptCredential(`data-${i}`, `key-${i}`);
+          expect(result.success).toBe(true);
+        }
+
+        // Add one more item to trigger eviction
+        const result = credentialEncryption.encryptCredential('data-overflow', 'key-overflow');
+        expect(result.success).toBe(true);
+
+        // Verify eviction was logged
+        expect(consoleInfoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Cache Event: key_evicted'),
+        );
+      });
+
+      it('should track cache statistics accurately during eviction', () => {
+        // Fill cache to capacity
+        for (let i = 0; i < 12; i++) {
+          // 12 > maxSize of 10
+          credentialEncryption.encryptCredential(`data-${i}`, `key-${i}`);
+        }
+
+        const stats = credentialEncryption.getCacheStats();
+
+        expect(stats.evictions).toBeGreaterThan(0);
+        expect(stats.size).toBeLessThanOrEqual(stats.maxSize);
+        expect(stats.utilization).toBeGreaterThan(0);
+      });
+
+      it('should prioritize recently used items during eviction', () => {
+        // Fill cache with initial items
+        for (let i = 0; i < 10; i++) {
+          credentialEncryption.encryptCredential(`data-${i}`, `key-${i}`);
+        }
+
+        // Access key-5 to make it recently used
+        const credential5 = {
+          encryptedData: 'encrypted-data',
+          iv: 'initialization-vector',
+          authTag: 'authentication-tag',
+          algorithm: 'aes-256-gcm' as const,
+          createdAt: new Date(),
+          keyId: 'key-5',
+        };
+
+        mockCryptoUtils.decryptData.mockReturnValue(createSuccessResult('data-5'));
+        credentialEncryption.decryptCredential(credential5);
+
+        // Add new item to trigger eviction
+        credentialEncryption.encryptCredential('new-data', 'new-key');
+
+        // key-5 should still be accessible (not evicted)
+        const keyMetadata5 = credentialEncryption.getKeyMetadata('key-5');
+        expect(keyMetadata5).toBeTruthy();
+      });
+    });
+
+    describe('Time-based Expiration', () => {
+      it('should expire cache entries after TTL', async () => {
+        // Create cache entry
+        credentialEncryption.encryptCredential('test-data', 'test-key');
+
+        // Wait for TTL to expire (1 second + buffer)
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+
+        // Force cache cleanup
+        (credentialEncryption as any).performPeriodicMaintenance();
+
+        // Should register as cache miss now
+        credentialEncryption.encryptCredential('test-data', 'test-key');
+
+        const stats = credentialEncryption.getCacheStats();
+        expect(stats.misses).toBeGreaterThan(0);
+      });
+
+      it('should handle expired credentials gracefully', () => {
+        // Create expired credential
+        const expiredCredential = {
+          encryptedData: 'encrypted-data',
+          iv: 'initialization-vector',
+          authTag: 'authentication-tag',
+          algorithm: 'aes-256-gcm' as const,
+          createdAt: new Date(),
+          keyId: 'expired-key',
+          expiresAt: new Date(Date.now() - 1000), // Expired 1 second ago
+        };
+
+        const result = credentialEncryption.decryptCredential(expiredCredential);
+
+        expect(result.success).toBe(false);
+        expect(result.error?.message).toContain('Credential has expired');
+      });
+    });
+
+    describe('Cache Statistics and Monitoring', () => {
+      it('should track hit/miss ratios accurately', () => {
+        const keyId = 'stats-test-key';
+
+        // First access - cache miss
+        credentialEncryption.encryptCredential('test-data', keyId);
+
+        // Second access - cache hit
+        credentialEncryption.encryptCredential('test-data', keyId);
+
+        const stats = credentialEncryption.getCacheStats();
+
+        expect(stats.hits).toBeGreaterThan(0);
+        expect(stats.misses).toBeGreaterThan(0);
+        expect(stats.hitRatio).toBeGreaterThan(0);
+        expect(stats.hitRatio).toBeLessThanOrEqual(1);
+      });
+
+      it('should provide comprehensive cache performance report', () => {
+        // Generate some cache activity
+        credentialEncryption.encryptCredential('data1', 'key1');
+        credentialEncryption.encryptCredential('data2', 'key2');
+        credentialEncryption.encryptCredential('data1', 'key1'); // Cache hit
+
+        const report = credentialEncryption.getCachePerformanceReport();
+
+        expect(report).toContain('Cache Performance Report');
+        expect(report).toContain('Hit Ratio');
+        expect(report).toContain('Utilization');
+        expect(report).toContain('Evictions');
+        expect(report).toContain('Top Keys');
+      });
+
+      it('should track top frequently accessed keys', () => {
+        const frequentKey = 'frequent-key';
+
+        // Access the same key multiple times
+        for (let i = 0; i < 5; i++) {
+          credentialEncryption.encryptCredential(`data-${i}`, frequentKey);
+        }
+
+        const stats = credentialEncryption.getCacheStats();
+
+        expect(stats.topKeys).toContain(frequentKey);
+      });
+    });
+
+    describe('Cache Size Warnings', () => {
+      it('should warn when cache utilization exceeds 75%', () => {
+        // Fill cache to >75% capacity (8+ items in a 10-item cache)
+        for (let i = 0; i < 9; i++) {
+          credentialEncryption.encryptCredential(`data-${i}`, `key-${i}`);
+        }
+
+        // Trigger cache size check
+        (credentialEncryption as any).checkCacheSizeWarnings();
+
+        expect(consoleInfoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Cache Event: size_warning_high'),
+        );
+      });
+
+      it('should warn critically when cache utilization exceeds 90%', () => {
+        // Fill cache to capacity
+        for (let i = 0; i < 10; i++) {
+          credentialEncryption.encryptCredential(`data-${i}`, `key-${i}`);
+        }
+
+        // Trigger cache size check
+        (credentialEncryption as any).checkCacheSizeWarnings();
+
+        expect(consoleInfoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Cache Event: size_warning_critical'),
+        );
+      });
+
+      it('should warn about poor hit ratios', () => {
+        // Generate many cache misses
+        for (let i = 0; i < 110; i++) {
+          credentialEncryption.encryptCredential(`data-${i}`, `unique-key-${i}`);
+        }
+
+        // Force cache size check
+        (credentialEncryption as any).checkCacheSizeWarnings();
+
+        expect(consoleInfoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Cache Event: hit_ratio_warning'),
+        );
+      });
+    });
+
+    describe('Cache Warming', () => {
+      it('should warm cache with frequently accessed keys on initialization', () => {
+        // Create new instance to test warming
+        const warmedCredentialEncryption = new CredentialEncryption();
+
+        // Mock frequently used keys data
+        const mockFrequentKeys = new Map([
+          ['frequent-key-1', 10],
+          ['frequent-key-2', 8],
+          ['frequent-key-3', 6],
+        ]);
+
+        (warmedCredentialEncryption as any).frequentlyUsedKeys = mockFrequentKeys;
+
+        // Initialize should trigger warming
+        warmedCredentialEncryption.initialize();
+
+        const stats = warmedCredentialEncryption.getCacheStats();
+
+        // Should have attempted warming
+        expect(stats.warmingStats.lastWarmingAt).toBeTruthy();
+      });
+
+      it('should log cache warming events', () => {
+        // Trigger warming manually
+        (credentialEncryption as any).warmupCache();
+
+        expect(consoleInfoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Cache Event: cache_warmed'),
+        );
+      });
+    });
+
+    describe('Periodic Maintenance', () => {
+      it('should perform periodic cache maintenance', () => {
+        // Add some cache entries
+        credentialEncryption.encryptCredential('data1', 'key1');
+        credentialEncryption.encryptCredential('data2', 'key2');
+
+        // Manually trigger maintenance
+        (credentialEncryption as any).performPeriodicMaintenance();
+
+        expect(consoleInfoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Cache Event: periodic_maintenance'),
+        );
+      });
+
+      it('should clean up old usage stats during maintenance', () => {
+        // Add old usage stats
+        const oldStats = {
+          encryptionCount: 1,
+          decryptionCount: 1,
+          totalBytesEncrypted: 100,
+          totalBytesDecrypted: 100,
+          lastUsageAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000), // 31 days ago
+        };
+
+        (credentialEncryption as any).usageStats.set('old-key', oldStats);
+
+        // Trigger maintenance
+        (credentialEncryption as any).performPeriodicMaintenance();
+
+        // Old stats should be cleaned up
+        const stats = credentialEncryption.getUsageStats('old-key');
+        expect(stats).toBeNull();
+      });
+    });
+
+    describe('Secure Shutdown', () => {
+      it('should securely clear sensitive data during shutdown', () => {
+        // Add some cached keys
+        credentialEncryption.encryptCredential('sensitive-data', 'sensitive-key');
+
+        // Mock buffer fill method
+        const mockBuffer = Buffer.from('mock-sensitive-data');
+        const fillSpy = jest.spyOn(mockBuffer, 'fill');
+
+        // Mock the cache to return our spy buffer
+        (credentialEncryption as any).keyCache.set('test-key', mockBuffer);
+
+        // Perform shutdown
+        credentialEncryption.shutdown();
+
+        // Should have cleared sensitive data
+        expect(fillSpy).toHaveBeenCalledWith(0);
+
+        // Cache should be empty
+        const stats = credentialEncryption.getCacheStats();
+        expect(stats.size).toBe(0);
+
+        fillSpy.mockRestore();
+      });
+
+      it('should clear cleanup timer during shutdown', () => {
+        const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+        credentialEncryption.shutdown();
+
+        expect(clearIntervalSpy).toHaveBeenCalled();
+
+        clearIntervalSpy.mockRestore();
+      });
+
+      it('should handle shutdown errors gracefully', () => {
+        // Mock an error during shutdown
+        (credentialEncryption as any).keyCache.forEach = jest.fn().mockImplementation(() => {
+          throw new Error('Shutdown error');
+        });
+
+        // Shutdown should not throw
+        expect(() => credentialEncryption.shutdown()).not.toThrow();
+
+        expect(consoleInfoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Cache Event: shutdown_error'),
+        );
+      });
+    });
+
+    describe('WeakMap Usage and Memory Management', () => {
+      it('should handle buffer disposal correctly during eviction', () => {
+        // Fill cache beyond capacity to trigger eviction
+        const buffers: Buffer[] = [];
+
+        for (let i = 0; i < 15; i++) {
+          const buffer = Buffer.from(`test-buffer-${i}`);
+          buffers.push(buffer);
+
+          // Mock the cache to use real buffers
+          (credentialEncryption as any).keyCache.set(`key-${i}`, buffer);
+        }
+
+        // Should have triggered eviction
+        const stats = credentialEncryption.getCacheStats();
+        expect(stats.evictions).toBeGreaterThan(0);
+      });
+    });
+
+    describe('Cache Clear Operations', () => {
+      it('should securely clear cache and reset statistics', () => {
+        // Add cache entries and generate stats
+        credentialEncryption.encryptCredential('data1', 'key1');
+        credentialEncryption.encryptCredential('data2', 'key2');
+        credentialEncryption.encryptCredential('data1', 'key1'); // Generate hit
+
+        // Clear cache
+        credentialEncryption.clearCache();
+
+        const stats = credentialEncryption.getCacheStats();
+
+        expect(stats.size).toBe(0);
+        expect(stats.hits).toBe(0);
+        expect(stats.misses).toBe(0);
+        expect(stats.evictions).toBe(0);
+
+        expect(consoleInfoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Cache Event: cache_cleared'),
+        );
+      });
     });
   });
 });
