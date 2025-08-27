@@ -31,9 +31,9 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 3. Run tests (if they exist and don't take too long)
+# 3. Run tests (matching CI workflow with relaxed coverage thresholds)
 echo "🧪 Running tests..."
-npm test -- --passWithNoTests --watchAll=false
+npm test -- --coverage --watchAll=false --passWithNoTests
 if [ $? -ne 0 ]; then
   echo "❌ Tests failed."
   echo "💡 Please fix failing tests before pushing."
