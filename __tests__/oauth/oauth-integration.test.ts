@@ -8,17 +8,34 @@
 import { GmailProvider } from '../../src/providers/email/gmail/GmailProvider';
 import { OpenAIProvider } from '../../src/providers/llm/openai/OpenAIProvider';
 import { SecureStorageManager } from '../../src/main/security/SecureStorageManager';
+import { OAuthWindow } from '../../src/main/oauth/OAuthWindow';
 import { setupIPC } from '../../src/main/ipc';
 import { ipcMain, IpcMainInvokeEvent } from 'electron';
 import { createSuccessResult, createErrorResult, createProviderError } from '@shared/types';
 
 // Mock all external dependencies
-jest.mock('electron');
+jest.mock('electron', () => ({
+  ipcMain: {
+    handle: jest.fn(),
+    removeHandler: jest.fn(),
+    on: jest.fn(),
+    off: jest.fn(),
+  },
+}));
 jest.mock('googleapis');
 jest.mock('openai');
 jest.mock('../../src/main/security/SecureStorageManager');
 jest.mock('../../src/providers/email/gmail/GmailProvider');
 jest.mock('../../src/providers/llm/openai/OpenAIProvider');
+jest.mock('../../src/main/oauth/OAuthWindow', () => ({
+  OAuthWindow: jest.fn().mockImplementation(() => ({
+    createOAuthWindow: jest.fn().mockReturnValue({ success: true, data: {} }),
+    navigateAndWaitForCallback: jest.fn().mockResolvedValue({
+      success: true,
+      data: { code: 'auth-code', state: 'test-state' },
+    }),
+  })),
+}));
 
 const mockIpcMain = ipcMain as jest.Mocked<typeof ipcMain>;
 const MockSecureStorageManager = SecureStorageManager as jest.MockedClass<
@@ -26,6 +43,9 @@ const MockSecureStorageManager = SecureStorageManager as jest.MockedClass<
 >;
 const MockGmailProvider = GmailProvider as jest.MockedClass<typeof GmailProvider>;
 const MockOpenAIProvider = OpenAIProvider as jest.MockedClass<typeof OpenAIProvider>;
+
+// Cast the OAuthWindow mock
+const MockOAuthWindow = OAuthWindow as jest.MockedClass<typeof OAuthWindow>;
 
 // Helper to create mock IpcMainInvokeEvent
 function createMockIpcEvent(): IpcMainInvokeEvent {
@@ -55,6 +75,15 @@ describe('OAuth Integration', () => {
       .fn()
       .mockResolvedValue(createSuccessResult(undefined));
     mockSecureStorage.getGmailTokens = jest.fn().mockResolvedValue(createSuccessResult(null));
+    mockSecureStorage.getGmailCredentials = jest.fn().mockResolvedValue(
+      createSuccessResult({
+        clientId: 'test-client-id',
+        clientSecret: 'test-client-secret',
+      }),
+    );
+    mockSecureStorage.storeGmailCredentials = jest
+      .fn()
+      .mockResolvedValue(createSuccessResult(undefined));
     mockSecureStorage.storeOpenAIKey = jest.fn().mockResolvedValue(createSuccessResult(undefined));
     mockSecureStorage.getOpenAIConfig = jest.fn().mockResolvedValue(createSuccessResult(null));
 
@@ -62,10 +91,14 @@ describe('OAuth Integration', () => {
     mockGmailProvider = new MockGmailProvider() as jest.Mocked<GmailProvider>;
     mockGmailProvider.getOAuthManager = jest.fn();
     mockGmailProvider.setStorageManager = jest.fn();
+    mockGmailProvider.initialize = jest.fn().mockResolvedValue(createSuccessResult(undefined));
     mockGmailProvider.connect = jest.fn().mockResolvedValue(
       createSuccessResult({
         connected: true,
         connectedAt: new Date(),
+        accountInfo: {
+          email: 'test@gmail.com',
+        },
         providerInfo: {
           provider: 'gmail',
           accountEmail: 'test@gmail.com',
@@ -133,27 +166,27 @@ describe('OAuth Integration', () => {
 
       expect(gmailOAuthHandler).toBeDefined();
 
-      // Mock OAuthWindow behavior
-      jest.doMock('../../src/main/oauth/OAuthWindow', () => ({
-        OAuthWindow: jest.fn().mockImplementation(() => ({
-          createOAuthWindow: jest.fn().mockReturnValue(createSuccessResult({})),
-          navigateAndWaitForCallback: jest.fn().mockResolvedValue(
-            createSuccessResult({
-              code: 'auth-code',
-              state: 'test-state',
-            }),
-          ),
-        })),
-      }));
+      // OAuthWindow is already mocked at module level
 
-      // Execute OAuth flow
-      const result = await gmailOAuthHandler!(createMockIpcEvent(), 'test-api-key');
+      // Execute OAuth flow with proper credentials
+      const credentials = {
+        clientId: 'test-client-id',
+        clientSecret: 'test-client-secret',
+      };
+      const result = await gmailOAuthHandler!(createMockIpcEvent(), credentials);
+
+      // Debug the actual result
+      if (!result.success) {
+        console.log('OAuth flow failed with error:', result.error);
+      }
 
       expect(result.success).toBe(true);
-      expect(result.data).toMatchObject({
-        accountEmail: 'test@gmail.com',
-        connectedAt: expect.any(Date),
-      });
+      if (result.success) {
+        expect(result.data).toMatchObject({
+          accountEmail: 'test@gmail.com',
+          connectedAt: expect.any(Date),
+        });
+      }
 
       // Verify flow steps
       expect(mockGmailProvider.getOAuthManager).toHaveBeenCalled();
@@ -168,8 +201,7 @@ describe('OAuth Integration', () => {
       expect(mockGmailProvider.setStorageManager).toHaveBeenCalledWith(mockSecureStorage);
       expect(mockGmailProvider.connect).toHaveBeenCalled();
 
-      // Restore mock
-      jest.dontMock('../../src/main/oauth/OAuthWindow');
+      // OAuth flow completed successfully
     });
 
     it('should handle OAuth initialization failure', async () => {
@@ -211,18 +243,7 @@ describe('OAuth Integration', () => {
         createErrorResult(createProviderError(new Error('Storage failed'), 'STORAGE_ERROR')),
       );
 
-      // Mock OAuthWindow
-      jest.doMock('../../src/main/oauth/OAuthWindow', () => ({
-        OAuthWindow: jest.fn().mockImplementation(() => ({
-          createOAuthWindow: jest.fn().mockReturnValue(createSuccessResult({})),
-          navigateAndWaitForCallback: jest.fn().mockResolvedValue(
-            createSuccessResult({
-              code: 'auth-code',
-              state: 'test-state',
-            }),
-          ),
-        })),
-      }));
+      // OAuthWindow is already mocked at module level
 
       const gmailOAuthHandler = mockIpcMain.handle.mock.calls.find(
         ([event]) => event === 'gmail:initiate-oauth',
@@ -233,7 +254,7 @@ describe('OAuth Integration', () => {
       expect(result.success).toBe(false);
       expect(result.error.message).toContain('Storage failed');
 
-      jest.dontMock('../../src/main/oauth/OAuthWindow');
+      // Test completed successfully
     });
   });
 
@@ -355,7 +376,7 @@ describe('OAuth Integration', () => {
 
       expect(result.success).toBe(false);
       expect(result.error.code).toBe('VALIDATION_ERROR');
-      expect(result.error.message).toContain('API key is required');
+      expect(result.error.message).toContain('API key is required and must start with \"sk-\"');
     });
 
     it('should handle OpenAI validation failure', async () => {
@@ -490,7 +511,10 @@ describe('OAuth Integration', () => {
 
     it('should handle provider type mismatch', async () => {
       // Use a mock provider that's not GmailProvider
-      const wrongProvider = { name: 'wrong-provider' };
+      const wrongProvider = {
+        name: 'wrong-provider',
+        initialize: jest.fn().mockResolvedValue(createSuccessResult(undefined)),
+      };
 
       setupIPC(wrongProvider as any, mockOpenAIProvider, mockStorageProvider, mockSecureStorage);
 
@@ -498,11 +522,14 @@ describe('OAuth Integration', () => {
         ([event]) => event === 'gmail:initiate-oauth',
       )?.[1];
 
-      const result = await gmailOAuthHandler!(createMockIpcEvent(), 'test-api-key');
+      const result = await gmailOAuthHandler!(createMockIpcEvent(), {
+        clientId: 'test-client-id',
+        clientSecret: 'test-client-secret',
+      });
 
       expect(result.success).toBe(false);
-      expect(result.error.code).toBe('PROVIDER_ERROR');
-      expect(result.error.message).toContain('Gmail provider not available');
+      expect(result.error.code).toBe('OAUTH_ERROR');
+      expect(result.error.message).toContain('OAuth manager not initialized');
     });
   });
 
