@@ -47,6 +47,8 @@ describe('TokenRotationService - Startup Integration', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    // Stop any active rotation scheduler to prevent hanging tests
+    tokenRotationService.stopRotationScheduler();
   });
 
   describe('startupTokenRefresh', () => {
@@ -316,6 +318,153 @@ describe('TokenRotationService - Startup Integration', () => {
           refreshMethod: 'startup',
         }),
       );
+    });
+  });
+
+  describe('concurrent rotation scenarios', () => {
+    beforeEach(async () => {
+      await tokenRotationService.initialize({
+        enabled: true,
+        expirationBufferMs: 5 * 60 * 1000,
+      });
+    });
+
+    it('should handle concurrent rotation checks with semaphore', async () => {
+      mockSecureStorageManager.getGmailTokens.mockResolvedValue(
+        createSuccessResult(mockExpiringSoonTokens),
+      );
+
+      let rotationCalls = 0;
+      const rotateProviderTokensSpy = jest.spyOn(tokenRotationService, 'rotateProviderTokens');
+      rotateProviderTokensSpy.mockImplementation(async (provider: string) => {
+        rotationCalls++;
+        // Simulate slow rotation
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(createSuccessResult(undefined));
+          }, 50);
+        });
+      });
+
+      // Start multiple concurrent rotation checks directly
+      const promise1 = (tokenRotationService as any).checkAndRotateTokens();
+      const promise2 = (tokenRotationService as any).checkAndRotateTokens();
+      const promise3 = (tokenRotationService as any).checkAndRotateTokens();
+
+      await Promise.all([promise1, promise2, promise3]);
+
+      // Due to semaphore, only the first rotation should execute, others should be skipped
+      expect(rotationCalls).toBe(1);
+      expect(rotateProviderTokensSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle rotation timeout', async () => {
+      // Mock timeout scenario by creating a service with very short timeout
+      const shortTimeoutService = new TokenRotationService(mockSecureStorageManager);
+      await shortTimeoutService.initialize({
+        enabled: true,
+        expirationBufferMs: 5 * 60 * 1000,
+      });
+
+      // Override timeout to be very short for testing
+      (shortTimeoutService as any).ROTATION_TIMEOUT_MS = 10; // 10ms timeout
+
+      mockSecureStorageManager.getGmailTokens.mockImplementation(() => {
+        // Simulate very slow storage response
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(createSuccessResult(mockExpiringSoonTokens));
+          }, 50); // 50ms delay, longer than 10ms timeout
+        });
+      });
+
+      // Get initial status
+      const initialStatus = shortTimeoutService.getRotationStatus();
+      expect(initialStatus.rotationInProgress).toBe(false);
+
+      // Attempt rotation check - should timeout
+      await (shortTimeoutService as any).checkAndRotateTokens();
+
+      // Verify that rotation failed due to timeout and status was reset
+      const finalStatus = shortTimeoutService.getRotationStatus();
+      expect(finalStatus.rotationInProgress).toBe(false);
+      expect(finalStatus.failedAttempts).toBeGreaterThan(0);
+    });
+
+    it('should prevent overlapping rotations for same provider', async () => {
+      mockSecureStorageManager.getGmailTokens.mockResolvedValue(
+        createSuccessResult(mockExpiringSoonTokens),
+      );
+
+      const performTokenRefreshSpy = jest.spyOn(tokenRotationService as any, 'performTokenRefresh');
+      performTokenRefreshSpy.mockImplementation(() => {
+        // Simulate slow rotation
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(
+              createSuccessResult({
+                accessToken: 'new-access-token',
+                refreshToken: 'new-refresh-token',
+                expiresAt: new Date(Date.now() + 3600000),
+                scope: 'https://www.googleapis.com/auth/gmail.readonly',
+                tokenType: 'Bearer',
+              }),
+            );
+          }, 100);
+        });
+      });
+
+      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(createSuccessResult(undefined));
+
+      // Start first rotation
+      const firstRotation = tokenRotationService.rotateProviderTokens('gmail');
+
+      // Wait a small amount to ensure first rotation starts
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Try to start second rotation - should fail because first is in progress
+      const secondRotation = tokenRotationService.rotateProviderTokens('gmail');
+
+      const [firstResult, secondResult] = await Promise.all([firstRotation, secondRotation]);
+
+      expect(firstResult.success).toBe(true);
+      expect(secondResult.success).toBe(false);
+      expect(secondResult.error.message).toContain(
+        'Token rotation already in progress for provider: gmail',
+      );
+    });
+
+    it('should track rotation status correctly during concurrent operations', async () => {
+      mockSecureStorageManager.getGmailTokens.mockResolvedValue(
+        createSuccessResult(mockExpiringSoonTokens),
+      );
+
+      const performTokenRefreshSpy = jest.spyOn(tokenRotationService as any, 'performTokenRefresh');
+      performTokenRefreshSpy.mockImplementation(() => {
+        // Check status during rotation
+        const statusDuringRotation = tokenRotationService.getRotationStatus();
+        expect(statusDuringRotation.rotationInProgress).toBe(true);
+        expect(statusDuringRotation.currentlyRotating).toContain('gmail');
+
+        return createSuccessResult({
+          accessToken: 'new-access-token',
+          refreshToken: 'new-refresh-token',
+          expiresAt: new Date(Date.now() + 3600000),
+          scope: 'https://www.googleapis.com/auth/gmail.readonly',
+          tokenType: 'Bearer',
+        });
+      });
+
+      mockSecureStorageManager.storeGmailTokens.mockResolvedValue(createSuccessResult(undefined));
+
+      const initialStatus = tokenRotationService.getRotationStatus();
+      expect(initialStatus.rotationInProgress).toBe(false);
+
+      await (tokenRotationService as any).checkAndRotateTokens();
+
+      const finalStatus = tokenRotationService.getRotationStatus();
+      expect(finalStatus.rotationInProgress).toBe(false);
+      expect(finalStatus.currentlyRotating).toHaveLength(0);
     });
   });
 
