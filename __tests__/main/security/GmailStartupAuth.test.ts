@@ -19,7 +19,7 @@ import {
 // Mock dependencies
 jest.mock('../../../src/main/oauth/GmailOAuthManager');
 jest.mock('../../../src/main/security/SecureStorageManager');
-jest.mock('../../../PRPs/SecurityAuditLogger');
+jest.mock('../../../src/main/security/SecurityAuditLogger');
 
 describe('GmailStartupAuth', () => {
   let gmailStartupAuth: GmailStartupAuth;

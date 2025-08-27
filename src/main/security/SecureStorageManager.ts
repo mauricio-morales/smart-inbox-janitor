@@ -28,7 +28,7 @@ import {
   SecurityLevel,
 } from '@shared/types';
 import { CredentialEncryption } from './CredentialEncryption';
-import { SecurityAuditLogger } from '../../../PRPs/SecurityAuditLogger';
+import { SecurityAuditLogger } from './SecurityAuditLogger';
 
 /**
  * Provider-specific credential storage interface

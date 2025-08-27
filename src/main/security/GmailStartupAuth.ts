@@ -19,7 +19,7 @@ import {
 } from '@shared/types';
 import { GmailOAuthManager } from '../oauth/GmailOAuthManager';
 import { SecureStorageManager } from './SecureStorageManager';
-import { SecurityAuditLogger } from '../../../PRPs/SecurityAuditLogger';
+import { SecurityAuditLogger } from './SecurityAuditLogger';
 
 /**
  * Startup authentication result with detailed status

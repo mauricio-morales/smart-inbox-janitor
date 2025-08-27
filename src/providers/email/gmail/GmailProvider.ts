@@ -315,10 +315,10 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       const connectionInfo: ConnectionInfo = {
         connected: true,
         connectedAt: new Date(),
-        providerInfo: {
-          provider: 'gmail',
-          accountEmail: profileResult.data.data.emailAddress ?? undefined,
-          accountId: profileResult.data.data.historyId ?? undefined,
+        accountInfo: {
+          email: profileResult.data.data.emailAddress ?? '',
+          name: undefined, // Gmail API doesn't provide display name in profile
+          profilePicture: undefined,
         },
       };
 
@@ -383,8 +383,8 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
           q: query,
           maxResults,
           pageToken: options?.pageToken,
-          labelIds: options?.labelIds,
-          includeSpamTrash: options?.includeSpamTrash ?? false,
+          labelIds: options?.folderIds,
+          includeSpamTrash: options?.includeDeleted ?? false,
         });
       });
 
@@ -416,7 +416,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown list error';
       return createErrorResult(
-        new NetworkError(`Failed to list emails: ${message}`, {
+        new NetworkError(`Failed to list emails: ${message}`, true, {
           operation: 'list',
           options: { maxResults: options?.maxResults, hasQuery: Boolean(options?.query) },
         }),
@@ -473,7 +473,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown get error';
       return createErrorResult(
-        new NetworkError(`Failed to get email: ${message}`, {
+        new NetworkError(`Failed to get email: ${message}`, true, {
           operation: 'get',
           emailId,
           includeBody: options?.includeBody,
@@ -549,7 +549,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown batch modify error';
       return createErrorResult(
-        new NetworkError(`Batch modify failed: ${message}`, {
+        new NetworkError(`Batch modify failed: ${message}`, true, {
           operation: 'batchModify',
           emailCount: request.emailIds.length,
         }),
@@ -623,7 +623,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown batch delete error';
       return createErrorResult(
-        new NetworkError(`Batch delete failed: ${message}`, {
+        new NetworkError(`Batch delete failed: ${message}`, true, {
           operation: 'batchDelete',
           emailCount: request.emailIds.length,
         }),
@@ -652,7 +652,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown spam reporting error';
       return createErrorResult(
-        new NetworkError(`Spam reporting failed: ${message}`, {
+        new NetworkError(`Spam reporting failed: ${message}`, true, {
           operation: 'reportSpam',
           emailCount: emailIds.length,
         }),
@@ -681,7 +681,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown phishing reporting error';
       return createErrorResult(
-        new NetworkError(`Phishing reporting failed: ${message}`, {
+        new NetworkError(`Phishing reporting failed: ${message}`, true, {
           operation: 'reportPhishing',
           emailCount: emailIds.length,
         }),
@@ -751,7 +751,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown search error';
       return createErrorResult(
-        new NetworkError(`Search failed: ${message}`, {
+        new NetworkError(`Search failed: ${message}`, true, {
           operation: 'search',
           query: query.substring(0, 100), // Truncate for logging
         }),
@@ -784,7 +784,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       const folders: EmailFolder[] = (labelsResult.data.data.labels ?? []).map((label) => ({
         id: label.id ?? '',
         name: label.name ?? '',
-        type: this.getLabelType(label.type),
+        type: this.getLabelType(label.type ?? 'user'),
         messageCount: label.messagesTotal ?? 0,
         unreadCount: label.messagesUnread ?? 0,
         visible:
@@ -796,7 +796,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown get folders error';
       return createErrorResult(
-        new NetworkError(`Failed to get folders: ${message}`, {
+        new NetworkError(`Failed to get folders: ${message}`, true, {
           operation: 'getFolders',
         }),
       );
@@ -840,7 +840,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown get account info error';
       return createErrorResult(
-        new NetworkError(`Failed to get account info: ${message}`, {
+        new NetworkError(`Failed to get account info: ${message}`, true, {
           operation: 'getAccountInfo',
         }),
       );
@@ -898,7 +898,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       // Check for specific OAuth error patterns that require re-authentication
       if (error.message.includes('invalid_grant') || error.message.includes('consent_revoked')) {
         return createErrorResult(
-          new AuthenticationError('Gmail authentication expired - please sign in again', {
+          new AuthenticationError('Gmail authentication expired - please sign in again', false, {
             operation: 'refreshTokens',
             requiresReauth: true,
             originalError: error.code,
@@ -909,7 +909,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       // Network errors are retryable
       if (error.message.includes('network_error')) {
         return createErrorResult(
-          new NetworkError('Network error during token refresh - will retry automatically', {
+          new NetworkError('Network error during token refresh - will retry automatically', true, {
             operation: 'refreshTokens',
             retryable: true,
             originalError: error.code,
@@ -954,7 +954,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       };
       if (err.code === 401) {
         return createErrorResult(
-          new AuthenticationError('Gmail authentication expired', {
+          new AuthenticationError('Gmail authentication expired', false, {
             operation: 'api-call',
             requiresReauth: true,
           }),
@@ -963,16 +963,14 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
         const errorDetails = err.errors?.[0];
         if (errorDetails?.reason === 'dailyLimitExceeded') {
           return createErrorResult(
-            new QuotaExceededError('Gmail API daily limit exceeded', {
+            new QuotaExceededError('daily', 'Gmail API daily limit exceeded', undefined, {
               operation: 'api-call',
-              quotaType: 'daily',
             }),
           );
         } else if (errorDetails?.reason === 'userRateLimitExceeded') {
           return createErrorResult(
-            new RateLimitError('Gmail API rate limit exceeded', {
+            new RateLimitError('Gmail API rate limit exceeded', 60000, {
               operation: 'api-call',
-              retryAfter: 60000, // 1 minute
             }),
           );
         } else {
@@ -987,14 +985,13 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
         }
       } else if (err.code === 429) {
         return createErrorResult(
-          new RateLimitError('Too many requests to Gmail API', {
+          new RateLimitError('Too many requests to Gmail API', 60000, {
             operation: 'api-call',
-            retryAfter: 60000,
           }),
         );
       } else if (typeof err.code === 'number' && err.code >= 500) {
         return createErrorResult(
-          new NetworkError('Gmail API server error', {
+          new NetworkError('Gmail API server error', true, {
             operation: 'api-call',
             retryable: true,
             statusCode: err.code,
@@ -1003,7 +1000,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       } else {
         const message = error instanceof Error ? error.message : 'Unknown API error';
         return createErrorResult(
-          new NetworkError(`Gmail API error: ${message}`, {
+          new NetworkError(`Gmail API error: ${message}`, true, {
             operation: 'api-call',
             statusCode: err.code,
           }),
@@ -1076,7 +1073,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
-        new NetworkError(`Failed to get email summary: ${message}`, {
+        new NetworkError(`Failed to get email summary: ${message}`, true, {
           operation: 'getEmailSummary',
           messageId,
         }),
