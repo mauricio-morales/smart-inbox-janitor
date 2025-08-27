@@ -116,7 +116,7 @@ export class OAuthWindow {
           images: true, // Allow images for OAuth UI
           textAreasAreResizable: false, // Prevent textarea manipulation
           webgl: false, // Disable WebGL
-          webaudio: false, // Disable Web Audio API
+          // webaudio: false, // Disable Web Audio API - property doesn't exist
           spellcheck: false, // Disable spellcheck
           scrollBounce: false, // Disable scroll bounce
           preload: undefined, // CRITICAL: No preload script for OAuth window
@@ -135,7 +135,7 @@ export class OAuthWindow {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
-        new SecurityError(`Failed to create OAuth window: ${message}`, {
+        new ValidationError(`Failed to create OAuth window: ${message}`, {}, {
           operation: 'createOAuthWindow',
         }),
       );
@@ -178,7 +178,7 @@ export class OAuthWindow {
           this.cleanup();
           resolve(
             createErrorResult(
-              new NetworkError('OAuth flow timed out', {
+              new NetworkError('OAuth flow timed out', true, {
                 operation: 'navigateAndWaitForCallback',
               }),
             ),
@@ -201,7 +201,7 @@ export class OAuthWindow {
           if (this.authCallback) {
             this.authCallback(
               createErrorResult(
-                new ValidationError('OAuth window closed by user', {
+                new ValidationError('OAuth window closed by user', {}, {
                   operation: 'navigateAndWaitForCallback',
                 }),
               ),
@@ -212,7 +212,7 @@ export class OAuthWindow {
         const message = error instanceof Error ? error.message : 'Unknown error';
         resolve(
           createErrorResult(
-            new SecurityError(`OAuth navigation failed: ${message}`, {
+            new ValidationError(`OAuth navigation failed: ${message}`, {}, {
               operation: 'navigateAndWaitForCallback',
             }),
           ),
@@ -255,7 +255,7 @@ export class OAuthWindow {
       // Check for OAuth errors
       if (error !== null && error.length > 0) {
         return createErrorResult(
-          new ValidationError(`OAuth error: ${error}`, {
+          new ValidationError(`OAuth error: ${error}`, {}, {
             operation: 'handleCallback',
           }),
         );
@@ -271,7 +271,7 @@ export class OAuthWindow {
         state.length === 0
       ) {
         return createErrorResult(
-          new ValidationError('Missing required OAuth parameters', {
+          new ValidationError('Missing required OAuth parameters', {}, {
             operation: 'handleCallback',
           }),
         );
@@ -288,7 +288,7 @@ export class OAuthWindow {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
-        new ValidationError(`Failed to parse OAuth callback: ${message}`, {
+        new ValidationError(`Failed to parse OAuth callback: ${message}`, {}, {
           operation: 'handleCallback',
         }),
       );
@@ -400,14 +400,13 @@ export class OAuthWindow {
     });
 
     // Handle external links
-    webContents.on('new-window', (event: Electron.Event, url: string) => {
-      event.preventDefault();
-
+    webContents.setWindowOpenHandler(({ url }) => {
       // Only open external links in system browser for Google domains
       const urlObj = new URL(url);
       if (urlObj.hostname.endsWith('.google.com') || urlObj.hostname.endsWith('.googleapis.com')) {
         void shell.openExternal(url);
       }
+      return { action: 'deny' };
     });
   }
 
@@ -421,7 +420,7 @@ export class OAuthWindow {
       // Must be HTTPS
       if (url.protocol !== 'https:') {
         return createErrorResult(
-          new SecurityError('Authorization URL must use HTTPS', {
+          new ValidationError('Authorization URL must use HTTPS', {}, {
             operation: 'validateAuthUrl',
             protocol: url.protocol,
           }),
@@ -431,7 +430,7 @@ export class OAuthWindow {
       // Must be Google OAuth endpoint
       if (!url.hostname.endsWith('.google.com') && !url.hostname.endsWith('.googleapis.com')) {
         return createErrorResult(
-          new SecurityError('Authorization URL must be Google domain', {
+          new ValidationError('Authorization URL must be Google domain', {}, {
             operation: 'validateAuthUrl',
           }),
         );
@@ -441,7 +440,7 @@ export class OAuthWindow {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return createErrorResult(
-        new ValidationError(`Invalid authorization URL: ${message}`, {
+        new ValidationError(`Invalid authorization URL: ${message}`, {}, {
           operation: 'validateAuthUrl',
         }),
       );
