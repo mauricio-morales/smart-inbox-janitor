@@ -63,13 +63,11 @@ describe('GmailOAuthManager', () => {
 
     const mockHasher = {
       update: jest.fn().mockReturnThis(),
-      digest: jest.fn().mockReturnValue({
-        toString: jest.fn((encoding: string) => {
-          if (encoding === 'base64url') {
-            return 'mock-code-challenge';
-          }
+      digest: jest.fn((encoding: string) => {
+        if (encoding === 'base64url') {
           return 'mock-code-challenge';
-        }),
+        }
+        return 'mock-code-challenge';
       }),
     };
     mockCreateHash.mockReturnValue(mockHasher as any);
