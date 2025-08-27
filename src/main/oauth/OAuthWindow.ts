@@ -65,7 +65,7 @@ export class OAuthWindow {
 
   private window: BrowserWindow | null = null;
   private readonly redirectUri: string;
-  // eslint-disable-next-line no-unused-vars
+
   private authCallback: ((result: Result<OAuthCallbackResult>) => void) | null = null;
 
   constructor(redirectUri: string) {

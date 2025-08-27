@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 // TODO: Remove this disable when stub methods and type declarations are cleaned up
 import React, { useState, useEffect } from 'react';
 import {

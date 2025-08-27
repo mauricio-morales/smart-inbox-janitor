@@ -1,5 +1,3 @@
-/* eslint-disable no-unused-vars */
-// TODO: Remove this disable when interface parameters are properly utilized
 /**
  * ProviderStatusCards component
  *

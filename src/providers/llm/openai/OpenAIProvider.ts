@@ -213,7 +213,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
    *
    * @returns Result indicating initialization success or failure
    */
-  // eslint-disable-next-line no-unused-vars
+
   async init(_auth: LLMAuth): Promise<Result<void>> {
     if (!this.config) {
       return createErrorResult(
@@ -809,7 +809,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
    *
    * @param storageManager - Initialized secure storage manager
    */
-  // eslint-disable-next-line no-unused-vars
+
   setStorageManager(_storageManager: SecureStorageManager): void {
     // Storage manager not used in current implementation
     // Suppress unused parameter warning - method required by interface

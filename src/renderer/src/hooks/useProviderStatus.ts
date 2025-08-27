@@ -40,7 +40,7 @@ interface UseProviderStatusReturn {
   /** Refresh all providers */
   refreshAllProviders: () => Promise<void>;
   /** Refresh a specific provider */
-  // eslint-disable-next-line no-unused-vars
+
   refreshProvider: (providerId: string) => Promise<void>;
   /** Clear any existing error */
   clearError: () => void;
