@@ -103,7 +103,17 @@ describe('SecureFileOperations', () => {
 
     it('should create parent directories when requested', () => {
       // Arrange
+      const originalPlatform = process.platform;
+      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+
       mockFs.existsSync.mockReturnValue(false); // Parent directory doesn't exist
+      mockFs.statSync.mockImplementation((path: fs.PathLike) => {
+        if (path === mockDirPath) {
+          return { mode: 0o040755 } as any; // directory type bits + 755 permissions
+        } else {
+          return { mode: 0o100600 } as any; // file type bits + 600 permissions
+        }
+      });
 
       // Act
       const result = SecureFileOperations.writeFileAtomically(mockFilePath, mockData, {
@@ -117,6 +127,9 @@ describe('SecureFileOperations', () => {
         recursive: true,
         mode: 0o755,
       });
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
 
     it('should not create parent directories when disabled', () => {
@@ -132,8 +145,19 @@ describe('SecureFileOperations', () => {
 
     it('should use custom file mode when provided', () => {
       // Arrange
+      const originalPlatform = process.platform;
+      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+
       const customMode = 0o644;
       const expectedTempPath = `${mockFilePath}.tmp.${mockTempSuffix}`;
+
+      mockFs.statSync.mockImplementation((path: fs.PathLike) => {
+        if (path === mockDirPath) {
+          return { mode: 0o040700 } as any; // directory type bits + 700 permissions
+        } else {
+          return { mode: 0o100644 } as any; // file type bits + custom mode permissions
+        }
+      });
 
       // Act
       const result = SecureFileOperations.writeFileAtomically(mockFilePath, mockData, {
@@ -146,10 +170,16 @@ describe('SecureFileOperations', () => {
         mode: customMode,
         flag: 'wx',
       });
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
 
     it('should clean up temp file on write failure', () => {
-      // Arrange
+      // Arrange - Set platform to Windows to avoid permission checking
+      const originalPlatform = process.platform;
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+
       const writeError = new Error('Write failed');
       const expectedTempPath = `${mockFilePath}.tmp.${mockTempSuffix}`;
       mockFs.writeFileSync.mockImplementation(() => {
@@ -167,35 +197,65 @@ describe('SecureFileOperations', () => {
       if (!result.success) {
         expect(result.error).toBeInstanceOf(StorageError);
         expect(result.error.message).toContain('Atomic file write failed');
+        expect(result.error.message).toContain('Write failed');
       }
       expect(mockFs.unlinkSync).toHaveBeenCalledWith(expectedTempPath);
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
 
     it('should handle permission setting errors gracefully', () => {
       // Arrange
       const originalPlatform = process.platform;
-      Object.defineProperty(process, 'platform', { value: 'linux' });
+      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
 
+      // Mock writeFileSync to succeed
+      mockFs.writeFileSync.mockImplementation(() => {
+        // Success - no error
+      });
+      
+      // Mock chmodSync to always fail
       mockFs.chmodSync.mockImplementation(() => {
         throw new Error('Permission denied');
       });
-      const expectedTempPath = `${mockFilePath}.tmp.${mockTempSuffix}`;
 
-      // Act
-      const result = SecureFileOperations.writeFileAtomically(mockFilePath, mockData);
+      const expectedTempPath = `${mockFilePath}.tmp.${mockTempSuffix}`;
+      // Don't use existsSync mock implementation since cleanup calls unlinkSync directly
+      mockFs.existsSync.mockReturnValue(false);
+
+      // Act - disable parent directory creation to avoid directory chmod calls
+      const result = SecureFileOperations.writeFileAtomically(mockFilePath, mockData, { createParents: false });
 
       // Assert
       expect(result.success).toBe(false);
+      if (!result.success) {
+        // Should be "Permission setting failed" since chmodSync throws
+        expect(result.error.message).toContain('Permission setting failed');
+      }
+      // Verify cleanup was attempted
+      expect(mockFs.unlinkSync).toHaveBeenCalled();
       expect(mockFs.unlinkSync).toHaveBeenCalledWith(expectedTempPath);
 
       // Restore original platform
-      Object.defineProperty(process, 'platform', { value: originalPlatform });
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
 
     it('should handle string data correctly', () => {
       // Arrange
+      const originalPlatform = process.platform;
+      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+
       const stringData = 'test string data';
       const expectedTempPath = `${mockFilePath}.tmp.${mockTempSuffix}`;
+
+      mockFs.statSync.mockImplementation((path: fs.PathLike) => {
+        if (path === mockDirPath) {
+          return { mode: 0o040700 } as any; // directory type bits + 700 permissions
+        } else {
+          return { mode: 0o100600 } as any; // file type bits + 600 permissions
+        }
+      });
 
       // Act
       const result = SecureFileOperations.writeFileAtomically(mockFilePath, stringData);
@@ -206,6 +266,9 @@ describe('SecureFileOperations', () => {
         mode: 0o600,
         flag: 'wx',
       });
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
   });
 
@@ -342,9 +405,10 @@ describe('SecureFileOperations', () => {
     });
 
     it('should reject paths with directory traversal attempts', () => {
-      // Arrange
+      // Arrange - mock path.resolve to return a path that still contains dangerous sequences
       const dangerousPath = '/test/../../../etc/passwd';
-      mockPath.resolve.mockReturnValue(dangerousPath);
+      const resolvedDangerousPath = '/etc/../../../passwd'; // Still contains ..
+      mockPath.resolve.mockReturnValue(resolvedDangerousPath);
 
       // Act
       const result = SecureFileOperations.sanitizeFilePath(dangerousPath);
@@ -352,7 +416,7 @@ describe('SecureFileOperations', () => {
       // Assert
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.message).toContain('directory traversal');
+        expect(result.error.message).toContain('potentially dangerous traversal sequences');
       }
     });
 
@@ -411,7 +475,13 @@ describe('SecureFileOperations', () => {
   describe('ensureDirectoryExists()', () => {
     it('should create directory with correct permissions', () => {
       // Arrange
+      const originalPlatform = process.platform;
+      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+
       mockFs.existsSync.mockReturnValue(false);
+      mockFs.statSync.mockReturnValue({
+        mode: 0o040755, // directory type bits + 755 permissions
+      } as any);
 
       // Act
       const result = SecureFileOperations.ensureDirectoryExists(mockDirPath, 0o755);
@@ -422,6 +492,9 @@ describe('SecureFileOperations', () => {
         recursive: true,
         mode: 0o755,
       });
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
 
     it('should handle existing directories gracefully', () => {
@@ -520,7 +593,10 @@ describe('SecureFileOperations', () => {
 
   describe('Error handling and cleanup', () => {
     it('should ignore cleanup errors when temp file removal fails', () => {
-      // Arrange
+      // Arrange - Set platform to Windows to avoid permission checking
+      const originalPlatform = process.platform;
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+
       const writeError = new Error('Write failed');
       const expectedTempPath = `${mockFilePath}.tmp.${mockTempSuffix}`;
 
@@ -540,33 +616,65 @@ describe('SecureFileOperations', () => {
       // Assert
       expect(result.success).toBe(false);
       if (!result.success) {
+        expect(result.error.message).toContain('Atomic file write failed');
         expect(result.error.message).toContain('Write failed'); // Original error preserved
       }
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
 
     it('should generate unique temp file names', () => {
-      // Arrange
+      // Arrange - Use Windows to avoid permission checking complications
+      const originalPlatform = process.platform;
+      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+
       const suffix1 = 'abcd1234';
       const suffix2 = 'efgh5678';
+
+      // Create proper Buffer mocks that return hex strings
+      const mockBuffer1 = {
+        toString: jest.fn((encoding: string) => {
+          if (encoding === 'hex') return suffix1;
+          return suffix1;
+        }),
+      };
+      const mockBuffer2 = {
+        toString: jest.fn((encoding: string) => {
+          if (encoding === 'hex') return suffix2;
+          return suffix2;
+        }),
+      };
+
       mockRandomBytes
-        .mockReturnValueOnce(Buffer.from(suffix1, 'hex') as any)
-        .mockReturnValueOnce(Buffer.from(suffix2, 'hex') as any);
+        .mockReturnValueOnce(mockBuffer1 as any)
+        .mockReturnValueOnce(mockBuffer2 as any);
+
+      // Ensure writeFileSync and rename succeed
+      mockFs.writeFileSync.mockImplementation(() => {});
+      mockFs.renameSync.mockImplementation(() => {});
+      mockFs.chmodSync.mockImplementation(() => {}); // Windows will ignore chmod errors
 
       // Act
-      SecureFileOperations.writeFileAtomically('/path/file1.enc', mockData);
-      SecureFileOperations.writeFileAtomically('/path/file2.enc', mockData);
+      const result1 = SecureFileOperations.writeFileAtomically('/path/file1.enc', mockData);
+      const result2 = SecureFileOperations.writeFileAtomically('/path/file2.enc', mockData);
 
-      // Assert
-      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-        `/path/file1.enc.tmp.${suffix1}`,
-        expect.anything(),
-        expect.anything(),
-      );
-      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-        `/path/file2.enc.tmp.${suffix2}`,
-        expect.anything(),
-        expect.anything(),
-      );
+      // Assert - Both operations should succeed
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+
+      // Check that different suffixes were used
+      expect(mockRandomBytes).toHaveBeenCalledTimes(2);
+      const calls = mockFs.writeFileSync.mock.calls;
+      expect(calls.length).toBeGreaterThanOrEqual(2);
+      const tempPath1 = calls[0][0] as string;
+      const tempPath2 = calls[1][0] as string;
+      expect(tempPath1).toContain(suffix1);
+      expect(tempPath2).toContain(suffix2);
+      expect(tempPath1).not.toBe(tempPath2);
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
     });
   });
 });

@@ -671,12 +671,12 @@ export function setupIPC(
 
   ipcMain.handle('openai:validate-key', async (_, apiKey: string) => {
     try {
-      if (!apiKey || typeof apiKey !== 'string') {
+      if (!apiKey || typeof apiKey !== 'string' || !apiKey.startsWith('sk-')) {
         return {
           success: false,
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'API key is required',
+            message: 'API key is required and must start with "sk-"',
             retryable: false,
             timestamp: new Date(),
             details: { field: 'apiKey' },
@@ -788,6 +788,8 @@ export function setupIPC(
         return {
           success: true,
           data: {
+            isConfigured: false,
+            requiresSetup: true,
             isConnected: false,
             modelAvailable: false,
           },
@@ -805,6 +807,8 @@ export function setupIPC(
         return {
           success: true,
           data: {
+            isConfigured: false,
+            requiresSetup: true,
             isConnected: false,
             modelAvailable: false,
             error: initResult.error.message,
@@ -820,6 +824,8 @@ export function setupIPC(
       const finalResult = {
         success: true,
         data: {
+          isConfigured: testResult.success,
+          requiresSetup: !testResult.success,
           isConnected: testResult.success,
           modelAvailable: testResult.success ? testResult.data?.modelAvailable : false,
           error: testResult.success ? undefined : testResult.error?.message,
