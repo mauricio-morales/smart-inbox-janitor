@@ -13,15 +13,7 @@ cd "$(dirname "$0")/.."
 
 echo "🔍 Running pre-push validation checks..."
 
-# 1. Run format first to fix formatting issues
-echo "🎨 Formatting code..."
-npm run format
-if [ $? -ne 0 ]; then
-  echo "❌ Formatting failed. Please check your code."
-  exit 1
-fi
-
-# 2. Run lint:fix after formatting
+# 1. Run lint:fix to auto-fix issues
 echo "📝 Checking and fixing lint issues..."
 npm run lint:fix
 if [ $? -ne 0 ]; then
@@ -30,7 +22,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 3. Run TypeScript type check
+# 2. Run TypeScript type check
 echo "🔧 Checking TypeScript types..."
 npm run type-check
 if [ $? -ne 0 ]; then
@@ -39,7 +31,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 4. Run tests (if they exist and don't take too long)
+# 3. Run tests (if they exist and don't take too long)
 echo "🧪 Running tests..."
 npm test -- --passWithNoTests --watchAll=false
 if [ $? -ne 0 ]; then
