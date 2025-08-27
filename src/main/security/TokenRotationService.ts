@@ -53,6 +53,8 @@ export interface RotationStatus {
   failedAttempts: number;
   /** Currently rotating providers */
   currentlyRotating: string[];
+  /** Whether rotation lock is held */
+  rotationInProgress: boolean;
 }
 
 /**
@@ -70,6 +72,7 @@ export class TokenRotationService {
   private rotationTimer: ReturnType<typeof setInterval> | null = null;
   private rotationStatus: RotationStatus;
   private initialized = false;
+  private readonly ROTATION_TIMEOUT_MS = 30000; // 30 seconds
 
   constructor(secureStorageManager: SecureStorageManager) {
     this.secureStorageManager = secureStorageManager;
@@ -78,6 +81,7 @@ export class TokenRotationService {
       active: false,
       failedAttempts: 0,
       currentlyRotating: [],
+      rotationInProgress: false,
     };
   }
 
@@ -128,7 +132,9 @@ export class TokenRotationService {
 
       // Set up periodic rotation check
       this.rotationTimer = setInterval(() => {
-        void this.checkAndRotateTokens();
+        this.checkAndRotateTokens().catch(() => {
+          // Errors are handled within checkAndRotateTokens
+        });
       }, this.config.rotationIntervalMs);
 
       this.rotationStatus.active = true;
@@ -268,6 +274,7 @@ export class TokenRotationService {
         active: false,
         failedAttempts: 0,
         currentlyRotating: [],
+        rotationInProgress: false,
       };
 
       this.initialized = false;
@@ -371,26 +378,52 @@ export class TokenRotationService {
   }
 
   /**
-   * Check all providers for tokens needing rotation
+   * Check all providers for tokens needing rotation with simple locking
    */
   private async checkAndRotateTokens(): Promise<void> {
+    // Simple lock: if rotation is already in progress, skip
+    if (this.rotationStatus.rotationInProgress) {
+      return;
+    }
+
+    this.rotationStatus.rotationInProgress = true;
+
     try {
-      // Check Gmail tokens
-      await this.checkGmailTokenRotation();
+      // Add timeout protection for rotation operations
+      await Promise.race([this.performRotationCheck(), this.createTimeoutPromise()]);
 
       // Update last rotation timestamp on successful check
       this.rotationStatus.lastRotation = new Date();
       this.rotationStatus.failedAttempts = 0;
     } catch {
       this.rotationStatus.failedAttempts++;
-      // Token rotation check failed - incrementing failed attempts
 
       // Implement exponential backoff for failures
       if (this.rotationStatus.failedAttempts >= this.config.maxRetryAttempts) {
-        // Maximum rotation retry attempts reached, stopping scheduler
         this.stopRotationScheduler();
       }
+    } finally {
+      this.rotationStatus.rotationInProgress = false;
     }
+  }
+
+  /**
+   * Perform the actual rotation check (separated for timeout handling)
+   */
+  private async performRotationCheck(): Promise<void> {
+    // Check Gmail tokens
+    await this.checkGmailTokenRotation();
+  }
+
+  /**
+   * Create a timeout promise that rejects after ROTATION_TIMEOUT_MS
+   */
+  private createTimeoutPromise(): Promise<never> {
+    return new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Token rotation check timed out after ${this.ROTATION_TIMEOUT_MS}ms`));
+      }, this.ROTATION_TIMEOUT_MS);
+    });
   }
 
   /**
@@ -409,8 +442,10 @@ export class TokenRotationService {
 
     // Check if tokens expire within the buffer period
     if (expirationTime <= bufferTime) {
-      // Gmail tokens expiring soon, initiating rotation
-      void this.rotateProviderTokens('gmail');
+      const rotationResult = await this.rotateProviderTokens('gmail');
+      if (!rotationResult.success) {
+        throw new Error(`Gmail token rotation failed: ${rotationResult.error.message}`);
+      }
     }
   }
 
@@ -419,68 +454,93 @@ export class TokenRotationService {
    */
   private async rotateGmailTokens(): Promise<Result<void>> {
     try {
-      const tokensResult = await this.secureStorageManager.getGmailTokens();
-      if (!tokensResult.success || !tokensResult.data) {
-        return createErrorResult(new SecurityError('No Gmail tokens found for rotation'));
+      const tokensValidationResult = await this.validateGmailTokens();
+      if (!tokensValidationResult.success) {
+        return tokensValidationResult;
       }
 
-      const currentTokens = tokensResult.data;
-      if (
-        currentTokens.refreshToken === undefined ||
-        currentTokens.refreshToken === null ||
-        currentTokens.refreshToken === ''
-      ) {
-        return createErrorResult(
-          new SecurityError('No refresh token available for Gmail token rotation'),
-        );
-      }
-
-      // NOTE: This would normally use the GmailOAuthManager.refreshTokens() method
-      // For now, using the existing placeholder implementation pattern
-      const refreshRequest: TokenRefreshRequest = {
-        provider: 'gmail',
-        refreshToken: currentTokens.refreshToken,
-        scopes: currentTokens.scope?.split(' ') ?? [],
-        forceRefresh: true,
-      };
-
-      // Perform token refresh using existing implementation
-      const refreshResult = this.performTokenRefresh(refreshRequest);
+      const currentTokens = tokensValidationResult.data;
+      const refreshResult = await this.performGmailTokenRefresh(currentTokens);
       if (!refreshResult.success) {
-        return createErrorResult(refreshResult.error);
+        return refreshResult;
       }
 
-      // Create new token structure with refresh metadata tracking
-      const refreshMetadata: TokenRefreshMetadata = {
-        refreshedAt: Date.now(),
-        refreshMethod: 'automatic',
-        refreshDurationMs: 1000, // Placeholder - would be actual duration
-        attemptNumber: 1,
-      };
-
-      const newTokens: GmailTokens = {
-        accessToken: refreshResult.data.accessToken,
-        refreshToken: refreshResult.data.refreshToken ?? currentTokens.refreshToken,
-        expiryDate: refreshResult.data.expiresAt.getTime(),
-        scope: refreshResult.data.scope ?? currentTokens.scope,
-        tokenType: refreshResult.data.tokenType,
-      };
-
-      // Store the new tokens with enhanced metadata
-      const storeResult = await this.secureStorageManager.storeGmailTokens(newTokens, {
-        provider: 'gmail',
-        shouldExpire: true,
-        metadata: {
-          rotatedAt: new Date().toISOString(),
-          refreshMetadata: refreshMetadata,
-        },
-      });
-
-      return storeResult;
+      return await this.storeRefreshedGmailTokens(currentTokens, refreshResult.data);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown rotation error';
       return createErrorResult(new SecurityError(`Gmail token rotation failed: ${message}`));
     }
+  }
+
+  /**
+   * Validate Gmail tokens for rotation
+   */
+  private async validateGmailTokens(): Promise<Result<GmailTokens>> {
+    const tokensResult = await this.secureStorageManager.getGmailTokens();
+    if (!tokensResult.success || !tokensResult.data) {
+      return createErrorResult(new SecurityError('No Gmail tokens found for rotation'));
+    }
+
+    const currentTokens = tokensResult.data;
+    if (
+      currentTokens.refreshToken === undefined ||
+      currentTokens.refreshToken === null ||
+      currentTokens.refreshToken === ''
+    ) {
+      return createErrorResult(
+        new SecurityError('No refresh token available for Gmail token rotation'),
+      );
+    }
+
+    return createSuccessResult(currentTokens);
+  }
+
+  /**
+   * Perform Gmail token refresh
+   */
+  private async performGmailTokenRefresh(
+    currentTokens: GmailTokens,
+  ): Promise<Result<TokenRefreshResponse>> {
+    const refreshRequest: TokenRefreshRequest = {
+      provider: 'gmail',
+      refreshToken: currentTokens.refreshToken!,
+      scopes: currentTokens.scope?.split(' ') ?? [],
+      forceRefresh: true,
+    };
+
+    return this.performTokenRefresh(refreshRequest);
+  }
+
+  /**
+   * Store refreshed Gmail tokens with metadata
+   */
+  private async storeRefreshedGmailTokens(
+    currentTokens: GmailTokens,
+    refreshData: TokenRefreshResponse,
+  ): Promise<Result<void>> {
+    const refreshMetadata: TokenRefreshMetadata = {
+      refreshedAt: Date.now(),
+      refreshMethod: 'automatic',
+      refreshDurationMs: 1000, // Placeholder - would be actual duration
+      attemptNumber: 1,
+    };
+
+    const newTokens: GmailTokens = {
+      accessToken: refreshData.accessToken,
+      refreshToken: refreshData.refreshToken ?? currentTokens.refreshToken,
+      expiryDate: refreshData.expiresAt.getTime(),
+      scope: refreshData.scope ?? currentTokens.scope,
+      tokenType: refreshData.tokenType,
+    };
+
+    return this.secureStorageManager.storeGmailTokens(newTokens, {
+      provider: 'gmail',
+      shouldExpire: true,
+      metadata: {
+        rotatedAt: new Date().toISOString(),
+        refreshMetadata: refreshMetadata,
+      },
+    });
   }
 
   /**
