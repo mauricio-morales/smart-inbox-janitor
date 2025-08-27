@@ -1,4 +1,10 @@
 {
+  // Tell the Jest extension exactly which Node to use:
+  "jest.pathToNode": "/opt/homebrew/opt/node@20/bin/node",
+
+  // Tell it how to run tests in this repo:
+  "jest.jestCommandLine": "npm test --",
+
   // TypeScript settings
   "typescript.preferences.includePackageJsonAutoImports": "on",
   "typescript.suggest.autoImports": true,

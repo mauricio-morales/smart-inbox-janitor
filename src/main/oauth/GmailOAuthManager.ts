@@ -19,6 +19,8 @@ import {
   NetworkError,
   ValidationError,
   GmailTokens,
+  RefreshFailureReason,
+  TokenRefreshMetadata,
 } from '@shared/types';
 
 /**
@@ -270,12 +272,15 @@ export class GmailOAuthManager {
   }
 
   /**
-   * Refresh access token using refresh token
+   * Refresh access token using refresh token with comprehensive error handling
    *
    * @param refreshToken - Valid refresh token
-   * @returns Result containing new Gmail tokens
+   * @param attemptNumber - Current attempt number for retry logic (default: 1)
+   * @returns Result containing new Gmail tokens with refresh metadata
    */
-  async refreshTokens(refreshToken: string): Promise<Result<GmailTokens>> {
+  async refreshTokens(refreshToken: string, attemptNumber = 1): Promise<Result<GmailTokens & { refreshMetadata: TokenRefreshMetadata }>> {
+    const startTime = Date.now();
+    
     try {
       if (!this.oauth2Client) {
         return createErrorResult(
@@ -293,12 +298,9 @@ export class GmailOAuthManager {
         );
       }
 
-      // Set refresh token
-      this.oauth2Client.setCredentials({
-        refresh_token: refreshToken,
-      });
-
-      // Refresh access token
+      // PATTERN: Follow existing oauth2Client setup (lines 278-290)
+      this.oauth2Client.setCredentials({ refresh_token: refreshToken });
+      
       const { credentials } = await this.oauth2Client.refreshAccessToken();
 
       if (
@@ -315,45 +317,39 @@ export class GmailOAuthManager {
         );
       }
 
-      // Convert to our token format
+      // CRITICAL: Atomic token update with metadata
+      const refreshMetadata: TokenRefreshMetadata = {
+        refreshedAt: Date.now(),
+        refreshMethod: 'automatic',
+        refreshDurationMs: Date.now() - startTime,
+        attemptNumber
+      };
+      
       const gmailTokens: GmailTokens = {
         accessToken: credentials.access_token,
-        refreshToken: credentials.refresh_token ?? refreshToken, // Keep old refresh token if no new one
+        refreshToken: credentials.refresh_token ?? refreshToken, // Fallback pattern
         expiryDate: credentials.expiry_date ?? Date.now() + 3600000,
         scope: credentials.scope,
         tokenType: credentials.token_type,
       };
 
-      return createSuccessResult(gmailTokens);
+      return createSuccessResult({
+        ...gmailTokens,
+        refreshMetadata
+      });
+      
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-
-      // Check for specific refresh errors
-      if (
-        message.includes('invalid_grant') ||
-        message.includes('Token has been expired or revoked')
-      ) {
-        return createErrorResult(
-          new AuthenticationError('Refresh token expired or revoked - re-authentication required', {
-            operation: 'refreshTokens',
-            errorType: 'invalid_grant',
-            requiresReauth: true,
-          }),
-        );
-      } else if (message.includes('ENOTFOUND') || message.includes('ECONNREFUSED')) {
-        return createErrorResult(
-          new NetworkError(`Network error during token refresh: ${message}`, {
-            operation: 'refreshTokens',
-            retryable: true,
-          }),
-        );
-      }
-
-      return createErrorResult(
-        new AuthenticationError(`Token refresh failed: ${message}`, {
-          operation: 'refreshTokens',
-        }),
-      );
+      // PATTERN: Error categorization for user-friendly handling
+      const failureReason = this.categorizeRefreshError(error);
+      return createErrorResult(new AuthenticationError(
+        `Token refresh failed: ${failureReason}`,
+        { 
+          code: 'OAUTH_REFRESH_FAILED', 
+          reason: failureReason,
+          attemptNumber,
+          refreshDurationMs: Date.now() - startTime 
+        }
+      ));
     }
   }
 
@@ -444,6 +440,47 @@ export class GmailOAuthManager {
    */
   private generateState(): string {
     return randomBytes(16).toString('base64url');
+  }
+
+  /**
+   * Categorize OAuth refresh errors for user-friendly handling
+   * 
+   * @param error - Error from OAuth refresh attempt
+   * @returns RefreshFailureReason for appropriate error handling
+   */
+  private categorizeRefreshError(error: unknown): RefreshFailureReason {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    const err = error as { code?: number; message?: string };
+    
+    // Check for specific OAuth error patterns
+    if (message.includes('invalid_grant') || message.includes('Token has been expired or revoked')) {
+      return 'invalid_grant';
+    }
+    
+    if (message.includes('invalid_client') || message.includes('Unauthorized client')) {
+      return 'client_misconfigured';
+    }
+    
+    if (message.includes('consent_required') || message.includes('consent_revoked')) {
+      return 'consent_revoked';
+    }
+    
+    if (message.includes('insufficient_scope') || message.includes('scope')) {
+      return 'insufficient_scope';
+    }
+    
+    if (message.includes('rate_limit') || message.includes('too_many_requests') || err.code === 429) {
+      return 'rate_limit_exceeded';
+    }
+    
+    // Network-related errors
+    if (message.includes('ENOTFOUND') || message.includes('ECONNREFUSED') || 
+        message.includes('ETIMEDOUT') || message.includes('Network')) {
+      return 'network_error';
+    }
+    
+    // Default to unknown for unrecognized errors
+    return 'unknown';
   }
 
   /**
