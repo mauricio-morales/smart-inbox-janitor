@@ -84,7 +84,7 @@ describe('GmailStartupAuth', () => {
       });
 
       const result = await failingAuth.validateAndRefreshTokens(); // This will call ensureInitialized
-      
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.message).toContain('Startup token validation failed');
