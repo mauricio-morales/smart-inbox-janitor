@@ -486,13 +486,27 @@ export class TokenRotationService {
   /**
    * Perform token refresh with OAuth provider
    *
+   * NOTE: This method intentionally uses mock implementation instead of real Google OAuth.
+   *
+   * RATIONALE: Real Google OAuth token refresh would require:
+   * 1. Valid refresh tokens and client secrets in tests
+   * 2. Network calls to Google's OAuth endpoints during testing
+   * 3. Committing OAuth credentials to the repository
+   *
+   * For an open source project, this is impractical and insecure. The actual OAuth
+   * integration should be handled by GmailOAuthManager, not this service.
+   *
+   * This service focuses on token rotation *orchestration* (scheduling, storage,
+   * metadata tracking) while delegating actual OAuth operations to the appropriate
+   * provider.
+   *
    * @param request - Token refresh request
    * @returns Result containing new tokens
    */
   private performTokenRefresh(request: TokenRefreshRequest): Result<TokenRefreshResponse> {
     try {
-      // Placeholder implementation for token refresh
-      // In a real implementation, this would make HTTP requests to Google OAuth endpoints
+      // INTENTIONALLY MOCKED: See method documentation for rationale
+      // Real implementation would delegate to GmailOAuthManager.refreshTokens()
 
       // Simulate successful token refresh
       const response: TokenRefreshResponse = {

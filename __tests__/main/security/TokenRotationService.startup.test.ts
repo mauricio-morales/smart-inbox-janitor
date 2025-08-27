@@ -87,6 +87,11 @@ describe('TokenRotationService - Startup Integration', () => {
       );
 
       // Mock the performTokenRefresh method (which is private, so we need to spy on it)
+      // NOTE: performTokenRefresh is intentionally mocked in tests because:
+      // - Real Google OAuth refresh requires valid client secrets and refresh tokens
+      // - Network calls to OAuth endpoints would make tests unreliable and slow
+      // - We cannot commit real OAuth credentials to an open source repository
+      // This test verifies the orchestration logic, not the OAuth implementation itself
       const performTokenRefreshSpy = jest.spyOn(tokenRotationService as any, 'performTokenRefresh');
 
       performTokenRefreshSpy.mockReturnValue(
