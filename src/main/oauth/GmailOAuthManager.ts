@@ -504,7 +504,7 @@ export class GmailOAuthManager {
     if (
       message.includes('rate_limit') ||
       message.includes('too_many_requests') ||
-      err.code === 429
+      (err && err.code === 429)
     ) {
       return 'rate_limit_exceeded';
     }

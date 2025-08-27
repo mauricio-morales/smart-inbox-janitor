@@ -83,12 +83,12 @@ describe('GmailStartupAuth', () => {
         throw new Error('Initialization failed');
       });
 
-      try {
-        await failingAuth.validateAndRefreshTokens(); // This will call ensureInitialized
-        throw new Error('Expected error to be thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toContain('Initialization failed');
+      const result = await failingAuth.validateAndRefreshTokens(); // This will call ensureInitialized
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Startup token validation failed');
+        expect(result.error.message).toContain('Initialization failed');
       }
     });
   });
@@ -364,7 +364,7 @@ describe('GmailStartupAuth', () => {
       if (result.success) {
         expect(result.data.status).toBe('needs_reauth');
         expect(result.data.lastError).toBeDefined();
-        expect(result.data.lastError?.code).toBe('AUTH_STATE_ERROR');
+        expect(result.data.lastError?.code).toBe('AUTH_STATE_ERROR: Storage error');
       }
     });
   });
