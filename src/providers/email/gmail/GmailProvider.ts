@@ -22,6 +22,8 @@ import {
   type BatchOperationResult,
   type SearchResult,
   type EmailFolder,
+  type FolderType,
+  type EmailHeaders,
   type ConnectionInfo,
   type AccountInfo,
   type GmailProviderConfig,
@@ -439,7 +441,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       if (!emailId) {
         return createErrorResult(
           new ValidationError('Email ID is required', {
-            operation: 'get',
+            emailId: ['Email ID is required'],
           }),
         );
       }
@@ -505,7 +507,11 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       // Gmail API supports batch modify up to 1000 messages
       const batchSize = 1000;
       const successful: string[] = [];
-      const failed: Array<{ readonly emailId: string; readonly error: string; readonly retryable?: boolean }> = [];
+      const failed: Array<{
+        readonly emailId: string;
+        readonly error: string;
+        readonly retryable?: boolean;
+      }> = [];
 
       for (let i = 0; i < request.emailIds.length; i += batchSize) {
         const batch = request.emailIds.slice(i, i + batchSize);
@@ -538,11 +544,15 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       }
 
       const result: BatchOperationResult = {
-        successful,
-        failed,
-        totalRequested: request.emailIds.length,
-        totalSuccessful: successful.length,
-        totalFailed: failed.length,
+        successCount: successful.length,
+        failureCount: failed.length,
+        failures: failed.map((failure) => ({
+          emailId: failure.emailId,
+          errorCode: 'MODIFY_FAILED',
+          errorMessage: failure.error,
+          retryable: true,
+        })),
+        processingTimeMs: 0, // TODO: Add proper timing
       };
 
       return createSuccessResult(result);
@@ -569,11 +579,10 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
 
       if (!request.emailIds.length) {
         return createSuccessResult({
-          successful: [],
-          failed: [],
-          totalRequested: 0,
-          totalSuccessful: 0,
-          totalFailed: 0,
+          successCount: 0,
+          failureCount: 0,
+          failures: [],
+          processingTimeMs: 0,
         });
       }
 
@@ -612,11 +621,15 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       }
 
       const result: BatchOperationResult = {
-        successful,
-        failed,
-        totalRequested: request.emailIds.length,
-        totalSuccessful: successful.length,
-        totalFailed: failed.length,
+        successCount: successful.length,
+        failureCount: failed.length,
+        failures: failed.map((failure) => ({
+          emailId: failure.emailId,
+          errorCode: 'DELETE_FAILED',
+          errorMessage: failure.error,
+          retryable: true,
+        })),
+        processingTimeMs: 0, // TODO: Add proper timing
       };
 
       return createSuccessResult(result);
@@ -644,8 +657,8 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       // Use batch modify to add SPAM label
       const request: BatchModifyRequest = {
         emailIds,
-        addLabels: ['SPAM'],
-        removeLabels: ['INBOX'],
+        addFolderIds: ['SPAM'],
+        removeFolderIds: ['INBOX'],
       };
 
       return await this.batchModify(request);
@@ -673,8 +686,8 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       // Use batch modify to add SPAM label and remove from INBOX
       const request: BatchModifyRequest = {
         emailIds,
-        addLabels: ['SPAM'],
-        removeLabels: ['INBOX'],
+        addFolderIds: ['SPAM'],
+        removeFolderIds: ['INBOX'],
       };
 
       return await this.batchModify(request);
@@ -703,7 +716,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       if (!query.trim()) {
         return createErrorResult(
           new ValidationError('Search query cannot be empty', {
-            operation: 'search',
+            query: ['Search query cannot be empty'],
           }),
         );
       }
@@ -745,6 +758,8 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
         hasMore: Boolean(searchResult.data.data.nextPageToken),
         nextPageToken: searchResult.data.data.nextPageToken ?? undefined,
         query,
+        searchTimeMs: 0, // TODO: Add proper timing
+        truncated: false, // TODO: Implement truncation logic
       };
 
       return createSuccessResult(result);
@@ -784,12 +799,10 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       const folders: EmailFolder[] = (labelsResult.data.data.labels ?? []).map((label) => ({
         id: label.id ?? '',
         name: label.name ?? '',
-        type: this.getLabelType(label.type ?? 'user'),
-        messageCount: label.messagesTotal ?? 0,
-        unreadCount: label.messagesUnread ?? 0,
-        visible:
-          label.labelListVisibility === 'labelShow' ||
-          label.labelListVisibility === 'labelShowIfUnread',
+        type: this.getLabelType(label.type ?? 'user') as FolderType,
+        totalEmails: label.messagesTotal ?? 0,
+        unreadEmails: label.messagesUnread ?? 0,
+        systemFolder: label.type === 'system',
       }));
 
       return createSuccessResult(folders);
@@ -827,13 +840,9 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
 
       const profile = profileResult.data.data;
       const accountInfo: AccountInfo = {
-        id: profile.historyId ?? '',
         email: profile.emailAddress ?? '',
         name: profile.emailAddress ?? '', // Gmail doesn't provide display name in profile
-        provider: 'gmail',
-        quotaUsed: 0, // Gmail API doesn't provide quota in profile
-        quotaTotal: 0,
-        lastSyncAt: new Date(),
+        accountType: 'gmail',
       };
 
       return createSuccessResult(accountInfo);
@@ -894,7 +903,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     if (!refreshResult.success) {
       // PATTERN: Enhanced error categorization for better UX
       const error = refreshResult.error;
-      
+
       // Check for specific OAuth error patterns that require re-authentication
       if (error.message.includes('invalid_grant') || error.message.includes('consent_revoked')) {
         return createErrorResult(
@@ -905,7 +914,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
           }),
         );
       }
-      
+
       // Network errors are retryable
       if (error.message.includes('network_error')) {
         return createErrorResult(
@@ -916,24 +925,24 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
           }),
         );
       }
-      
+
       return createErrorResult(refreshResult.error);
     }
 
     // Extract tokens from enhanced result (which includes refreshMetadata)
     const { refreshMetadata, ...tokenData } = refreshResult.data;
-    
+
     // Store new tokens with enhanced metadata tracking
     const storeResult = await this.storageManager.storeGmailTokens(tokenData, {
       provider: 'gmail',
       shouldExpire: true,
-      metadata: { 
+      metadata: {
         refreshedAt: new Date().toISOString(),
         refreshMethod: refreshMetadata.refreshMethod,
         refreshDurationMs: refreshMetadata.refreshDurationMs,
       },
     });
-    
+
     if (!storeResult.success) {
       return createErrorResult(storeResult.error);
     }
@@ -978,7 +987,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
             new ValidationError(
               `Gmail API access denied: ${errorDetails?.message ?? err.message}`,
               {
-                operation: 'api-call',
+                operation: ['api-call'],
               },
             ),
           );
@@ -1017,19 +1026,17 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     }
 
     if (options?.dateRange) {
-      if (options.dateRange.after !== undefined && options.dateRange.after !== null) {
-        const [afterDate] = new Date(options.dateRange.after).toISOString().split('T');
+      if (options.dateRange.start !== undefined && options.dateRange.start !== null) {
+        const [afterDate] = new Date(options.dateRange.start).toISOString().split('T');
         queryParts.push(`after:${afterDate}`);
       }
-      if (options.dateRange.before !== undefined && options.dateRange.before !== null) {
-        const [beforeDate] = new Date(options.dateRange.before).toISOString().split('T');
+      if (options.dateRange.end !== undefined && options.dateRange.end !== null) {
+        const [beforeDate] = new Date(options.dateRange.end).toISOString().split('T');
         queryParts.push(`before:${beforeDate}`);
       }
     }
 
-    if (options?.unreadOnly === true) {
-      queryParts.push('is:unread');
-    }
+    // Note: unreadOnly filter can be added via query parameter: 'is:unread'
 
     return queryParts.join(' ');
   }
@@ -1058,15 +1065,17 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       const summary: EmailSummary = {
         id: message.id ?? '',
         threadId: message.threadId ?? '',
+        folderIds: message.labelIds ?? [],
         subject: this.getHeader(headers, 'Subject') ?? '',
         from: this.getHeader(headers, 'From') ?? '',
-        to: this.getHeader(headers, 'To') ?? '',
+        to: this.parseEmailAddresses(this.getHeader(headers, 'To') ?? ''),
         date: new Date(parseInt(message.internalDate ?? '0')),
         snippet: message.snippet ?? '',
-        unread: message.labelIds?.includes('UNREAD') ?? false,
-        labels: message.labelIds ?? [],
+        sizeBytes: message.sizeEstimate ?? 0,
+        read: !message.labelIds?.includes('UNREAD'),
+        important: message.labelIds?.includes('IMPORTANT') ?? false,
+        starred: message.labelIds?.includes('STARRED') ?? false,
         hasAttachments: this.hasAttachments(message.payload),
-        size: message.sizeEstimate ?? 0,
       };
 
       return createSuccessResult(summary);
@@ -1087,19 +1096,19 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     const emailFull: EmailFull = {
       id: message.id ?? '',
       threadId: message.threadId ?? '',
+      folderIds: message.labelIds ?? [],
       subject: this.getHeader(headers, 'Subject') ?? '',
       from: this.getHeader(headers, 'From') ?? '',
-      to: this.getHeader(headers, 'To') ?? '',
-      cc: this.getHeader(headers, 'Cc'),
-      bcc: this.getHeader(headers, 'Bcc'),
+      to: this.parseEmailAddresses(this.getHeader(headers, 'To') ?? ''),
       date: new Date(parseInt(message.internalDate ?? '0')),
-      body: includeBody ? this.extractMessageBody(message.payload) : '',
       snippet: message.snippet ?? '',
-      unread: message.labelIds?.includes('UNREAD') ?? false,
-      labels: message.labelIds ?? [],
-      headers: this.extractAllHeaders(headers),
+      sizeBytes: message.sizeEstimate ?? 0,
+      read: !message.labelIds?.includes('UNREAD'),
+      important: message.labelIds?.includes('IMPORTANT') ?? false,
+      starred: message.labelIds?.includes('STARRED') ?? false,
       hasAttachments: this.hasAttachments(message.payload),
-      size: message.sizeEstimate ?? 0,
+      body: includeBody ? { text: this.extractMessageBody(message.payload) } : undefined,
+      headers: this.extractAllHeaders(headers),
       messageId: this.getHeader(headers, 'Message-ID'),
       listUnsubscribe: this.getHeader(headers, 'List-Unsubscribe'),
     };
@@ -1115,7 +1124,18 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     return header?.value ?? undefined;
   }
 
-  private extractAllHeaders(headers: gmail_v1.Schema$MessagePartHeader[]): Record<string, string> {
+  private parseEmailAddresses(emailString: string): string[] {
+    if (!emailString || emailString.trim() === '') {
+      return [];
+    }
+    // Simple email parsing - split by comma and clean up
+    return emailString
+      .split(',')
+      .map((email) => email.trim())
+      .filter((email) => email.length > 0);
+  }
+
+  private extractAllHeaders(headers: gmail_v1.Schema$MessagePartHeader[]): EmailHeaders {
     const headerMap: Record<string, string> = {};
     headers.forEach((header) => {
       if (
@@ -1129,7 +1149,19 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
         headerMap[header.name] = header.value;
       }
     });
-    return headerMap;
+
+    return {
+      messageId: headerMap['Message-ID'],
+      references: headerMap['References']?.split(' ').filter((ref) => ref.trim().length > 0),
+      inReplyTo: headerMap['In-Reply-To'],
+      listUnsubscribe: headerMap['List-Unsubscribe'],
+      listId: headerMap['List-ID'],
+      spf: headerMap['Received-SPF'],
+      dkim: headerMap['DKIM-Signature'],
+      dmarc: headerMap['Authentication-Results'],
+      contentType: headerMap['Content-Type'],
+      all: headerMap,
+    };
   }
 
   private extractMessageBody(payload?: gmail_v1.Schema$MessagePart): string {

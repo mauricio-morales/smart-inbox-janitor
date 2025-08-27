@@ -86,6 +86,8 @@ export type {
   EmailSummary,
   EmailFull,
   EmailFolder,
+  EmailHeaders,
+  FolderType,
   ContactInfo,
   UnsubscribeMethod,
   DateRange,

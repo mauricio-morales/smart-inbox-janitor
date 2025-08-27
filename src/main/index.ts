@@ -65,24 +65,24 @@ void app.whenReady().then(async () => {
     // PATTERN: Gmail startup authentication integration
     // Initialize startup authentication services
     console.log('Initializing startup authentication services...');
-    
+
     // Create OAuth manager for Gmail authentication
     const gmailOAuthConfig = {
       clientId: process.env.GMAIL_CLIENT_ID || '',
       clientSecret: process.env.GMAIL_CLIENT_SECRET || '',
-      redirectUri: 'http://localhost:8080/oauth/callback'
+      redirectUri: 'http://localhost:8080/oauth/callback',
     };
     const gmailOAuthManager = new GmailOAuthManager(gmailOAuthConfig);
     const gmailOAuthInitResult = gmailOAuthManager.initialize();
-    
+
     if (!gmailOAuthInitResult.success) {
       console.error('Gmail OAuth manager initialization failed:', gmailOAuthInitResult.error);
     }
 
-    // Create token rotation service  
+    // Create token rotation service
     const tokenRotationService = new TokenRotationService(secureStorageManager);
     const tokenRotationInitResult = await tokenRotationService.initialize();
-    
+
     if (!tokenRotationInitResult.success) {
       console.error('Token rotation service initialization failed:', tokenRotationInitResult.error);
     }
@@ -90,7 +90,7 @@ void app.whenReady().then(async () => {
     // Create startup auth service
     const gmailStartupAuth = new GmailStartupAuth(gmailOAuthManager, secureStorageManager);
     const startupAuthInitResult = await gmailStartupAuth.initialize();
-    
+
     if (!startupAuthInitResult.success) {
       console.error('Gmail startup auth initialization failed:', startupAuthInitResult.error);
     } else {
@@ -99,13 +99,13 @@ void app.whenReady().then(async () => {
 
     // CRITICAL: Perform startup token validation and refresh
     console.log('Validating and refreshing Gmail tokens...');
-    
+
     try {
       const startupAuthResult = await gmailStartupAuth.handleStartupAuth();
-      
+
       if (startupAuthResult.success) {
         const authResult = startupAuthResult.data;
-        
+
         if (authResult.success) {
           console.log('✓ Gmail authentication ready:', authResult.message);
           console.log('Auth state:', authResult.authState.status);

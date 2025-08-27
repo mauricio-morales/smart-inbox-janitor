@@ -362,7 +362,10 @@ export function setupIPC(
               clientId: credentials.clientId,
               clientSecret: credentials.clientSecret,
               redirectUri: 'http://localhost:8080',
-              scopes: ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.modify'],
+              scopes: [
+                'https://www.googleapis.com/auth/gmail.readonly',
+                'https://www.googleapis.com/auth/gmail.modify',
+              ],
             },
             maxResults: 100,
             pageSize: 50,
@@ -591,7 +594,10 @@ export function setupIPC(
             clientId: credentialsResult.data.clientId,
             clientSecret: credentialsResult.data.clientSecret,
             redirectUri: 'http://localhost:8080',
-            scopes: ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.modify'],
+            scopes: [
+              'https://www.googleapis.com/auth/gmail.readonly',
+              'https://www.googleapis.com/auth/gmail.modify',
+            ],
           },
         };
         console.log('DEBUG: Using stored credentials for connection check');

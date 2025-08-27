@@ -187,7 +187,7 @@ export default function GmailSetupModal({
   const openExternalUrl = (url: string) => {
     const electronAPI = (
       globalThis as typeof globalThis & {
-        window?: { electronAPI?: { shell?: { openExternal: (url: string) => void } } };  
+        window?: { electronAPI?: { shell?: { openExternal: (url: string) => void } } };
       }
     ).window?.electronAPI;
     if (electronAPI?.shell) {

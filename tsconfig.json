@@ -48,7 +48,16 @@
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist", "dist-electron", "**/*.js", "**/*.jsx", "__tests__/**/*", "**/*.test.*", "**/*.spec.*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "dist-electron",
+    "**/*.js",
+    "**/*.jsx",
+    "__tests__/**/*",
+    "**/*.test.*",
+    "**/*.spec.*"
+  ],
   "ts-node": {
     "esm": true
   }

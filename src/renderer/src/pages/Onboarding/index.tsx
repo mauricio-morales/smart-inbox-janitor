@@ -339,7 +339,7 @@ export function Onboarding(): React.JSX.Element {
                     const electronAPI = (
                       globalThis as typeof globalThis & {
                         window?: {
-                          electronAPI?: { shell?: { openExternal: (url: string) => void } };  
+                          electronAPI?: { shell?: { openExternal: (url: string) => void } };
                         };
                       }
                     ).window?.electronAPI;
@@ -368,7 +368,7 @@ export function Onboarding(): React.JSX.Element {
                     const electronAPI = (
                       globalThis as typeof globalThis & {
                         window?: {
-                          electronAPI?: { shell?: { openExternal: (url: string) => void } };  
+                          electronAPI?: { shell?: { openExternal: (url: string) => void } };
                         };
                       }
                     ).window?.electronAPI;
@@ -399,7 +399,7 @@ export function Onboarding(): React.JSX.Element {
                     const electronAPI = (
                       globalThis as typeof globalThis & {
                         window?: {
-                          electronAPI?: { shell?: { openExternal: (url: string) => void } };  
+                          electronAPI?: { shell?: { openExternal: (url: string) => void } };
                         };
                       }
                     ).window?.electronAPI;
@@ -439,7 +439,7 @@ export function Onboarding(): React.JSX.Element {
                     const electronAPI = (
                       globalThis as typeof globalThis & {
                         window?: {
-                          electronAPI?: { shell?: { openExternal: (url: string) => void } };  
+                          electronAPI?: { shell?: { openExternal: (url: string) => void } };
                         };
                       }
                     ).window?.electronAPI;
@@ -491,7 +491,7 @@ export function Onboarding(): React.JSX.Element {
                     const electronAPI = (
                       globalThis as typeof globalThis & {
                         window?: {
-                          electronAPI?: { shell?: { openExternal: (url: string) => void } };  
+                          electronAPI?: { shell?: { openExternal: (url: string) => void } };
                         };
                       }
                     ).window?.electronAPI;

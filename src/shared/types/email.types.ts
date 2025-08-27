@@ -370,6 +370,12 @@ export interface EmailFull extends EmailSummary {
 
   /** Raw email message (optional) */
   readonly raw?: string;
+
+  /** Message ID from headers */
+  readonly messageId?: string;
+
+  /** List-Unsubscribe header for newsletters */
+  readonly listUnsubscribe?: string;
 }
 
 /**

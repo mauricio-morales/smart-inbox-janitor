@@ -3,7 +3,9 @@ The following instructions were created with generic knowledge and now previous 
 # Problem: Robust Gmail OAuth Token Renewal & User Flow
 
 ## Context
+
 Our desktop app integrates with Gmail via OAuth. We currently **encrypt and persist** the following per user/workspace:
+
 - `access_token` (short-lived)
 - `refresh_token` (longer-lived, but may be invalid/rotated/revoked)
 - token metadata (expiry, scopes, client ID, etc.)
@@ -17,6 +19,7 @@ Our desktop app integrates with Gmail via OAuth. We currently **encrypt and pers
 ---
 
 ## Desired Outcome (What “done” means)
+
 1. **Init logic auto-refreshes** access tokens when expired or within a configurable “soon-to-expire” grace window (e.g., ≤ 2 minutes).
 2. **No user-facing error** is shown for mere access token expiry. The app performs a **silent refresh** using the stored `refresh_token`.
 3. If refresh succeeds:
@@ -37,6 +40,7 @@ Our desktop app integrates with Gmail via OAuth. We currently **encrypt and pers
 ---
 
 ## Constraints & Assumptions
+
 - Access tokens are short-lived; **do not rely on fixed lifetimes**. Use the `expires_in` / `expiry_date` metadata.
 - Refresh tokens can be **invalidated** by: user revocation, password or 2SV changes, app policy changes, scope changes, or client rotation.
 - All tokens and client secrets remain **encrypted at rest**; **in-memory only** for active use.
@@ -49,6 +53,7 @@ Our desktop app integrates with Gmail via OAuth. We currently **encrypt and pers
 ## Functional Requirements
 
 ### 1) Initialization & Health Check
+
 - On app start (and on demand), run `validateGmailConnection()`:
   1. Load encrypted token bundle.
   2. If missing or malformed → mark **Needs Re-Auth** and stop.
@@ -58,13 +63,16 @@ Our desktop app integrates with Gmail via OAuth. We currently **encrypt and pers
      - On failure → mark **Needs Re-Auth** and return a typed error indicating **refresh_failed** (with reason code for logs).
 
 ### 2) Refresh Flow
+
 - Exchange `refresh_token` for a new `access_token` (and possibly a new `refresh_token`).
 - Persist new tokens atomically; if a new `refresh_token` is returned, **replace** the old one.
 - Update expiry metadata using provider response.
 - Do **not** surface a user error on success.
 
 ### 3) Setup Card UX
+
 States and actions:
+
 - **Connected** (green): shows masked account email and last successful refresh timestamp.
 - **Refreshing…** (spinner): transient state during silent background refresh.
 - **Needs Re-Auth** (warning): shows primary button **“Sign in to Gmail again”**.
@@ -72,12 +80,14 @@ States and actions:
   - Show discreet inline error only if the OAuth window flow fails (user cancels or provider error).
 
 ### 4) Error Handling (technical -> user mapping)
-- **Access token expired** → *silent auto-refresh* (no UI).
+
+- **Access token expired** → _silent auto-refresh_ (no UI).
 - **Refresh error** (HTTP 400/401/invalid_grant, consent revoked, disallowed_useragent, etc.) → UI: “Session expired. Please sign in again.”
 - **Network/transient** → retry with backoff; if still failing but refresh token is likely valid, show a **connectivity** banner rather than sign-in required.
 - **Clock skew** → treat tokens expiring “soon” as expired; use a grace window.
 
 ### 5) Telemetry & Logging (no secrets)
+
 - Emit events:
   - `gmail.refresh.started | success | failure`
   - `gmail.init.health.ok | degraded | needs_reauth`
@@ -89,6 +99,7 @@ States and actions:
 ## Interfaces & Pseudocode
 
 ### Types
+
 ```ts
 type GmailAuthState =
   | { status: 'connected'; accountEmail: string; expiresAt: number; lastRefreshAt?: number }
@@ -96,8 +107,8 @@ type GmailAuthState =
   | { status: 'needs_reauth'; reason?: RefreshFailReason };
 
 type RefreshFailReason =
-  | 'invalid_grant'        // revoked/rotated/missing refresh token
-  | 'consent_revoked'      // user removed app
+  | 'invalid_grant' // revoked/rotated/missing refresh token
+  | 'consent_revoked' // user removed app
   | 'insufficient_scope'
   | 'client_misconfigured' // wrong client/secret/redirect
   | 'network_error'
@@ -105,6 +116,7 @@ type RefreshFailReason =
 ```
 
 ### Token Bundle
+
 ```ts
 interface TokenBundle {
   accessToken: string;
@@ -124,13 +136,18 @@ interface TokenBundle {
 ```
 
 ### Init Flow
+
 ```ts
 async function validateGmailConnection(now = Date.now()): Promise<GmailAuthState> {
   const bundle = await loadEncryptedBundle('gmail');
   if (!bundle) return { status: 'needs_reauth', reason: 'invalid_grant' };
 
   if (!isExpiring(bundle.expiresAt, now)) {
-    return { status: 'connected', accountEmail: await whoAmI(bundle.accessToken), expiresAt: bundle.expiresAt };
+    return {
+      status: 'connected',
+      accountEmail: await whoAmI(bundle.accessToken),
+      expiresAt: bundle.expiresAt,
+    };
   }
 
   emit('gmail.refresh.started');
@@ -138,7 +155,12 @@ async function validateGmailConnection(now = Date.now()): Promise<GmailAuthState
   if (isRefreshSuccess(refreshed)) {
     const next = persistRefreshed(bundle, refreshed);
     emit('gmail.refresh.success');
-    return { status: 'connected', accountEmail: await whoAmI(next.accessToken), expiresAt: next.expiresAt, lastRefreshAt: now };
+    return {
+      status: 'connected',
+      accountEmail: await whoAmI(next.accessToken),
+      expiresAt: next.expiresAt,
+      lastRefreshAt: now,
+    };
   } else {
     emit('gmail.refresh.failure', { reason: refreshed.reason });
     return { status: 'needs_reauth', reason: refreshed.reason };
@@ -151,6 +173,7 @@ function isExpiring(expiresAt: number, now: number, graceMs = 120_000): boolean 
 ```
 
 ### Refresh Flow
+
 ```ts
 async function refreshAccessToken(bundle: TokenBundle): Promise<RefreshSuccess | RefreshFailure> {
   const body = new URLSearchParams({
@@ -185,6 +208,7 @@ async function refreshAccessToken(bundle: TokenBundle): Promise<RefreshSuccess |
 ---
 
 ## UI Copy (Setup Card)
+
 - **Connected:** “Gmail is connected as **{email}**. Last refreshed {relativeTime}.“
 - **Needs Re-Auth:** “Your Gmail session expired. Please sign in again.”
   - Primary button: **Sign in to Gmail again**
@@ -193,6 +217,7 @@ async function refreshAccessToken(bundle: TokenBundle): Promise<RefreshSuccess |
 ---
 
 ## Edge Cases
+
 - Provider returns a **new refresh_token**: **overwrite** old value atomically.
 - **Multiple instances** running: ensure refresh happens **once** (mutex/IPC) and consumers wait.
 - **Clock skew**: if server time differs, rely on `expires_in` from response and local monotonic clock for grace window.
@@ -203,6 +228,7 @@ async function refreshAccessToken(bundle: TokenBundle): Promise<RefreshSuccess |
 ---
 
 ## Security
+
 - Encrypt tokens at rest (OS keychain/secure enclave if available).
 - Zeroize token material from memory after use where practicable.
 - Never log tokens. Redact PII in error/telemetry events.
@@ -211,6 +237,7 @@ async function refreshAccessToken(bundle: TokenBundle): Promise<RefreshSuccess |
 ---
 
 ## Testing (write these as automated tests)
+
 1. **Access token valid** → init passes, no refresh call.
 2. **Access token expired** → refresh called, succeeds → init passes, tokens updated.
 3. **Access token expired** → refresh called, fails `invalid_grant` → state **needs_reauth**, setup card shows CTA.
@@ -224,6 +251,7 @@ async function refreshAccessToken(bundle: TokenBundle): Promise<RefreshSuccess |
 ---
 
 ## Deliverables
+
 - [ ] `auth/gmail.ts` (refresh + whoAmI + typed errors)
 - [ ] `auth/crypto.ts` (secure storage, atomic writes)
 - [ ] `state/authState.ts` (GmailAuthState + reducers/selectors)
@@ -236,6 +264,7 @@ async function refreshAccessToken(bundle: TokenBundle): Promise<RefreshSuccess |
 ---
 
 ## Acceptance Criteria (copy/paste into PR)
+
 - Expired **access tokens** trigger an **automatic refresh** during init; **no user error** shown.
 - Only **failed refresh** results in “Session expired. Please sign in again.”
 - Setup Card visibly transitions between **Connected/Refreshing/Needs Re-Auth** and provides a working **Sign in again** button.

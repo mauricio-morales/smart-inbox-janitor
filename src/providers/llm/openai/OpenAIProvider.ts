@@ -37,7 +37,11 @@ import {
   QuotaExceededError,
   AuthenticationError,
 } from '@shared/types';
-import type { GroupingEmailInput, LLMAuth, ClassificationEmailInput } from '@shared/types/llm.types';
+import type {
+  GroupingEmailInput,
+  LLMAuth,
+  ClassificationEmailInput,
+} from '@shared/types/llm.types';
 import { SecureStorageManager } from '../../../main/security/SecureStorageManager';
 
 /**
@@ -53,7 +57,6 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
 
   private config: OpenAIConfig | null = null;
   private client: OpenAI | null = null;
-  // private storageManager: SecureStorageManager | null = null; // TODO: Implement storage manager usage
   private initialized = false;
   private readonly usageStatsData = {
     totalRequests: 0,
@@ -171,7 +174,6 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
     try {
       this.config = null;
       this.client = null;
-      this.storageManager = null;
       this.initialized = false;
 
       return createSuccessResult(undefined);
@@ -274,7 +276,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
         responseTimeMs: responseTime,
         modelAvailable: hasGPT4oMini,
         apiVersion: 'v1',
-        availableModels: models.map(m => m.id),
+        availableModels: models.map((m) => m.id),
       };
 
       return createSuccessResult(result);
@@ -300,9 +302,13 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
 
       if (!configToValidate) {
         return createErrorResult(
-          new ValidationError('No OpenAI configuration available', {}, {
-            operation: 'validateConfiguration',
-          }),
+          new ValidationError(
+            'No OpenAI configuration available',
+            {},
+            {
+              operation: 'validateConfiguration',
+            },
+          ),
         );
       }
 
@@ -331,9 +337,13 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown validation error';
       return createErrorResult(
-        new ValidationError(`Configuration validation failed: ${message}`, {}, {
-          operation: 'validateConfiguration',
-        }),
+        new ValidationError(
+          `Configuration validation failed: ${message}`,
+          {},
+          {
+            operation: 'validateConfiguration',
+          },
+        ),
       );
     }
   }
@@ -380,7 +390,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
             classifications.push({
               emailId: email.id,
               classification: 'unknown',
-              likelihood: 'low',
+              likelihood: 'unsure',
               confidence: 0,
               reasons: [`Classification failed: ${batchResult.error.message}`],
               bulkKey: 'failed',
@@ -462,7 +472,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
       if (response === null || response === undefined || response === '') {
         return createErrorResult(
           new ValidationError('No response from OpenAI', {
-            operation: 'validateContent',
+            operation: ['validateContent'],
           }),
         );
       }
@@ -476,10 +486,11 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
 
       const result: ContentValidationResult = {
         safe: parsedResponse.safe ?? true,
-        issues: (parsedResponse.issues ?? []).map(issue => ({
-          type: 'suspicious_content' as const,
+        issues: (parsedResponse.issues ?? []).map((issue) => ({
+          type: 'spam' as const,
           severity: 'medium' as const,
           description: issue,
+          confidence: 0.8, // Default confidence level
         })),
         safetyScore: parsedResponse.safetyScore ?? 0.8,
         recommendations: parsedResponse.recommendations ?? [],
@@ -499,7 +510,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown content validation error';
       return createErrorResult(
-        new NetworkError(`Content validation failed: ${message}`, {
+        new NetworkError(`Content validation failed: ${message}`, true, {
           operation: 'validateContent',
         }),
       );
@@ -528,7 +539,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
       const prompt = this.buildExplanationPrompt(input);
 
       const completionResult = await this.callWithErrorHandling(async () => {
-        return await this.client.chat.completions.create({
+        return await this.client!.chat.completions.create({
           model: this.config?.model ?? 'gpt-4o-mini',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.2,
@@ -547,7 +558,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
       if (response === null || response === undefined || response === '') {
         return createErrorResult(
           new ValidationError('No response from OpenAI', {
-            operation: 'explainClassification',
+            operation: ['explainClassification'],
           }),
         );
       }
@@ -567,16 +578,11 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
           evidence: [],
           conclusion: desc,
         })),
-        influencingFactors: (parsedResponse.influencingFactors ?? []).map(desc => ({
+        influencingFactors: (parsedResponse.influencingFactors ?? []).map((desc) => ({
           type: 'content' as const,
           description: desc,
           weight: 0.5,
-          direction: 'supporting' as const,
-        })),
-        alternativeClassifications: parsedResponse.alternatives?.map(alt => ({
-          classification: alt,
-          confidence: 0.3,
-          reasoning: alt,
+          influence: 'supporting' as const,
         })),
       };
 
@@ -594,7 +600,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown explanation error';
       return createErrorResult(
-        new NetworkError(`Classification explanation failed: ${message}`, {
+        new NetworkError(`Classification explanation failed: ${message}`, true, {
           operation: 'explainClassification',
         }),
       );
@@ -731,7 +737,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
           name: `Group ${key}`,
           emailIds: emails.map((e) => e.id),
           bulkKey: key,
-          rationale: `Same domain: ${this.extractDomain(emails[0].sender)}, Similar subject pattern`,
+          rationale: `Same domain: ${this.extractDomain(emails[0]?.sender ?? '')}, Similar subject pattern`,
           similarity: 0.7,
           suggestedAction: this.inferActionFromEmails(emails),
         }));
@@ -757,7 +763,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown grouping error';
       return createErrorResult(
-        new NetworkError(`Email grouping failed: ${message}`, {
+        new NetworkError(`Email grouping failed: ${message}`, true, {
           operation: 'groupForBulk',
           emailCount: input.emails.length,
         }),
@@ -803,8 +809,10 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
    *
    * @param storageManager - Initialized secure storage manager
    */
-  setStorageManager(storageManager: SecureStorageManager): void {
-    this.storageManager = storageManager;
+  // eslint-disable-next-line no-unused-vars
+  setStorageManager(_storageManager: SecureStorageManager): void {
+    // Storage manager not used in current implementation
+    // Suppress unused parameter warning - method required by interface
   }
 
   // Private helper methods
@@ -819,7 +827,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
     if (!config.apiKey) {
       return createErrorResult(
         new ValidationError('OpenAI API key is required', {
-          field: 'apiKey',
+          apiKey: ['OpenAI API key is required'],
         }),
       );
     }
@@ -827,8 +835,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
     if (!config.apiKey.startsWith('sk-')) {
       return createErrorResult(
         new ValidationError('OpenAI API key must start with "sk-"', {
-          field: 'apiKey',
-          format: 'sk-...',
+          apiKey: ['OpenAI API key must start with "sk-"'],
         }),
       );
     }
@@ -836,8 +843,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
     if (config.apiKey.length < 20) {
       return createErrorResult(
         new ValidationError('OpenAI API key appears to be invalid (too short)', {
-          field: 'apiKey',
-          length: config.apiKey.length,
+          apiKey: ['OpenAI API key appears to be invalid (too short)'],
         }),
       );
     }
@@ -915,7 +921,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
     if (!response) {
       return createErrorResult(
         new ValidationError('No response from OpenAI', {
-          operation: 'classifyEmailBatch',
+          operation: ['classifyEmailBatch'],
         }),
       );
     }
@@ -940,26 +946,22 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
       });
 
       return createSuccessResult({
-        items: classifications,
-        usage: completionResult.data.usage
-          ? {
-              promptTokens: completionResult.data.usage.prompt_tokens ?? 0,
-              completionTokens: completionResult.data.usage.completion_tokens ?? 0,
-              totalTokens: completionResult.data.usage.total_tokens ?? 0,
-              estimatedCost: 0, // TODO: Calculate based on model pricing
-            }
-          : undefined,
+        classifications,
+        tokens: completionResult.data.usage?.total_tokens ?? 0,
       });
     } catch {
       return createErrorResult(
         new ValidationError('Failed to parse OpenAI response', {
-          operation: 'classifyEmailBatch',
+          operation: ['classifyEmailBatch'],
         }),
       );
     }
   }
 
-  private buildClassificationPrompt(emails: ClassificationEmailInput[], input: ClassifyInput): string {
+  private buildClassificationPrompt(
+    emails: ClassificationEmailInput[],
+    input: ClassifyInput,
+  ): string {
     return `You are an expert email classifier. Classify the following emails into categories: keep, newsletter, promotion, spam, dangerous_phishing, or unknown.
 
 For each email, provide:
@@ -977,10 +979,10 @@ ${emails
   .map(
     (email, i) => `
 Email ${i + 1}:
-From: ${email.from}
-Subject: ${email.subject}
-Snippet: ${email.snippet}
-Date: ${email.date.toISOString()}
+From: ${email.headers['From'] || 'Unknown'}
+Subject: ${email.headers['Subject'] || 'No Subject'}
+Snippet: ${email.bodyText?.substring(0, 150) || email.bodyHtml?.substring(0, 150) || 'No content'}
+Date: ${email.headers['Date'] || 'Unknown'}
 `,
   )
   .join('\n')}
@@ -1073,7 +1075,7 @@ Provide detailed explanation as JSON:
 
   private extractDomain(email: string): string {
     const match = email.match(/@([^>]+)/);
-    return match ? match[1].toLowerCase() : 'unknown';
+    return match?.[1]?.toLowerCase() ?? 'unknown';
   }
 
   private normalizeSubject(subject: string): string {
@@ -1087,7 +1089,7 @@ Provide detailed explanation as JSON:
   }
 
   private inferActionFromEmails(emails: GroupingEmailInput[]): EmailAction {
-    const from = emails[0].sender.toLowerCase();
+    const from = emails[0]?.sender?.toLowerCase() ?? '';
 
     if (from.includes('noreply') || from.includes('no-reply')) {
       return 'DELETE_ONLY';

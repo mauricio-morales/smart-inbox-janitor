@@ -1,6 +1,7 @@
 # Gmail OAuth Refresh Token Best Practices
 
 ## Table of Contents
+
 1. [Google OAuth 2.0 Best Practices](#google-oauth-20-best-practices)
 2. [Desktop Application OAuth Patterns](#desktop-application-oauth-patterns)
 3. [Implementation Examples](#implementation-examples)
@@ -12,6 +13,7 @@
 ## Google OAuth 2.0 Best Practices
 
 ### Official Documentation References
+
 - **Web Server OAuth**: https://developers.google.com/identity/protocols/oauth2/web-server
 - **Native/Desktop Apps**: https://developers.google.com/identity/protocols/oauth2/native-app
 - **Error Handling**: https://developers.google.com/identity/protocols/oauth2/web-server#handlinganerrorresponse
@@ -58,16 +60,14 @@ const crypto = require('crypto');
 
 // Generate code verifier and challenge
 const codeVerifier = crypto.randomBytes(128).toString('base64url');
-const codeChallenge = crypto.createHash('sha256')
-  .update(codeVerifier)
-  .digest('base64url');
+const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
 
 const authUrl = oauth2Client.generateAuthUrl({
   access_type: 'offline',
   scope: scopes,
   code_challenge: codeChallenge,
   code_challenge_method: 'S256',
-  prompt: 'consent'
+  prompt: 'consent',
 });
 ```
 
@@ -79,6 +79,7 @@ const authUrl = oauth2Client.generateAuthUrl({
    - Use loopback IP addresses for redirect handling
 
 2. **Loopback Redirect Pattern**
+
    ```javascript
    const redirectUri = 'http://127.0.0.1:0/oauth/callback';
    // Port 0 allows system to assign available port
@@ -95,7 +96,7 @@ const authUrl = oauth2Client.generateAuthUrl({
 async function handleTokenRefresh(retryCount = 0) {
   const MAX_RETRIES = 3;
   const RETRY_DELAY = Math.pow(2, retryCount) * 1000; // Exponential backoff
-  
+
   try {
     const tokens = await oauth2Client.refreshAccessToken();
     return { success: true, tokens: tokens.credentials };
@@ -104,20 +105,21 @@ async function handleTokenRefresh(retryCount = 0) {
       await delay(RETRY_DELAY);
       return handleTokenRefresh(retryCount + 1);
     }
-    
+
     return { success: false, error, requiresReauth: isReauthError(error) };
   }
 }
 
 function isRetryableError(error) {
-  return error.code === 'NETWORK_ERROR' || 
-         error.code === 'TIMEOUT' ||
-         (error.status >= 500 && error.status < 600);
+  return (
+    error.code === 'NETWORK_ERROR' ||
+    error.code === 'TIMEOUT' ||
+    (error.status >= 500 && error.status < 600)
+  );
 }
 
 function isReauthError(error) {
-  return error.message.includes('invalid_grant') ||
-         error.message.includes('token_expired');
+  return error.message.includes('invalid_grant') || error.message.includes('token_expired');
 }
 ```
 
@@ -137,9 +139,9 @@ class GmailOAuthManager {
     this.oauth2Client = new OAuth2Client(
       clientId,
       clientSecret,
-      'http://127.0.0.1:0/oauth/callback'
+      'http://127.0.0.1:0/oauth/callback',
     );
-    
+
     // Auto-refresh token handling
     this.oauth2Client.on('tokens', async (tokens) => {
       if (tokens.refresh_token) {
@@ -152,16 +154,14 @@ class GmailOAuthManager {
   async authenticate(scopes) {
     // Generate PKCE parameters
     const codeVerifier = crypto.randomBytes(128).toString('base64url');
-    const codeChallenge = crypto.createHash('sha256')
-      .update(codeVerifier)
-      .digest('base64url');
+    const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
 
     // Create temporary server for callback
     const server = http.createServer();
     const port = await this.getAvailablePort(server);
-    
+
     this.oauth2Client.setCredentials({
-      redirect_uris: [`http://127.0.0.1:${port}/oauth/callback`]
+      redirect_uris: [`http://127.0.0.1:${port}/oauth/callback`],
     });
 
     const authUrl = this.oauth2Client.generateAuthUrl({
@@ -170,17 +170,17 @@ class GmailOAuthManager {
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
       prompt: 'consent', // Force consent to ensure refresh token
-      state: crypto.randomBytes(16).toString('hex') // CSRF protection
+      state: crypto.randomBytes(16).toString('hex'), // CSRF protection
     });
 
     return new Promise((resolve, reject) => {
       server.on('request', async (req, res) => {
         try {
           const parsedUrl = url.parse(req.url, true);
-          
+
           if (parsedUrl.pathname === '/oauth/callback') {
             const { code, state, error } = parsedUrl.query;
-            
+
             if (error) {
               throw new Error(`OAuth error: ${error}`);
             }
@@ -188,14 +188,14 @@ class GmailOAuthManager {
             // Exchange code for tokens
             const { tokens } = await this.oauth2Client.getToken({
               code,
-              codeVerifier
+              codeVerifier,
             });
-            
+
             this.oauth2Client.setCredentials(tokens);
-            
+
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end('<h1>Authentication successful! You can close this window.</h1>');
-            
+
             server.close();
             resolve(tokens);
           }
@@ -253,12 +253,7 @@ class RetryableGmailClient {
   }
 
   async makeRequest(requestFn, options = {}) {
-    const {
-      maxRetries = 3,
-      baseDelay = 1000,
-      maxDelay = 30000,
-      backoffMultiplier = 2
-    } = options;
+    const { maxRetries = 3, baseDelay = 1000, maxDelay = 30000, backoffMultiplier = 2 } = options;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -271,12 +266,12 @@ class RetryableGmailClient {
         return await requestFn();
       } catch (error) {
         const isLastAttempt = attempt === maxRetries;
-        
+
         if (this.isRateLimitError(error)) {
           // Extract retry-after header if available
           const retryAfter = error.response?.headers?.['retry-after'];
           this.rateLimitDelay = retryAfter ? parseInt(retryAfter) * 1000 : baseDelay;
-          
+
           if (!isLastAttempt) {
             await this.delay(this.rateLimitDelay);
             continue;
@@ -284,10 +279,7 @@ class RetryableGmailClient {
         }
 
         if (this.isRetryableError(error) && !isLastAttempt) {
-          const delay = Math.min(
-            baseDelay * Math.pow(backoffMultiplier, attempt),
-            maxDelay
-          );
+          const delay = Math.min(baseDelay * Math.pow(backoffMultiplier, attempt), maxDelay);
           await this.delay(delay);
           continue;
         }
@@ -298,7 +290,9 @@ class RetryableGmailClient {
             continue; // Retry with new token
           }
           if (refreshResult.requiresReauth) {
-            throw new AuthenticationRequiredError('Token refresh failed, re-authentication required');
+            throw new AuthenticationRequiredError(
+              'Token refresh failed, re-authentication required',
+            );
           }
         }
 
@@ -308,23 +302,19 @@ class RetryableGmailClient {
   }
 
   isRateLimitError(error) {
-    return error.code === 429 || 
-           (error.message && error.message.includes('Rate Limit Exceeded'));
+    return error.code === 429 || (error.message && error.message.includes('Rate Limit Exceeded'));
   }
 
   isRetryableError(error) {
-    return error.code >= 500 || 
-           error.code === 'NETWORK_ERROR' ||
-           error.code === 'ECONNRESET';
+    return error.code >= 500 || error.code === 'NETWORK_ERROR' || error.code === 'ECONNRESET';
   }
 
   isTokenError(error) {
-    return error.code === 401 ||
-           (error.message && error.message.includes('Invalid Credentials'));
+    return error.code === 401 || (error.message && error.message.includes('Invalid Credentials'));
   }
 
   delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 ```
@@ -345,7 +335,7 @@ const { OAuth2Client } = require('google-auth-library');
 const oauth2Client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  'http://127.0.0.1:3000/oauth/callback'
+  'http://127.0.0.1:3000/oauth/callback',
 );
 
 // Set up automatic token refresh
@@ -369,17 +359,17 @@ const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 async function initializeAuth() {
   const refreshToken = await secureStorage.get('refresh_token');
   const accessToken = await secureStorage.get('access_token');
-  
+
   if (refreshToken) {
     oauth2Client.setCredentials({
       refresh_token: refreshToken,
-      access_token: accessToken
+      access_token: accessToken,
     });
-    
+
     // Library will automatically refresh when needed
     return true;
   }
-  
+
   return false; // Need fresh authentication
 }
 
@@ -388,7 +378,7 @@ async function listMessages() {
   try {
     const response = await gmail.users.messages.list({
       userId: 'me',
-      maxResults: 10
+      maxResults: 10,
     });
     return response.data;
   } catch (error) {
@@ -405,14 +395,14 @@ async function listMessages() {
 
 ### Standard OAuth 2.0 Error Codes
 
-| Error Code | Description | Handling Strategy |
-|------------|-------------|-------------------|
-| `invalid_grant` | Token expired or revoked | Force re-authentication |
-| `invalid_client` | Client credentials incorrect | Check client ID/secret configuration |
-| `redirect_uri_mismatch` | Redirect URI not authorized | Update OAuth consent screen settings |
-| `access_denied` | User denied authorization | Handle gracefully, allow retry |
+| Error Code              | Description                    | Handling Strategy                      |
+| ----------------------- | ------------------------------ | -------------------------------------- |
+| `invalid_grant`         | Token expired or revoked       | Force re-authentication                |
+| `invalid_client`        | Client credentials incorrect   | Check client ID/secret configuration   |
+| `redirect_uri_mismatch` | Redirect URI not authorized    | Update OAuth consent screen settings   |
+| `access_denied`         | User denied authorization      | Handle gracefully, allow retry         |
 | `admin_policy_enforced` | Workspace admin blocked access | Contact admin or use different account |
-| `disallowed_useragent` | Using embedded browser | Switch to system browser |
+| `disallowed_useragent`  | Using embedded browser         | Switch to system browser               |
 
 ### Gmail API Specific Error Codes
 
@@ -425,27 +415,35 @@ class GmailErrorHandler {
           return { type: 'INVALID_QUERY', message: 'Search query syntax error' };
         }
         return { type: 'BAD_REQUEST', message: 'Request format error' };
-        
+
       case 401:
         return { type: 'AUTHENTICATION_REQUIRED', message: 'Token expired or invalid' };
-        
+
       case 403:
         if (error.message.includes('Rate Limit Exceeded')) {
-          return { type: 'RATE_LIMIT', message: 'API quota exceeded', retryAfter: error.retryAfter };
+          return {
+            type: 'RATE_LIMIT',
+            message: 'API quota exceeded',
+            retryAfter: error.retryAfter,
+          };
         }
         return { type: 'FORBIDDEN', message: 'Insufficient permissions' };
-        
+
       case 404:
         return { type: 'NOT_FOUND', message: 'Resource not found' };
-        
+
       case 429:
         return { type: 'RATE_LIMIT', message: 'Too many requests', retryAfter: error.retryAfter };
-        
+
       case 500:
       case 502:
       case 503:
-        return { type: 'SERVER_ERROR', message: 'Gmail service temporarily unavailable', retryable: true };
-        
+        return {
+          type: 'SERVER_ERROR',
+          message: 'Gmail service temporarily unavailable',
+          retryable: true,
+        };
+
       default:
         return { type: 'UNKNOWN_ERROR', message: error.message };
     }
@@ -453,7 +451,7 @@ class GmailErrorHandler {
 
   static async handleErrorWithRetry(error, retryFn, maxRetries = 3) {
     const errorInfo = this.handleApiError(error);
-    
+
     switch (errorInfo.type) {
       case 'RATE_LIMIT':
         if (errorInfo.retryAfter) {
@@ -462,24 +460,24 @@ class GmailErrorHandler {
           await this.delay(Math.random() * 5000 + 1000); // Random jitter
         }
         return retryFn();
-        
+
       case 'SERVER_ERROR':
         if (maxRetries > 0) {
           await this.delay(Math.pow(2, 4 - maxRetries) * 1000);
           return this.handleErrorWithRetry(error, retryFn, maxRetries - 1);
         }
         throw new Error('Gmail service unavailable after retries');
-        
+
       case 'AUTHENTICATION_REQUIRED':
         throw new AuthenticationRequiredError();
-        
+
       default:
         throw error;
     }
   }
-  
+
   static delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 ```
@@ -491,23 +489,25 @@ class GmailErrorHandler {
 **Problem**: OAuth flow completes but no refresh token is provided.
 
 **Root Causes**:
+
 - Missing `access_type: 'offline'` parameter
 - User previously authorized app (refresh token only provided once)
 - Not forcing consent screen
 
 **Solutions**:
+
 ```javascript
 // ✅ Correct implementation
 const authUrl = oauth2Client.generateAuthUrl({
-  access_type: 'offline',     // Required for refresh token
-  prompt: 'consent',          // Force consent screen
+  access_type: 'offline', // Required for refresh token
+  prompt: 'consent', // Force consent screen
   scope: scopes,
-  state: randomState
+  state: randomState,
 });
 
 // ❌ Common mistake
 const authUrl = oauth2Client.generateAuthUrl({
-  scope: scopes  // Missing access_type and prompt
+  scope: scopes, // Missing access_type and prompt
 });
 ```
 
@@ -516,6 +516,7 @@ const authUrl = oauth2Client.generateAuthUrl({
 **Problem**: Refresh tokens stored insecurely or logged accidentally.
 
 **Solutions**:
+
 ```javascript
 // ✅ Secure storage
 const keytar = require('keytar');
@@ -524,11 +525,11 @@ class SecureTokenStorage {
   async storeRefreshToken(token) {
     await keytar.setPassword('gmail-app', 'refresh_token', token);
   }
-  
+
   async getRefreshToken() {
     return await keytar.getPassword('gmail-app', 'refresh_token');
   }
-  
+
   async clearTokens() {
     await keytar.deletePassword('gmail-app', 'refresh_token');
     await keytar.deletePassword('gmail-app', 'access_token');
@@ -537,7 +538,7 @@ class SecureTokenStorage {
 
 // ❌ Insecure storage
 localStorage.setItem('refresh_token', token); // Never do this
-console.log('Token:', token);                 // Never log tokens
+console.log('Token:', token); // Never log tokens
 ```
 
 ### 3. Rate Limiting Not Handled
@@ -545,6 +546,7 @@ console.log('Token:', token);                 // Never log tokens
 **Problem**: API calls fail with 429/403 rate limit errors.
 
 **Solutions**:
+
 ```javascript
 // ✅ Proper rate limiting
 class RateLimitedClient {
@@ -554,28 +556,28 @@ class RateLimitedClient {
     this.lastRequestTime = 0;
     this.minRequestInterval = 100; // 100ms between requests
   }
-  
+
   async makeRequest(requestFn) {
     return new Promise((resolve, reject) => {
       this.requestQueue.push({ requestFn, resolve, reject });
       this.processQueue();
     });
   }
-  
+
   async processQueue() {
     if (this.isProcessing || this.requestQueue.length === 0) return;
-    
+
     this.isProcessing = true;
-    
+
     while (this.requestQueue.length > 0) {
       const { requestFn, resolve, reject } = this.requestQueue.shift();
-      
+
       // Ensure minimum time between requests
       const timeSinceLastRequest = Date.now() - this.lastRequestTime;
       if (timeSinceLastRequest < this.minRequestInterval) {
         await this.delay(this.minRequestInterval - timeSinceLastRequest);
       }
-      
+
       try {
         const result = await requestFn();
         resolve(result);
@@ -588,15 +590,15 @@ class RateLimitedClient {
         }
         reject(error);
       }
-      
+
       this.lastRequestTime = Date.now();
     }
-    
+
     this.isProcessing = false;
   }
-  
+
   delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 ```
@@ -606,28 +608,29 @@ class RateLimitedClient {
 **Problem**: App fails when network is unstable or offline.
 
 **Solutions**:
+
 ```javascript
 // ✅ Graceful offline handling
 class OfflineCapableClient {
   constructor() {
     this.isOnline = navigator.onLine;
     this.pendingOperations = [];
-    
+
     window.addEventListener('online', () => {
       this.isOnline = true;
       this.processPendingOperations();
     });
-    
+
     window.addEventListener('offline', () => {
       this.isOnline = false;
     });
   }
-  
+
   async makeRequest(requestFn, options = {}) {
     if (!this.isOnline && options.allowOffline) {
       return this.queueOperation(requestFn, options);
     }
-    
+
     try {
       return await this.executeWithRetry(requestFn);
     } catch (error) {
@@ -637,15 +640,19 @@ class OfflineCapableClient {
       throw error;
     }
   }
-  
+
   queueOperation(requestFn, options) {
     return new Promise((resolve, reject) => {
       this.pendingOperations.push({
-        requestFn, resolve, reject, options, timestamp: Date.now()
+        requestFn,
+        resolve,
+        reject,
+        options,
+        timestamp: Date.now(),
       });
     });
   }
-  
+
   async processPendingOperations() {
     while (this.pendingOperations.length > 0 && this.isOnline) {
       const operation = this.pendingOperations.shift();
@@ -657,12 +664,14 @@ class OfflineCapableClient {
       }
     }
   }
-  
+
   isNetworkError(error) {
-    return error.code === 'NETWORK_ERROR' ||
-           error.code === 'ENOTFOUND' ||
-           error.code === 'ECONNREFUSED' ||
-           error.message.includes('Network request failed');
+    return (
+      error.code === 'NETWORK_ERROR' ||
+      error.code === 'ENOTFOUND' ||
+      error.code === 'ECONNREFUSED' ||
+      error.message.includes('Network request failed')
+    );
   }
 }
 ```
@@ -672,6 +681,7 @@ class OfflineCapableClient {
 ### Phase 1: Basic OAuth Setup
 
 1. **Configure OAuth Credentials**
+
    ```bash
    # Google Cloud Console setup
    1. Enable Gmail API
@@ -681,6 +691,7 @@ class OfflineCapableClient {
    ```
 
 2. **Install Required Dependencies**
+
    ```bash
    npm install google-auth-library googleapis keytar
    npm install --save-dev @types/keytar
@@ -692,18 +703,19 @@ class OfflineCapableClient {
    const authUrl = oauth2Client.generateAuthUrl({
      access_type: 'offline',
      scope: ['https://www.googleapis.com/auth/gmail.readonly'],
-     prompt: 'consent'
+     prompt: 'consent',
    });
    ```
 
 ### Phase 2: Secure Token Management
 
 1. **Implement Secure Storage**
+
    ```javascript
    // Use OS keychain for production
    const keytar = require('keytar');
    const SERVICE_NAME = 'your-app-name';
-   
+
    await keytar.setPassword(SERVICE_NAME, 'refresh_token', token);
    ```
 
@@ -756,6 +768,7 @@ class OfflineCapableClient {
 ### Monitoring and Maintenance
 
 1. **Log Important Events** (without exposing tokens)
+
    ```javascript
    logger.info('OAuth flow initiated');
    logger.info('Refresh token obtained successfully');

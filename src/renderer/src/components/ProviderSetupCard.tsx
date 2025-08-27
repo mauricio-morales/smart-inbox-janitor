@@ -1,4 +1,3 @@
- 
 // TODO: Remove this disable when interface parameters are properly utilized
 /**
  * ProviderSetupCard component
