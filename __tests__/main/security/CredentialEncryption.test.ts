@@ -128,7 +128,11 @@ describe('CredentialEncryption - OS Keychain Implementation', () => {
       // Act & Assert
       expect(() => {
         (credentialEncryption as any).storeInOSKeychain(mockKeyId, mockKeyData);
-      }).toThrow('OS encryption not available');
+      }).toThrow(
+        process.platform === 'linux'
+          ? 'Linux OS keychain not implemented'
+          : 'OS encryption not available',
+      );
     });
 
     it('should handle file write errors gracefully', () => {
