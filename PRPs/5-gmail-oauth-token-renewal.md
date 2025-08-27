@@ -404,91 +404,127 @@ async refreshTokens(refreshToken: string, attemptNumber = 1): Promise<Result<Gma
   }
 }
 
-// Auth State Management Pattern - Centralized state with audit logging
-async getCurrentAuthState(): Promise<Result<GmailAuthState>> {
+// Startup Auth Integration Pattern - Token refresh during app initialization
+async validateAndRefreshTokens(): Promise<Result<boolean>> {
   // PATTERN: Security audit logging (follow SecureStorageManager lines 226-239)
   await this.securityAuditLogger.logEvent({
-    eventType: 'auth_state_accessed',
+    eventType: 'startup_token_validation',
     provider: 'gmail',
     success: true,
-    metadata: { operation: 'get_current_state' }
+    metadata: { operation: 'validate_and_refresh' }
   });
   
   const tokensResult = await this.secureStorageManager.getGmailTokens();
   if (!tokensResult.success) {
-    return createSuccessResult({ status: 'needs_reauth' });
+    // No tokens available - provider needs initial setup
+    return createSuccessResult(false);
   }
   
   const tokens = tokensResult.data;
-  if (this.oauthManager.willExpireSoon(tokens)) {
-    return createSuccessResult({ status: 'refreshing' });
+  if (!this.oauthManager.willExpireSoon(tokens)) {
+    // Tokens still valid
+    return createSuccessResult(true);
   }
   
-  return createSuccessResult({
-    status: 'connected',
-    accountEmail: await this.getAccountEmail(),
-    expiresAt: tokens.expiryDate,
-    lastRefreshAt: tokens.updatedAt
-  });
+  // Tokens need refresh - attempt automatic renewal
+  const refreshResult = await this.oauthManager.refreshTokens(tokens.refreshToken);
+  if (refreshResult.success) {
+    // Store refreshed tokens and continue
+    await this.secureStorageManager.storeGmailTokens(refreshResult.data);
+    return createSuccessResult(true);
+  } else {
+    // Refresh failed - provider needs reconfiguration
+    await this.securityAuditLogger.logEvent({
+      eventType: 'startup_token_refresh_failed',
+      provider: 'gmail',
+      success: false,
+      metadata: { error: refreshResult.error.code }
+    });
+    return createSuccessResult(false);
+  }
 }
 
-// UI Component Pattern - MUI v7 Grid with auth state display
-const GmailConnectionCard: React.FC = () => {
-  const { authState, refreshConnection } = useGmailAuthState();
-  
-  return (
-    <Card>
-      <CardContent>
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 8 }}>
-            <Typography variant="h6">Gmail Connection</Typography>
-            {authState.status === 'connected' && (
-              <Typography color="success.main">
-                Connected as {authState.accountEmail}
-              </Typography>
-            )}
-            {authState.status === 'refreshing' && (
-              <Box display="flex" alignItems="center" gap={1}>
-                <CircularProgress size={16} />
-                <Typography>Refreshing connection...</Typography>
-              </Box>
-            )}
-            {authState.status === 'needs_reauth' && (
-              <Typography color="warning.main">
-                Your Gmail session expired. Please sign in again.
-              </Typography>
-            )}
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            {authState.status === 'needs_reauth' && (
-              <Button 
-                variant="contained" 
-                onClick={refreshConnection}
-                fullWidth
-              >
-                Sign in to Gmail again
-              </Button>
-            )}
-          </Grid>
-        </Grid>
-      </CardContent>
-    </Card>
-  );
-};
-
-// IPC Handler Pattern - Secure auth state management
-ipcMain.handle('gmail:get-auth-state', async (): Promise<Result<GmailAuthState>> => {
+// Main Process Initialization Pattern - Enhanced startup sequence
+async function initializeProviders() {
   try {
-    const result = await gmailAuthStateManager.getCurrentAuthState();
-    if (!result.success) {
-      return createErrorResult(new ConfigurationError('Failed to get auth state'));
+    // Initialize storage provider first
+    await storageProvider.initialize({ databasePath: './data/app.db' });
+    
+    // Initialize secure storage manager with storage provider
+    const secureStorageInitResult = await secureStorageManager.initialize({
+      storageProvider,
+      enableTokenRotation: true,
+      sessionId: `session-${Date.now()}`,
+      userId: 'default-user',
+    });
+    
+    if (!secureStorageInitResult.success) {
+      console.error('Failed to initialize secure storage manager');
+      return;
     }
-    return result;
+    
+    // ENHANCED: Validate and refresh Gmail tokens before provider initialization
+    const gmailStartupAuth = new GmailStartupAuth(gmailOAuthManager, secureStorageManager);
+    const tokenValidationResult = await gmailStartupAuth.validateAndRefreshTokens();
+    
+    if (tokenValidationResult.success && tokenValidationResult.data) {
+      // Tokens are valid - proceed with Gmail provider initialization
+      const gmailInitResult = await emailProvider.initialize();
+      if (!gmailInitResult.success) {
+        console.error('Gmail provider initialization failed:', gmailInitResult.error);
+      }
+    } else {
+      console.log('Gmail tokens require reconfiguration - provider will need setup');
+    }
+    
+    // Setup IPC handlers after provider initialization attempts
+    setupIPC(emailProvider, llmProvider, storageProvider, secureStorageManager);
+    
   } catch (error) {
-    // CRITICAL: Never expose internal errors to renderer
-    return createErrorResult(new ConfigurationError('Auth state unavailable'));
+    console.error('Provider initialization failed:', error);
   }
-});
+}
+
+// Enhanced Provider Connect Pattern - Automatic refresh integration
+async connect(config?: GmailProviderConfig): Promise<Result<{ connected: boolean; connectedAt: Date }>> {
+  try {
+    // ENHANCED: Check token status before attempting connection
+    const tokensResult = await this.secureStorageManager?.getGmailTokens();
+    if (!tokensResult?.success) {
+      return createErrorResult(new AuthenticationError('No Gmail tokens available'));
+    }
+    
+    const tokens = tokensResult.data;
+    
+    // Check if tokens are expired and attempt refresh
+    if (this.oauthManager?.willExpireSoon(tokens)) {
+      const refreshResult = await this.oauthManager.refreshTokens(tokens.refreshToken);
+      if (refreshResult.success) {
+        // Update stored tokens atomically
+        await this.secureStorageManager?.storeGmailTokens(refreshResult.data);
+        // Update oauth client with fresh tokens
+        this.gmail?.auth.setCredentials({
+          access_token: refreshResult.data.accessToken,
+          refresh_token: refreshResult.data.refreshToken,
+        });
+      } else {
+        return createErrorResult(new AuthenticationError('Token refresh failed', {
+          code: 'TOKEN_REFRESH_FAILED',
+          cause: refreshResult.error
+        }));
+      }
+    }
+    
+    // Proceed with normal connection logic...
+    const response = await this.gmail?.users.getProfile({ userId: 'me' });
+    return createSuccessResult({ connected: true, connectedAt: new Date() });
+    
+  } catch (error) {
+    return this.callWithErrorHandling('connect', error, () => 
+      createErrorResult(new NetworkError('Gmail connection failed'))
+    );
+  }
+}
 ```
 
 ### Integration Points

@@ -127,6 +127,45 @@ export interface GmailTokens {
 }
 
 /**
+ * Token refresh failure reason for error categorization
+ */
+export type RefreshFailureReason =
+  | 'invalid_grant'        // Refresh token revoked/expired
+  | 'consent_revoked'      // User removed app permissions
+  | 'insufficient_scope'   // Scope changes require re-auth
+  | 'client_misconfigured' // OAuth client credentials invalid
+  | 'network_error'        // Transient network issues
+  | 'rate_limit_exceeded'  // Too many refresh attempts
+  | 'unknown';
+
+/**
+ * Gmail authentication state for comprehensive token renewal
+ */
+export interface GmailAuthState {
+  readonly status: 'connected' | 'refreshing' | 'needs_reauth';
+  readonly accountEmail?: string;
+  readonly expiresAt?: number;
+  readonly lastRefreshAt?: number;
+  readonly refreshAttempts?: number;
+  readonly lastError?: {
+    readonly code: string;
+    readonly reason: RefreshFailureReason;
+    readonly timestamp: number;
+  };
+}
+
+/**
+ * Token refresh metadata for audit logging and tracking
+ */
+export interface TokenRefreshMetadata {
+  readonly refreshedAt: number;
+  readonly refreshMethod: 'automatic' | 'manual' | 'startup';
+  readonly previousExpiryDate?: number;
+  readonly refreshDurationMs: number;
+  readonly attemptNumber: number;
+}
+
+/**
  * Gmail provider configuration combining auth and operational settings
  */
 export interface GmailProviderConfig {

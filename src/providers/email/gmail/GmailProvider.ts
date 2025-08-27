@@ -889,18 +889,56 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       );
     }
 
+    // PATTERN: Use enhanced OAuth manager with comprehensive error handling
     const refreshResult = await this.oauthManager.refreshTokens(refreshToken);
     if (!refreshResult.success) {
+      // PATTERN: Enhanced error categorization for better UX
+      const error = refreshResult.error;
+      
+      // Check for specific OAuth error patterns that require re-authentication
+      if (error.message.includes('invalid_grant') || error.message.includes('consent_revoked')) {
+        return createErrorResult(
+          new AuthenticationError('Gmail authentication expired - please sign in again', {
+            operation: 'refreshTokens',
+            requiresReauth: true,
+            originalError: error.code,
+          }),
+        );
+      }
+      
+      // Network errors are retryable
+      if (error.message.includes('network_error')) {
+        return createErrorResult(
+          new NetworkError('Network error during token refresh - will retry automatically', {
+            operation: 'refreshTokens',
+            retryable: true,
+            originalError: error.code,
+          }),
+        );
+      }
+      
       return createErrorResult(refreshResult.error);
     }
 
-    // Store new tokens
-    const storeResult = await this.storageManager.storeGmailTokens(refreshResult.data);
+    // Extract tokens from enhanced result (which includes refreshMetadata)
+    const { refreshMetadata, ...tokenData } = refreshResult.data;
+    
+    // Store new tokens with enhanced metadata tracking
+    const storeResult = await this.storageManager.storeGmailTokens(tokenData, {
+      provider: 'gmail',
+      shouldExpire: true,
+      metadata: { 
+        refreshedAt: new Date().toISOString(),
+        refreshMethod: refreshMetadata.refreshMethod,
+        refreshDurationMs: refreshMetadata.refreshDurationMs,
+      },
+    });
+    
     if (!storeResult.success) {
       return createErrorResult(storeResult.error);
     }
 
-    return refreshResult;
+    return createSuccessResult(tokenData);
   }
 
   private async callWithErrorHandling<T>(apiCall: () => Promise<T>): Promise<Result<T>> {
