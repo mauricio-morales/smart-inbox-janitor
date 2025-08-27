@@ -66,7 +66,11 @@ jobs:
 
       - name: Check Prettier formatting on changed files
         if: steps.changes.outputs.fmt_files != ''
-        run: npx prettier -c ${{ steps.changes.outputs.fmt_files }}
+        run: |
+          echo "Checking formatting on changed files:"
+          echo "${{ steps.changes.outputs.fmt_files }}"
+          # Use xargs to pass files to prettier, handling newlines properly
+          echo '${{ steps.changes.outputs.fmt_files }}' | tr '\n' '\0' | xargs -0 -r npx prettier -c
 
       - name: TypeScript type check (full project)
         run: npm run type-check
