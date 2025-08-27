@@ -214,7 +214,7 @@ describe('SecureFileOperations', () => {
       mockFs.writeFileSync.mockImplementation(() => {
         // Success - no error
       });
-      
+
       // Mock chmodSync to always fail
       mockFs.chmodSync.mockImplementation(() => {
         throw new Error('Permission denied');
@@ -225,7 +225,9 @@ describe('SecureFileOperations', () => {
       mockFs.existsSync.mockReturnValue(false);
 
       // Act - disable parent directory creation to avoid directory chmod calls
-      const result = SecureFileOperations.writeFileAtomically(mockFilePath, mockData, { createParents: false });
+      const result = SecureFileOperations.writeFileAtomically(mockFilePath, mockData, {
+        createParents: false,
+      });
 
       // Assert
       expect(result.success).toBe(false);
