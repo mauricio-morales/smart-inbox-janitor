@@ -263,12 +263,12 @@ export function useElectronAPI(): {
 
     // Required API methods (stubs for interface compatibility)
 
-    // eslint-disable-next-line no-unused-vars
+     
     deleteEmail: async (_: string): Promise<void> => {
       return Promise.reject(new Error('Delete email not implemented yet'));
     },
 
-    // eslint-disable-next-line no-unused-vars
+     
     reportSpam: async (
       _: string[],
     ): Promise<{
@@ -285,7 +285,7 @@ export function useElectronAPI(): {
       });
     },
 
-    // eslint-disable-next-line no-unused-vars
+     
     reportPhishing: async (
       _: string[],
     ): Promise<{

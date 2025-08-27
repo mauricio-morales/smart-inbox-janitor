@@ -67,7 +67,12 @@ void app.whenReady().then(async () => {
     console.log('Initializing startup authentication services...');
     
     // Create OAuth manager for Gmail authentication
-    const gmailOAuthManager = new GmailOAuthManager();
+    const gmailOAuthConfig = {
+      clientId: process.env.GMAIL_CLIENT_ID || '',
+      clientSecret: process.env.GMAIL_CLIENT_SECRET || '',
+      redirectUri: 'http://localhost:8080/oauth/callback'
+    };
+    const gmailOAuthManager = new GmailOAuthManager(gmailOAuthConfig);
     const gmailOAuthInitResult = gmailOAuthManager.initialize();
     
     if (!gmailOAuthInitResult.success) {

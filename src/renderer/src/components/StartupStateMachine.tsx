@@ -27,13 +27,9 @@ interface StartupStateMachineProps {
 }
 
 /**
- * StartupStateMachine component for managing application startup flow
+ * Custom hook for StartupStateMachine state and handlers
  */
-export default function StartupStateMachine({
-  onDashboardReady,
-}: StartupStateMachineProps): React.ReactElement {
-  const electronAPI = useElectronAPI();
-
+function useStartupStateMachine(electronAPI: any, onDashboardReady: () => void) {
   // Modal state
   const [openAIModalOpen, setOpenAIModalOpen] = useState(false);
   const [gmailModalOpen, setGmailModalOpen] = useState(false);
@@ -47,8 +43,7 @@ export default function StartupStateMachine({
       startupMachine.provide({
         actors: {
           providerCheckService: fromPromise(async () => {
-            console.log('[StartupStateMachine] Starting provider health checks...');
-            return await orchestrator.checkAllProviders();
+            return orchestrator.checkAllProviders();
           }),
         },
         // Note: isAppUsable guard is now defined directly in the machine
@@ -61,15 +56,12 @@ export default function StartupStateMachine({
   // Notify parent when dashboard is ready
   useEffect(() => {
     if (state.matches('dashboard_ready')) {
-      console.log('[StartupStateMachine] Dashboard ready, notifying parent');
       onDashboardReady();
     }
   }, [state.value, onDashboardReady]);
 
   // Handle provider setup initiation - opens appropriate modal
   const handleProviderSetupClick = (providerId: string) => {
-    console.log(`[StartupStateMachine] Opening setup modal for provider: ${providerId}`);
-    
     switch (providerId) {
       case 'openai':
         setOpenAIModalOpen(true);
@@ -78,7 +70,6 @@ export default function StartupStateMachine({
         setGmailModalOpen(true);
         break;
       default:
-        console.warn(`[StartupStateMachine] No setup modal for provider: ${providerId}`);
         // For providers without modals, trigger re-check immediately
         send({ type: 'PROVIDER_SETUP_COMPLETE', providerId });
         break;
@@ -87,9 +78,6 @@ export default function StartupStateMachine({
 
   // Handle successful provider setup completion from modals
   const handleProviderSetupSuccess = (providerId: string) => {
-    console.log(
-      `[StartupStateMachine] Provider ${providerId} setup completed successfully, rechecking providers...`,
-    );
     // Close any open modals
     setOpenAIModalOpen(false);
     setGmailModalOpen(false);
@@ -99,10 +87,54 @@ export default function StartupStateMachine({
 
   // Handle retry provider checks
   const handleRetryProviderCheck = () => {
-    console.log('[StartupStateMachine] Retrying provider checks...');
     send({ type: 'RETRY_PROVIDER_CHECK' });
   };
 
+  return {
+    state,
+    openAIModalOpen,
+    gmailModalOpen,
+    setOpenAIModalOpen,
+    setGmailModalOpen,
+    handleProviderSetupClick,
+    handleProviderSetupSuccess,
+    handleRetryProviderCheck,
+  };
+}
+
+/**
+ * StartupStateMachine component for managing application startup flow
+ */
+export default function StartupStateMachine({
+  onDashboardReady,
+}: StartupStateMachineProps): React.ReactElement {
+  const electronAPI = useElectronAPI();
+  const {
+    state,
+    openAIModalOpen,
+    gmailModalOpen,
+    setOpenAIModalOpen,
+    setGmailModalOpen,
+    handleProviderSetupClick,
+    handleProviderSetupSuccess,
+    handleRetryProviderCheck,
+  } = useStartupStateMachine(electronAPI, onDashboardReady);
+
+  // Render setup modals (extracted to reduce function size)
+  const renderSetupModals = () => (
+    <>
+      <OpenAISetupModal
+        open={openAIModalOpen}
+        onClose={() => setOpenAIModalOpen(false)}
+        onSuccess={() => handleProviderSetupSuccess('openai')}
+      />
+      <GmailSetupModal
+        open={gmailModalOpen}
+        onClose={() => setGmailModalOpen(false)}
+        onSuccess={() => handleProviderSetupSuccess('gmail')}
+      />
+    </>
+  );
 
   // Loading state during provider checks
   if (state.matches('initializing') || state.matches('checking_providers')) {
@@ -126,25 +158,13 @@ export default function StartupStateMachine({
             This should take less than 5 seconds
           </Typography>
         </Box>
-
-        {/* Setup Modals */}
-        <OpenAISetupModal
-          open={openAIModalOpen}
-          onClose={() => setOpenAIModalOpen(false)}
-          onSuccess={() => handleProviderSetupSuccess('openai')}
-        />
-
-        <GmailSetupModal
-          open={gmailModalOpen}
-          onClose={() => setGmailModalOpen(false)}
-          onSuccess={() => handleProviderSetupSuccess('gmail')}
-        />
+        {renderSetupModals()}
       </>
     );
   }
 
-  // Setup required state - show provider cards
-  if (state.matches('setup_required')) {
+  // Render setup required state (extracted to reduce function size)
+  const renderSetupRequiredState = () => {
     const providersNeedingSetup = state.context.providers.filter((p) => p.requiresSetup);
     const providersWorking = state.context.providers.filter(
       (p) => !p.requiresSetup && p.status === 'connected',
@@ -216,121 +236,87 @@ export default function StartupStateMachine({
             </button>
           </Box>
         </Box>
-
-        {/* Setup Modals */}
-        <OpenAISetupModal
-          open={openAIModalOpen}
-          onClose={() => setOpenAIModalOpen(false)}
-          onSuccess={() => handleProviderSetupSuccess('openai')}
-        />
-
-        <GmailSetupModal
-          open={gmailModalOpen}
-          onClose={() => setGmailModalOpen(false)}
-          onSuccess={() => handleProviderSetupSuccess('gmail')}
-        />
+        {renderSetupModals()}
       </>
     );
+  };
+
+  // Setup required state - show provider cards
+  if (state.matches('setup_required')) {
+    return renderSetupRequiredState();
   }
+
+  // Render timeout state (extracted to reduce function size)
+  const renderTimeoutState = () => (
+    <>
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        justifyContent="center"
+        minHeight="400px"
+        gap={3}
+      >
+        <Typography variant="h5" color="error">
+          Connection Timeout
+        </Typography>
+        <Typography variant="body1" color="textSecondary" align="center">
+          {state.context.error || 'Provider health checks took too long to complete.'}
+        </Typography>
+        <button
+          onClick={handleRetryProviderCheck}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: '#1976d2',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: '500',
+          }}
+        >
+          Try Again
+        </button>
+      </Box>
+      {renderSetupModals()}
+    </>
+  );
 
   // Timeout state
   if (state.matches('setup_timeout')) {
-    return (
-      <>
-        <Box
-          display="flex"
-          flexDirection="column"
-          alignItems="center"
-          justifyContent="center"
-          minHeight="400px"
-          gap={3}
-        >
-          <Typography variant="h5" color="error">
-            Connection Timeout
-          </Typography>
-          <Typography variant="body1" color="textSecondary" align="center">
-            {state.context.error || 'Provider health checks took too long to complete.'}
-          </Typography>
-          <button
-            onClick={handleRetryProviderCheck}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#1976d2',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: '500',
-            }}
-          >
-            Try Again
-          </button>
-        </Box>
-
-        {/* Setup Modals */}
-        <OpenAISetupModal
-          open={openAIModalOpen}
-          onClose={() => setOpenAIModalOpen(false)}
-          onSuccess={() => handleProviderSetupSuccess('openai')}
-        />
-
-        <GmailSetupModal
-          open={gmailModalOpen}
-          onClose={() => setGmailModalOpen(false)}
-          onSuccess={() => handleProviderSetupSuccess('gmail')}
-        />
-      </>
-    );
+    return renderTimeoutState();
   }
 
-  // Dashboard ready state - parent handles this
-  if (state.matches('dashboard_ready')) {
-    return (
-      <>
-        <Box display="flex" alignItems="center" justifyContent="center" minHeight="400px">
-          <Typography variant="h6" color="textSecondary">
-            Loading dashboard...
-          </Typography>
-        </Box>
+  // Render dashboard ready state (extracted to reduce function size)
+  const renderDashboardReadyState = () => (
+    <>
+      <Box display="flex" alignItems="center" justifyContent="center" minHeight="400px">
+        <Typography variant="h6" color="textSecondary">
+          Loading dashboard...
+        </Typography>
+      </Box>
+      {renderSetupModals()}
+    </>
+  );
 
-        {/* Setup Modals */}
-        <OpenAISetupModal
-          open={openAIModalOpen}
-          onClose={() => setOpenAIModalOpen(false)}
-          onSuccess={() => handleProviderSetupSuccess('openai')}
-        />
-
-        <GmailSetupModal
-          open={gmailModalOpen}
-          onClose={() => setGmailModalOpen(false)}
-          onSuccess={() => handleProviderSetupSuccess('gmail')}
-        />
-      </>
-    );
-  }
-
-  // Fallback (shouldn't reach here)
-  return (
+  // Render fallback state (extracted to reduce function size)
+  const renderFallbackState = () => (
     <>
       <Box display="flex" alignItems="center" justifyContent="center" minHeight="400px">
         <Typography variant="h6" color="textSecondary">
           Unknown startup state: {String(state.value)}
         </Typography>
       </Box>
-
-      {/* Setup Modals */}
-      <OpenAISetupModal
-        open={openAIModalOpen}
-        onClose={() => setOpenAIModalOpen(false)}
-        onSuccess={() => handleProviderSetupSuccess('openai')}
-      />
-
-      <GmailSetupModal
-        open={gmailModalOpen}
-        onClose={() => setGmailModalOpen(false)}
-        onSuccess={() => handleProviderSetupSuccess('gmail')}
-      />
+      {renderSetupModals()}
     </>
   );
+
+  // Dashboard ready state - parent handles this
+  if (state.matches('dashboard_ready')) {
+    return renderDashboardReadyState();
+  }
+
+  // Fallback (shouldn't reach here)
+  return renderFallbackState();
 }

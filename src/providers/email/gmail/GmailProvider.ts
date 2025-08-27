@@ -143,7 +143,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       }
 
       const profileResult = await this.callWithErrorHandling(async () => {
-        return await this.gmail.users.getProfile({ userId: 'me' });
+        return await this.gmail!.users.getProfile({ userId: 'me' });
       });
 
       if (!profileResult.success) {
@@ -249,7 +249,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       const tokensResult = await this.storageManager.getGmailTokens();
       if (!tokensResult.success) {
         return createErrorResult(
-          new AuthenticationError('No Gmail tokens available - authentication required', {
+          new AuthenticationError('No Gmail tokens available - authentication required', false, {
             operation: 'connect',
             requiresAuth: true,
           }),
@@ -258,7 +258,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
 
       if (!tokensResult.data) {
         return createErrorResult(
-          new AuthenticationError('Gmail tokens not found - authentication required', {
+          new AuthenticationError('Gmail tokens not found - authentication required', false, {
             operation: 'connect',
             requiresAuth: true,
           }),
@@ -326,7 +326,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown connection error';
       return createErrorResult(
-        new NetworkError(`Gmail connection failed: ${message}`, {
+        new NetworkError(`Gmail connection failed: ${message}`, true, {
           operation: 'connect',
         }),
       );
@@ -354,7 +354,7 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown disconnection error';
       return createErrorResult(
-        new NetworkError(`Gmail disconnection failed: ${message}`, {
+        new NetworkError(`Gmail disconnection failed: ${message}`, true, {
           operation: 'disconnect',
         }),
       );

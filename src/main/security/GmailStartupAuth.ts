@@ -15,6 +15,7 @@ import {
   ConfigurationError,
   SecurityError,
   GmailAuthState,
+  RefreshFailureReason,
 } from '@shared/types';
 import { GmailOAuthManager } from '../oauth/GmailOAuthManager';
 import { SecureStorageManager } from './SecureStorageManager';
@@ -301,12 +302,11 @@ export class GmailStartupAuth {
       return createSuccessResult(authState);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      
       const authState: GmailAuthState = {
         status: 'needs_reauth',
         lastError: {
-          code: 'AUTH_STATE_ERROR',
-          reason: 'unknown',
+          code: `AUTH_STATE_ERROR: ${message}`,
+          reason: 'unknown' as RefreshFailureReason,
           timestamp: Date.now()
         }
       };

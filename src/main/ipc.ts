@@ -367,7 +367,7 @@ export function setupIPC(
             pageSize: 50,
           };
 
-          const initResult = await emailProvider.initialize(gmailConfig);
+          const initResult = await (emailProvider as GmailProvider).initialize(gmailConfig);
           if (!initResult.success) {
             return {
               success: false,
@@ -607,7 +607,7 @@ export function setupIPC(
       }
 
       console.log('DEBUG: Initializing Gmail provider with config...');
-      const initResult = await emailProvider.initialize(gmailConfig);
+      const initResult = await (emailProvider as GmailProvider).initialize(gmailConfig);
       console.log('DEBUG: Gmail provider init result:', initResult);
 
       if (!initResult.success) {
