@@ -1,48 +1,51 @@
 # Electron-Vite Configuration Patterns for TypeScript + React
 
 ## Overview
+
 Electron-Vite is a build tool that leverages Vite for modern Electron development with TypeScript and React support.
 
 ## Core Configuration Structure
 
 ### Basic electron.vite.config.ts
+
 ```typescript
-import { resolve } from 'path'
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
-import react from '@vitejs/plugin-react'
+import { resolve } from 'path';
+import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        external: ['better-sqlite3', 'keytar']
-      }
-    }
+        external: ['better-sqlite3', 'keytar'],
+      },
+    },
   },
   preload: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
   },
   renderer: {
     resolve: {
       alias: {
         '@renderer': resolve('src/renderer/src'),
-        '@shared': resolve('src/shared')
-      }
+        '@shared': resolve('src/shared'),
+      },
     },
     plugins: [react()],
     build: {
       rollupOptions: {
         input: {
-          main: resolve('src/renderer/index.html')
-        }
-      }
-    }
-  }
-})
+          main: resolve('src/renderer/index.html'),
+        },
+      },
+    },
+  },
+});
 ```
 
 ## Project Structure Pattern
+
 ```
 src/
 ├── main/
@@ -64,6 +67,7 @@ src/
 ## TypeScript Configuration
 
 ### Main Process (src/main/tsconfig.json)
+
 ```json
 {
   "extends": "../../tsconfig.json",
@@ -77,6 +81,7 @@ src/
 ```
 
 ### Renderer Process (src/renderer/tsconfig.json)
+
 ```json
 {
   "extends": "../../tsconfig.json",
@@ -92,6 +97,7 @@ src/
 ```
 
 ## Development Scripts
+
 ```json
 {
   "scripts": {
@@ -108,40 +114,47 @@ src/
 ## Security Best Practices
 
 ### Preload Script Pattern
+
 ```typescript
 // src/preload/index.ts
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron';
 
 const api = {
   // Secure IPC communication
   invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
   on: (channel: string, callback: Function) => {
-    ipcRenderer.on(channel, (_, ...args) => callback(...args))
-  }
-}
+    ipcRenderer.on(channel, (_, ...args) => callback(...args));
+  },
+};
 
-contextBridge.exposeInMainWorld('electronAPI', api)
+contextBridge.exposeInMainWorld('electronAPI', api);
 ```
 
 ### CSP Configuration
+
 ```html
 <!-- src/renderer/index.html -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<meta
+  http-equiv="Content-Security-Policy"
+  content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+/>
 ```
 
 ## Hot Reloading Configuration
 
 ### Main Process Hot Reload
+
 ```typescript
 // src/main/index.ts
 if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-  mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
 } else {
-  mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+  mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
 }
 ```
 
 ## Common Gotchas
+
 1. **Native Dependencies**: Use `externalizeDepsPlugin()` for native modules
 2. **Path Resolution**: Configure aliases consistently across main/renderer
 3. **Type Safety**: Use shared types between processes

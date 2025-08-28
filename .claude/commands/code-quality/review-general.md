@@ -3,6 +3,7 @@
 Please perform a comprehensive code review of the current changes or specified files.
 
 ## Review Scope
+
 $ARGUMENTS
 
 ## Review Process
@@ -69,24 +70,30 @@ Create a concise review report with:
 # Code Review #[number]
 
 ## Summary
+
 [2-3 sentence overview]
 
 ## Issues Found
 
 ### 🔴 Critical (Must Fix)
+
 - [Issue with file:line and suggested fix]
 
 ### 🟡 Important (Should Fix)
+
 - [Issue with file:line and suggested fix]
 
 ### 🟢 Minor (Consider)
+
 - [Improvement suggestions]
 
 ## Good Practices
+
 - [What was done well]
 
 ## Test Coverage
+
 Current: X% | Required: 80%
 Missing tests: [list]
 Save report to PRPs/code_reviews/review[#].md (check existing files first)
-
+```

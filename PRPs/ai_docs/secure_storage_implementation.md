@@ -15,6 +15,7 @@ This document consolidates research findings for implementing secure local stora
 ### Primary Storage Architecture
 
 **Hybrid Approach - OS Keychain + Encrypted SQLite:**
+
 - **OS Keychain** (via Electron safeStorage): Master encryption keys, primary API keys
 - **Encrypted SQLite** (via SQLCipher): Email metadata, user rules, classification history
 - **Application Crypto**: Additional encryption layer for extremely sensitive data
@@ -22,7 +23,7 @@ This document consolidates research findings for implementing secure local stora
 ### Technology Stack
 
 1. **OS Credential Storage**: Electron `safeStorage` API (not deprecated keytar)
-2. **Database Encryption**: `@journeyapps/sqlcipher` package 
+2. **Database Encryption**: `@journeyapps/sqlcipher` package
 3. **Application Crypto**: Node.js built-in `crypto` module with AES-256-GCM
 4. **Key Derivation**: PBKDF2 with 100,000+ iterations, SHA-512 digest
 
@@ -79,11 +80,11 @@ export class SecureStorageManager {
 ### SQLite Provider Enhancement
 
 ```typescript
-// src/providers/storage/sqlite/SQLiteProvider.ts  
+// src/providers/storage/sqlite/SQLiteProvider.ts
 export class SQLiteProvider implements StorageProvider {
   private db: Database; // From @journeyapps/sqlcipher
   private encryptionKey: Buffer;
-  
+
   async initialize(config: SQLiteStorageConfig): Promise<Result<void>> {
     // Initialize SQLCipher with encryption
     this.db = new Database(config.databasePath);
@@ -99,12 +100,11 @@ export class SQLiteProvider implements StorageProvider {
 // src/preload/index.ts
 const secureAPI = {
   secureStorage: {
-    storeGmailTokens: (tokens: GmailTokens) => 
+    storeGmailTokens: (tokens: GmailTokens) =>
       ipcRenderer.invoke('secure-storage:store-gmail-tokens', tokens),
-    getGmailTokens: () => 
-      ipcRenderer.invoke('secure-storage:get-gmail-tokens'),
+    getGmailTokens: () => ipcRenderer.invoke('secure-storage:get-gmail-tokens'),
     // ... other secure operations
-  }
+  },
 };
 ```
 
@@ -117,7 +117,7 @@ describe('SecureStorageManager', () => {
   test('should encrypt Gmail tokens before storage', async () => {
     const tokens = mockGmailTokens();
     await storageManager.storeGmailTokens(tokens);
-    
+
     // Verify tokens are encrypted in storage
     const rawStored = await getRawStoredData('gmail_tokens');
     expect(rawStored).not.toContain(tokens.accessToken);
@@ -127,7 +127,7 @@ describe('SecureStorageManager', () => {
   test('should handle encryption key rotation', async () => {
     await storageManager.storeAPIKey('openai', 'sk-test-key');
     await storageManager.rotateEncryptionKey();
-    
+
     const retrieved = await storageManager.getAPIKey('openai');
     expect(retrieved.success).toBe(true);
     expect(retrieved.data).toBe('sk-test-key');
@@ -142,10 +142,10 @@ describe('End-to-End Security', () => {
   test('should maintain security across app restart', async () => {
     // Store credentials
     await app.storeCredentials(testTokens);
-    
+
     // Simulate app restart
     await app.restart();
-    
+
     // Verify credentials still accessible
     const tokens = await app.getCredentials();
     expect(tokens.success).toBe(true);
@@ -159,10 +159,10 @@ describe('End-to-End Security', () => {
 describe('Security Validation', () => {
   test('should reject tampered encrypted data', async () => {
     await storageManager.storeAPIKey('openai', 'sk-test');
-    
+
     // Tamper with stored data
     await tamperWithStoredData('openai_key');
-    
+
     const result = await storageManager.getAPIKey('openai');
     expect(result.success).toBe(false);
     expect(result.error.code).toBe('TAMPER_DETECTED');
@@ -178,7 +178,7 @@ describe('Security Validation', () => {
 class SecureCache {
   private cache = new Map<string, CacheEntry>();
   private readonly TTL = 5 * 60 * 1000; // 5 minutes
-  
+
   async getCachedToken(key: string): Promise<string | null> {
     const entry = this.cache.get(key);
     if (entry && Date.now() < entry.expiry) {
@@ -207,7 +207,7 @@ async encryptBatch(items: Array<{key: string, value: string}>): Promise<Encrypte
 ### From Stub to Production
 
 1. **Phase 1**: Implement core SecureStorageManager
-2. **Phase 2**: Integrate SQLCipher for metadata storage  
+2. **Phase 2**: Integrate SQLCipher for metadata storage
 3. **Phase 3**: Add token rotation and lifecycle management
 4. **Phase 4**: Implement comprehensive audit logging
 
@@ -235,13 +235,13 @@ class CredentialRecoveryManager {
   async handleCorruptedStorage(): Promise<Result<void>> {
     // 1. Backup current state
     await this.createEmergencyBackup();
-    
+
     // 2. Reset storage
     await this.secureStorage.clearAllCredentials();
-    
+
     // 3. Trigger onboarding flow
     await this.uiManager.showOnboardingFlow();
-    
+
     return createSuccessResult(undefined);
   }
 }

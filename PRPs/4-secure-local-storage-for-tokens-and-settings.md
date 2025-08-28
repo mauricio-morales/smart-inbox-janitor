@@ -14,7 +14,8 @@
 
 **Use Case**: Users authenticate with Gmail and configure OpenAI API access during onboarding, then the application securely stores and manages these credentials across sessions while processing thousands of emails
 
-**User Journey**: 
+**User Journey**:
+
 1. User completes Gmail OAuth flow → tokens automatically encrypted and stored using OS-level security (no user passwords required)
 2. User enters OpenAI API key → key automatically encrypted and stored with zero-configuration security
 3. Application processes emails → automatically refreshes tokens as needed without user interaction
@@ -231,7 +232,7 @@ interface SecurityAuditEvent {
   readonly metadata: Record<string, unknown>;
 }
 
-type SecurityEventType = 
+type SecurityEventType =
   | 'credential_store'
   | 'credential_retrieve'
   | 'token_rotation'
@@ -337,7 +338,7 @@ export class SecureStorageManager {
   constructor(
     private credentialEncryption: CredentialEncryption,
     private sqliteProvider: SQLiteProvider,
-    private auditLogger: SecurityAuditLogger
+    private auditLogger: SecurityAuditLogger,
   ) {}
 
   async storeGmailTokens(tokens: GmailTokens): Promise<Result<void>> {
@@ -345,14 +346,14 @@ export class SecureStorageManager {
       // ZERO-PASSWORD: Use OS keychain for tokens via Electron safeStorage (automatic)
       const encryptedTokens = await this.credentialEncryption.encryptTokens(tokens);
       const result = await this.sqliteProvider.setEncryptedToken('gmail', encryptedTokens);
-      
+
       await this.auditLogger.logSecurityEvent({
         eventType: 'credential_store',
         provider: 'gmail',
         success: result.success,
-        metadata: { tokenExpiryDate: tokens.expiryDate }
+        metadata: { tokenExpiryDate: tokens.expiryDate },
       });
-      
+
       return result;
     } catch (error) {
       return createErrorResult(new SecurityError('Failed to store Gmail tokens'));
@@ -363,25 +364,25 @@ export class SecureStorageManager {
 // SQLCipher Integration Pattern - Replace stub with encrypted storage
 export class SQLiteProvider implements StorageProvider {
   private db: Database; // From @journeyapps/sqlcipher
-  
+
   async initialize(config: SQLiteStorageConfig): Promise<Result<void>> {
     try {
       this.db = new Database(config.databasePath);
-      
+
       // CRITICAL: Set encryption before any other operations
-      await this.db.exec("PRAGMA cipher_compatibility = 4");
+      await this.db.exec('PRAGMA cipher_compatibility = 4');
       await this.db.exec(`PRAGMA key = '${config.encryptionKey}'`);
-      
+
       // Verify encryption by testing a query
-      await this.db.exec("SELECT count(*) FROM sqlite_master");
-      
+      await this.db.exec('SELECT count(*) FROM sqlite_master');
+
       await this.createTables();
       return createSuccessResult(undefined);
     } catch (error) {
       return createErrorResult(new ConfigurationError('Database initialization failed'));
     }
   }
-  
+
   async setEncryptedToken(provider: string, encryptedToken: string): Promise<Result<void>> {
     try {
       const stmt = this.db.prepare(`
@@ -399,39 +400,39 @@ export class SQLiteProvider implements StorageProvider {
 // Encryption Utility Pattern - AES-256-GCM with ZERO-PASSWORD automatic key management
 export class CredentialEncryption {
   private static readonly ALGORITHM = 'aes-256-gcm';
-  
+
   async encryptCredential(data: string, keyId: string): Promise<Result<SecureCredential>> {
     try {
       const key = await this.getOrCreateAutomaticKey(keyId);
       const iv = crypto.randomBytes(16);
-      
+
       const cipher = crypto.createCipherGCM(CredentialEncryption.ALGORITHM, key);
       cipher.setAAD(Buffer.from('smart-inbox-janitor'));
-      
+
       let encrypted = cipher.update(data, 'utf8', 'base64');
       encrypted += cipher.final('base64');
-      
+
       const authTag = cipher.getAuthTag();
-      
+
       return createSuccessResult({
         encryptedData: encrypted,
         iv: iv.toString('base64'),
         authTag: authTag.toString('base64'),
         algorithm: CredentialEncryption.ALGORITHM,
-        createdAt: new Date()
+        createdAt: new Date(),
       });
     } catch (error) {
       return createErrorResult(new CryptoError('Encryption failed'));
     }
   }
-  
+
   private async getOrCreateAutomaticKey(keyId: string): Promise<Buffer> {
     // ZERO-PASSWORD: Use OS-level security or machine-specific derivation
     if (safeStorage.isEncryptionAvailable()) {
       // Store/retrieve key using OS security (no user passwords)
       return await this.getOrCreateSafeStorageKey(keyId);
     }
-    
+
     // Fallback: Derive from machine characteristics (still no user input)
     const machineInfo = os.hostname() + os.userInfo().username + process.platform;
     return crypto.pbkdf2Sync(machineInfo, keyId, 100000, 32, 'sha256');
@@ -444,11 +445,11 @@ ipcMain.handle('secure-storage:store-gmail-tokens', async (event, tokens: GmailT
   if (!isValidIPCSender(event.sender)) {
     throw new SecurityError('Invalid IPC sender');
   }
-  
+
   if (!validateGmailTokensStructure(tokens)) {
     throw new ValidationError('Invalid token structure');
   }
-  
+
   return await secureStorageManager.storeGmailTokens(tokens);
 });
 ```

@@ -15,6 +15,7 @@
 **Use Case**: Creating concrete implementations of email providers (Gmail, IMAP), LLM providers (OpenAI, Claude), storage providers (SQLite, IndexedDB), and rules engines while maintaining type safety and provider-agnostic design.
 
 **User Journey**:
+
 1. Import provider interfaces from shared types
 2. Implement concrete provider classes following interface contracts
 3. Register providers with factory pattern for runtime switching
@@ -22,6 +23,7 @@
 5. Leverage TypeScript compiler for type safety validation
 
 **Pain Points Addressed**:
+
 - Eliminates type safety issues when swapping providers
 - Prevents runtime errors through comprehensive interface contracts
 - Reduces implementation inconsistencies across different providers
@@ -38,8 +40,9 @@
 ## What
 
 TypeScript interface definitions that define clear contracts for:
+
 - **EmailProvider**: Gmail-first design with OAuth authentication, batch operations, rate limiting, and unsubscribe handling
-- **ContactsProvider**: Trust signal evaluation and relationship strength determination 
+- **ContactsProvider**: Trust signal evaluation and relationship strength determination
 - **LLMProvider**: AI classification with OpenAI-first design, extensible to Claude/Llama
 - **RulesEngine**: User-defined rule evaluation and learning system
 - **StorageProvider**: Local storage abstraction supporting SQLite (desktop) and IndexedDB (browser)
@@ -74,7 +77,7 @@ _If someone knew nothing about this codebase, would they have everything needed 
   section: All sections - provides foundation for interface design
   critical: Result pattern, generic constraints, validation patterns
 
-- docfile: PRPs/ai_docs/email_provider_implementations.md  
+- docfile: PRPs/ai_docs/email_provider_implementations.md
   why: Specific email provider implementation patterns and Gmail API integration
   section: All sections - Gmail OAuth, batch operations, error handling
   critical: Error mapping, retry logic, rate limiting strategies
@@ -195,7 +198,7 @@ src/
 // CRITICAL: Gmail-first email provider design with IMAP extensibility
 // OAuth 2.0 flows, batch operations, rate limiting required
 
-// CRITICAL: OpenAI-first LLM provider with Claude/Llama extensibility  
+// CRITICAL: OpenAI-first LLM provider with Claude/Llama extensibility
 // Classification contracts, cost tracking, retry logic required
 
 // GOTCHA: Some interfaces in app-definition.md are embedded in prose and need extraction
@@ -233,7 +236,7 @@ Task 1: CREATE src/shared/types/base.types.ts
   - PLACEMENT: Foundation types that all other interfaces extend
   - DEPENDENCIES: None (foundation layer)
 
-Task 2: CREATE src/shared/types/errors.types.ts  
+Task 2: CREATE src/shared/types/errors.types.ts
   - IMPLEMENT: Comprehensive error hierarchy with provider-specific error types
   - FOLLOW pattern: PRPs/ai_docs/typescript_interface_patterns.md (Error handling patterns)
   - NAMING: Error suffix for error types, proper inheritance chain
@@ -255,7 +258,7 @@ Task 4: CREATE src/shared/types/email.types.ts
   - PLACEMENT: Email and contacts provider abstractions
 
 Task 5: CREATE src/shared/types/storage.types.ts
-  - IMPLEMENT: StorageProvider interface and data model types  
+  - IMPLEMENT: StorageProvider interface and data model types
   - FOLLOW pattern: smart-inbox-janitor-app-definition.md (StorageProvider interface)
   - NAMING: Provider suffix, proper generic constraints for storage operations
   - DEPENDENCIES: Import base, error, and config types from Tasks 1-3
@@ -363,7 +366,7 @@ interface BaseProvider {
 }
 
 // Example: Result pattern implementation
-type Result<T, E = ProviderError> = 
+type Result<T, E = ProviderError> =
   | { success: true; data: T }
   | { success: false; error: E };
 
@@ -414,22 +417,22 @@ type EmailProviderConfig = z.infer<typeof EmailProviderConfigSchema>;
 ```yaml
 PACKAGE_MANAGEMENT:
   - file: package.json
-  - dependencies: ["typescript", "zod", "jest", "@types/jest", "eslint"]
-  - pattern: "Exact version pinning for stability"
+  - dependencies: ['typescript', 'zod', 'jest', '@types/jest', 'eslint']
+  - pattern: 'Exact version pinning for stability'
 
 TYPESCRIPT_CONFIG:
-  - file: tsconfig.json  
-  - pattern: "strict: true, noImplicitAny: true, strictNullChecks: true"
+  - file: tsconfig.json
+  - pattern: 'strict: true, noImplicitAny: true, strictNullChecks: true'
   - compiler: "ES2022 target, moduleResolution: 'node'"
 
 TESTING_CONFIG:
   - file: jest.config.js
-  - pattern: "TypeScript preset, coverage reporting, test file patterns"
-  - coverage: "All interface files require 100% type coverage"
+  - pattern: 'TypeScript preset, coverage reporting, test file patterns'
+  - coverage: 'All interface files require 100% type coverage'
 
 LINTING_CONFIG:
   - file: .eslintrc.js
-  - pattern: "@typescript-eslint/recommended, strict naming conventions"
+  - pattern: '@typescript-eslint/recommended, strict naming conventions'
   - rules: "No 'any' types, require return types, interface naming rules"
 ```
 
@@ -444,7 +447,7 @@ npx tsc --noEmit               # TypeScript type checking (no JS output)
 npm run format                 # Prettier formatting
 
 # Project-wide validation
-npm run lint:fix               # Auto-fix linting issues  
+npm run lint:fix               # Auto-fix linting issues
 npm run type-check             # Full TypeScript validation
 npm run check-types            # Verify all types compile successfully
 
@@ -554,7 +557,7 @@ console.log('Generic constraints functioning correctly');
 
 ### Technical Validation
 
-- [ ] All 4 validation levels completed successfully  
+- [ ] All 4 validation levels completed successfully
 - [ ] All tests pass: `npm test`
 - [ ] No linting errors: `npm run lint`
 - [ ] No type errors: `npx tsc --noEmit --strict`

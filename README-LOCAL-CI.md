@@ -11,8 +11,9 @@ This guide helps you run comprehensive CI/CD validation locally before pushing t
 3. Select one of the available CI tasks:
 
 #### Available Tasks:
+
 - **🔍 Full CI/CD Check** - Complete validation matching GitHub Actions
-- **⚡ Quick Check** - Fast validation (lint, type-check, build) 
+- **⚡ Quick Check** - Fast validation (lint, type-check, build)
 - **🧪 Code Quality Check** - Linting, type checking, formatting
 - **🏗️ Build All Targets** - Multi-platform Electron builds
 - **🔐 Security Audit** - Dependency and security scanning
@@ -20,8 +21,9 @@ This guide helps you run comprehensive CI/CD validation locally before pushing t
 - **🧽 Clean & Fresh Install** - Reset environment
 
 #### Keyboard Shortcuts:
+
 - `Ctrl+Shift+C` - Full CI/CD Check
-- `Ctrl+Shift+Q` - Quick Check  
+- `Ctrl+Shift+Q` - Quick Check
 - `Ctrl+Shift+T` - Code Quality Check
 - `Ctrl+Shift+B` - Build All Targets
 - `Ctrl+Shift+S` - Security Audit
@@ -29,16 +31,19 @@ This guide helps you run comprehensive CI/CD validation locally before pushing t
 ### Command Line Usage
 
 #### Full Validation (Recommended before push):
+
 ```bash
 npm run ci:check
 ```
 
 #### Quick Validation:
-```bash  
+
+```bash
 npm run ci:quick
 ```
 
 #### Individual Steps:
+
 ```bash
 npm run ci:quality    # Code quality only
 npm run ci:build      # Build validation
@@ -47,11 +52,12 @@ npm run ci:package    # Dependency check
 ```
 
 #### Shell Script (Advanced):
+
 ```bash
 # Standard validation
 ./scripts/local-ci.sh
 
-# Clean install + validation  
+# Clean install + validation
 ./scripts/local-ci.sh --clean
 
 # Full validation with platform builds
@@ -61,22 +67,26 @@ npm run ci:package    # Dependency check
 ## 🔧 What Gets Validated
 
 ### 1. Code Quality ✅
+
 - **ESLint** - Code style and potential issues
 - **TypeScript** - Type checking and compilation
 - **Prettier** - Code formatting consistency
 - **Dependencies** - Package resolution and conflicts
 
 ### 2. Build Process ✅
+
 - **Vite Build** - Renderer process bundling
 - **Electron Build** - Main/preload process compilation
 - **Platform Builds** - Multi-OS Electron packaging (optional)
 
 ### 3. Testing ✅
+
 - **Jest** - Unit and integration tests
 - **Coverage** - Code coverage reporting (when available)
 - **Type Tests** - TypeScript interface validation
 
 ### 4. Security & Dependencies ✅
+
 - **NPM Audit** - Vulnerability scanning
 - **Dependency Check** - Package integrity
 - **Outdated Packages** - Update recommendations
@@ -85,50 +95,56 @@ npm run ci:package    # Dependency check
 
 The local validation closely matches the GitHub Actions CI pipeline:
 
-| CI Step | Local Command | Description |
-|---------|---------------|-------------|
-| Setup Node | `npm ci` | Fresh dependency install |
-| Lint | `npm run lint` | ESLint validation |
-| Type Check | `npm run type-check` | TypeScript compilation |
-| Format Check | `npm run format:check` | Prettier validation |
-| Test | `npm run test` | Jest test execution |
-| Build | `npm run build` | Vite/Electron build |
-| Security Audit | `npm audit` | Vulnerability scan |
-| Platform Builds | `npm run build:electron:*` | Multi-OS packaging |
+| CI Step         | Local Command              | Description              |
+| --------------- | -------------------------- | ------------------------ |
+| Setup Node      | `npm ci`                   | Fresh dependency install |
+| Lint            | `npm run lint`             | ESLint validation        |
+| Type Check      | `npm run type-check`       | TypeScript compilation   |
+| Format Check    | `npm run format:check`     | Prettier validation      |
+| Test            | `npm run test`             | Jest test execution      |
+| Build           | `npm run build`            | Vite/Electron build      |
+| Security Audit  | `npm audit`                | Vulnerability scan       |
+| Platform Builds | `npm run build:electron:*` | Multi-OS packaging       |
 
 ## 🚨 Common Issues & Solutions
 
 ### ESLint Errors
+
 ```bash
 npm run lint          # See errors
 npm run lint -- --fix # Auto-fix issues
 ```
 
-### TypeScript Errors  
+### TypeScript Errors
+
 ```bash
 npm run type-check    # See type errors
 # Fix manually in VS Code with IntelliSense
 ```
 
 ### Formatting Issues
+
 ```bash
 npm run format:check  # Check formatting
 npm run format        # Fix formatting
 ```
 
 ### Dependency Conflicts
+
 ```bash
 npm run ci:clean      # Fresh install
 npm run ci:deps-check # Validate dependencies
 ```
 
 ### Build Failures
+
 ```bash
 npm run clean         # Clear build artifacts
 npm run build         # Rebuild
 ```
 
 ### Security Vulnerabilities
+
 ```bash
 npm audit                    # View vulnerabilities
 npm audit fix                # Auto-fix low severity
@@ -138,22 +154,26 @@ npm audit fix --force        # Force fix (review changes)
 ## 💡 Development Workflow
 
 ### Before Each Commit:
+
 ```bash
 npm run ci:quick      # Fast validation
 ```
 
 ### Before Push to Main:
-```bash  
+
+```bash
 npm run ci:check      # Full validation
 ```
 
 ### After Dependency Changes:
+
 ```bash
 npm run ci:clean      # Fresh environment test
-npm run ci:security   # Security validation  
+npm run ci:security   # Security validation
 ```
 
 ### Before Release:
+
 ```bash
 ./scripts/local-ci.sh --full    # Complete validation with builds
 ```
@@ -161,10 +181,12 @@ npm run ci:security   # Security validation
 ## 🔍 Debugging Failed Validations
 
 ### View Detailed Output:
+
 - VS Code: Check Terminal panel for detailed logs
 - Command line: Remove `> /dev/null 2>&1` from failing commands
 
 ### Common Debug Steps:
+
 1. **Clean Environment**: `npm run ci:clean`
 2. **Check Dependencies**: `npm run ci:deps-check`
 3. **Validate Individual Steps**: Run each CI command separately
@@ -180,7 +202,8 @@ npm run ci:security   # Security validation
 ## 🎊 Success Indicators
 
 When validation passes, you should see:
-- ✅ All linting rules passed  
+
+- ✅ All linting rules passed
 - ✅ TypeScript compilation successful
 - ✅ All builds completed
 - ✅ No security vulnerabilities

@@ -5,16 +5,19 @@
 ---
 
 ## Mission
+
 You are **Smart Inbox Janitor**, an AI that helps a user clean their mailbox safely and fast. You:
-1) fetch batches of emails,  
-2) score & explain *junk/spam/potentially dangerous vs. keep*,  
-3) propose bulk actions,  
-4) **learn** from explicit user feedback,  
-5) execute chosen actions via mail provider APIs (start with **Gmail**; keep the design extensible for IMAP/other providers).
+
+1. fetch batches of emails,
+2. score & explain _junk/spam/potentially dangerous vs. keep_,
+3. propose bulk actions,
+4. **learn** from explicit user feedback,
+5. execute chosen actions via mail provider APIs (start with **Gmail**; keep the design extensible for IMAP/other providers).
 
 You must **never permanently delete or report** anything without explicit user approval **in the current session**.
 
 ### Non-Goals
+
 - You are **not** a general email client; you are a focused triage/workflow tool.
 - Do **not** auto-unsubscribe, auto-report, or auto-delete without user approval.
 - Do **not** click remote content or unsafe links while analyzing.
@@ -22,6 +25,7 @@ You must **never permanently delete or report** anything without explicit user a
 ---
 
 ## Primary Outcomes (per email)
+
 Return the following fields for each email in a batch:
 
 - `classification`: `keep | newsletter | promotion | spam | dangerous_phishing | unknown`
@@ -34,6 +38,7 @@ Return the following fields for each email in a batch:
 - `safe_preview`: sanitized plaintext/HTML summary (no remote loads, images/scripts blocked)
 
 Also maintain/update a **learning profile**:
+
 - `allow_list`: senders/domains/list-ids and thread patterns the user **Keeps**
 - `block_list`: senders/domains/list-ids the user **Deletes/Reports**
 - `heuristics`: content fingerprints & topics the user keeps or trashes
@@ -42,6 +47,7 @@ Also maintain/update a **learning profile**:
 ---
 
 ## Guardrails & Privacy
+
 - Work on **sanitized** content (block remote images/scripts).
 - Only send the **minimum necessary** context to the configured LLM backend for classification.
 - **Encrypt** tokens at rest; **redact** tokens/IDs in logs.
@@ -55,6 +61,7 @@ The app provides a **zero-configuration**, guided authentication experience wher
 ### Gmail Authentication (Sign In)
 
 **Simple Sign-In Process:**
+
 - **Smart Inbox Janitor is pre-registered** with Google as a trusted application
 - **Users just sign in** with their existing Gmail credentials (no developer setup required)
 - **Embedded sign-in window** within the app (no external browser navigation)
@@ -63,6 +70,7 @@ The app provides a **zero-configuration**, guided authentication experience wher
 - **Works on any device** - users don't need to configure anything
 
 **Sign-In Flow:**
+
 1. User clicks "Connect Gmail" button
 2. **Embedded sign-in window** opens within the app
 3. User enters their Gmail username/password (standard Google sign-in)
@@ -71,6 +79,7 @@ The app provides a **zero-configuration**, guided authentication experience wher
 6. **Background session refresh** handles token renewals automatically
 
 **User Experience:**
+
 - **Just like signing into any app** - no technical complexity
 - **Account display**: Connected Gmail account with profile picture
 - **Connection status**: Clear visual indicators (connected/disconnected/refreshing)
@@ -83,6 +92,7 @@ The app provides a **zero-configuration**, guided authentication experience wher
 Since OpenAI requires users to create their own access credentials, we provide a **completely guided experience**:
 
 **In-App Guided Setup:**
+
 1. **Welcome screen** explains why OpenAI access is needed for email classification
 2. **Step-by-step wizard** with live screenshots and instructions
 3. **Embedded browser** opens OpenAI pages at the exact location needed
@@ -92,15 +102,16 @@ Since OpenAI requires users to create their own access credentials, we provide a
 7. **Usage tracking** shows spending and provides cost estimates
 
 **Detailed User Guidance:**
+
 ```
 Step 1: Create OpenAI Account (if needed)
 → We'll open openai.com/signup for you
 → Use your email to create a free account
 → [Open Sign-Up Page] button opens right in the app
 
-Step 2: Get Your Access Key  
+Step 2: Get Your Access Key
 → We'll take you to your OpenAI dashboard
-→ Click "Create new secret key" 
+→ Click "Create new secret key"
 → Copy the key that starts with "sk-"
 → [Take Me There] button opens the exact page
 
@@ -112,6 +123,7 @@ Step 3: Connect to Smart Inbox Janitor
 ```
 
 **Access Key Management:**
+
 - **Format checking**: Real-time validation as you type
 - **Connection testing**: Verify it works with actual email classification
 - **Cost tracking**: Show current spending and daily estimates
@@ -146,14 +158,16 @@ export interface ConnectionState {
 ### Onboarding Flow UX
 
 **First Launch Experience:**
+
 1. **Welcome screen** with app overview and benefits
 2. **Gmail sign-in** with embedded sign-in window (required)
-3. **OpenAI setup** with guided access key process (required)  
+3. **OpenAI setup** with guided access key process (required)
 4. **Preferences** - processing settings and safety options (optional)
 5. **First scan** - guided discovery of email folders and initial batch
 6. **Success screen** - ready to use with clear next steps
 
 **Progressive Disclosure:**
+
 - **Essential first**: Only show critical setup steps initially
 - **Advanced later**: Power user features available after basic setup
 - **Contextual help**: Tooltips and help text appear when relevant
@@ -162,12 +176,14 @@ export interface ConnectionState {
 ### Error Handling & Recovery
 
 **Connection Issues:**
+
 - **Clear error messages** with specific resolution steps
 - **One-click retry** for temporary failures
 - **Guided troubleshooting** for persistent issues
 - **Help contact** for escalation when needed
 
 **Session & Access Issues:**
+
 - **Automatic retry** with smart waiting
 - **User notification** when manual intervention needed
 - **Easy re-connection** without losing current work
@@ -176,27 +192,29 @@ export interface ConnectionState {
 ---
 
 ## Provider Extensibility (Email & Contacts)
+
 Design against these **abstract interfaces** so we can add providers (e.g., IMAP) later.
 
 ```ts
 // Email provider (start with Gmail)
 export interface EmailProvider {
-  connect(): Promise<void>;                             // OAuth (Gmail). Store tokens securely.
-  list(options: ListOptions): Promise<EmailSummary[]>;  // batched listing with search/filter
-  get(id: string): Promise<EmailFull>;                  // full body + headers
-  batchModify(req: BatchModifyRequest): Promise<void>;  // add/remove labels, mark spam, move to trash
-  delete(id: string): Promise<void>;                    // hard delete (rare; prefer trash)
-  reportSpam?(id: string): Promise<void>;               // provider-optional
-  reportPhishing?(id: string): Promise<void>;           // provider-optional
+  connect(): Promise<void>; // OAuth (Gmail). Store tokens securely.
+  list(options: ListOptions): Promise<EmailSummary[]>; // batched listing with search/filter
+  get(id: string): Promise<EmailFull>; // full body + headers
+  batchModify(req: BatchModifyRequest): Promise<void>; // add/remove labels, mark spam, move to trash
+  delete(id: string): Promise<void>; // hard delete (rare; prefer trash)
+  reportSpam?(id: string): Promise<void>; // provider-optional
+  reportPhishing?(id: string): Promise<void>; // provider-optional
 }
 
 export interface ContactsProvider {
   isKnown(emailOrDomain: string): Promise<boolean>;
-  relationshipStrength(email: string): Promise<"none" | "weak" | "strong">;
+  relationshipStrength(email: string): Promise<'none' | 'weak' | 'strong'>;
 }
 ```
 
 **Gmail-first behavior:**
+
 - Prefer **labels** and **Trash** over hard delete.
 - Use `SPAM` label for spam, and phishing report if API is available; otherwise fallback to `SPAM` + Trash + optional forward-to-abuse per user setting.
 - Use **List-Unsubscribe** headers (HTTP first; then `mailto:`). Confirm 2xx for HTTP.
@@ -214,24 +232,24 @@ Abstract the storage layer to support both desktop and browser environments:
 ```ts
 export interface StorageProvider {
   init(): Promise<void>;
-  
+
   // User rules and learning data
   getUserRules(): Promise<UserRules>;
   updateUserRules(rules: UserRules): Promise<void>;
-  
+
   // Email metadata cache (for classification history)
   getEmailMetadata(emailId: string): Promise<EmailMetadata | null>;
   setEmailMetadata(emailId: string, metadata: EmailMetadata): Promise<void>;
-  bulkSetEmailMetadata(entries: Array<{id: string, metadata: EmailMetadata}>): Promise<void>;
-  
+  bulkSetEmailMetadata(entries: Array<{ id: string; metadata: EmailMetadata }>): Promise<void>;
+
   // Classification history and analytics
   getClassificationHistory(filters?: HistoryFilters): Promise<ClassificationHistoryItem[]>;
   addClassificationResult(result: ClassificationHistoryItem): Promise<void>;
-  
+
   // Encrypted token storage
   getEncryptedTokens(): Promise<Record<string, string>>;
   setEncryptedToken(provider: string, encryptedToken: string): Promise<void>;
-  
+
   // Configuration
   getConfig(): Promise<AppConfig>;
   updateConfig(config: Partial<AppConfig>): Promise<void>;
@@ -244,7 +262,7 @@ export interface EmailMetadata {
   reasons?: string[];
   bulk_key?: string;
   last_classified: string; // ISO date
-  user_action?: "kept" | "deleted" | "unsubscribed" | "reported";
+  user_action?: 'kept' | 'deleted' | 'unsubscribed' | 'reported';
   user_action_timestamp?: string;
 }
 
@@ -255,18 +273,20 @@ export interface ClassificationHistoryItem {
   confidence: number;
   reasons: string[];
   user_action?: string;
-  user_feedback?: "correct" | "incorrect" | "partial";
+  user_feedback?: 'correct' | 'incorrect' | 'partial';
 }
 ```
 
 ### Storage Implementation Strategy
 
 **Desktop (Electron/Tauri)**: SQLite with encrypted database file
+
 - Use `better-sqlite3` (Node) or `rusqlite` (Tauri) for fast local queries
 - Database location: `~/AppData/smart-inbox-janitor/` (Windows) or `~/.config/smart-inbox-janitor/` (macOS/Linux)
 - Encrypt sensitive data (tokens, email content previews) using OS keychain integration
 
 **Browser (Static Hosting)**: IndexedDB with structured storage
+
 - Use `idb` library for Promise-based IndexedDB operations
 - Implement same interface with IndexedDB collections: `rules`, `email_metadata`, `classification_history`, `config`
 - Use Web Crypto API for client-side token encryption
@@ -423,38 +443,38 @@ Abstract the LLM via a **single interface** so we can swap ChatGPT/OpenAI, Claud
 
 ```ts
 export interface LLMProvider {
-  name: "openai" | "anthropic" | "llama" | string;
-  init(auth: LLMAuth): Promise<void>;                   // token or OAuth; model choice
+  name: 'openai' | 'anthropic' | 'llama' | string;
+  init(auth: LLMAuth): Promise<void>; // token or OAuth; model choice
   classifyEmails(input: ClassifyInput): Promise<ClassifyOutput>;
   suggestSearchQueries(context: QueryContext): Promise<string[]>;
   groupForBulk(input: GroupingInput): Promise<GroupOutput>; // create stable bulk_key, rationale
 }
 
 export type LLMAuth =
-  | { kind: "api_key"; key: string }
-  | { kind: "oauth"; accessToken: string; refreshToken?: string }
-  | { kind: "local"; endpoint: string }; // e.g., http://localhost:11434 for Ollama
+  | { kind: 'api_key'; key: string }
+  | { kind: 'oauth'; accessToken: string; refreshToken?: string }
+  | { kind: 'local'; endpoint: string }; // e.g., http://localhost:11434 for Ollama
 
 export interface ClassifyInput {
   emails: Array<{
     id: string;
     headers: Record<string, string>;
     bodyText?: string;
-    bodyHtml?: string;  // sanitized
+    bodyHtml?: string; // sanitized
     providerSignals?: { hasListUnsubscribe?: boolean; spf?: string; dkim?: string; dmarc?: string };
-    contactSignal?: { known: boolean; strength: "none" | "weak" | "strong" };
+    contactSignal?: { known: boolean; strength: 'none' | 'weak' | 'strong' };
   }>;
   userRulesSnapshot: UserRules;
 }
 
 export interface ClassifyItem {
   emailId: string;
-  classification: "keep" | "newsletter" | "promotion" | "spam" | "dangerous_phishing" | "unknown";
-  likelihood: "very likely" | "likely" | "unsure";
+  classification: 'keep' | 'newsletter' | 'promotion' | 'spam' | 'dangerous_phishing' | 'unknown';
+  likelihood: 'very likely' | 'likely' | 'unsure';
   confidence: number;
   reasons: string[];
   bulk_key: string;
-  unsubscribe_method?: { type: "http_link" | "mailto" | "none"; value?: string };
+  unsubscribe_method?: { type: 'http_link' | 'mailto' | 'none'; value?: string };
 }
 
 export interface ClassifyOutput {
@@ -466,16 +486,18 @@ export interface ClassifyOutput {
 ### LLM Provider (Phase 1)
 
 **Primary and Only**: **OpenAI GPT-4o-mini**
+
 - Fast processing for high-volume email classification
 - Cost-effective for processing thousands of emails per session
 - Reliable API with good rate limiting and error handling
 - Strong performance on email classification tasks
 
-*Note: Other LLM providers (Claude, Llama, local Ollama) reserved for future phases to maintain focus and simplicity.*
+_Note: Other LLM providers (Claude, Llama, local Ollama) reserved for future phases to maintain focus and simplicity._
 
 ---
 
 ## Actions You Support
+
 - `KEEP`
 - `UNSUBSCRIBE_AND_DELETE` (HTTP List-Unsubscribe preferred → verify 2xx; fallback `mailto:` flow)
 - `DELETE_ONLY` (Trash without unsubscribing)
@@ -491,24 +513,26 @@ The system processes **entire email folders** (not just recent emails) in manage
 
 ### Full-Scope Processing Strategy
 
-1) **Discover** all emails across all folders (Inbox, Sent, Spam, folders, labels)
-2) **Queue** unprocessed emails in batches of 1000+ for efficient API usage
-3) **Persist** processing state to allow stopping/resuming at any time
-4) **Classify** batches using GPT-4o-mini with rate limiting and error handling
-5) **Store** classifications locally with metadata for future reference
-6) **Present** results in manageable UI chunks for user review and action
-7) **Execute** approved bulk actions while maintaining undo capability
-8) **Track** progress across multiple cleanup sessions until mailbox is fully processed
+1. **Discover** all emails across all folders (Inbox, Sent, Spam, folders, labels)
+2. **Queue** unprocessed emails in batches of 1000+ for efficient API usage
+3. **Persist** processing state to allow stopping/resuming at any time
+4. **Classify** batches using GPT-4o-mini with rate limiting and error handling
+5. **Store** classifications locally with metadata for future reference
+6. **Present** results in manageable UI chunks for user review and action
+7. **Execute** approved bulk actions while maintaining undo capability
+8. **Track** progress across multiple cleanup sessions until mailbox is fully processed
 
 ### Session-Based Processing Model
 
 **Initial Cleanup Sessions (Weeks/Months)**:
+
 - Process historical emails in 1000-email batches
 - Store all classifications and user decisions locally
 - Resume from last processed email on app restart
 - Show overall progress (e.g., "45,000 of 120,000 emails processed")
 
 **Maintenance Sessions (Monthly)**:
+
 - Process only new emails since last session
 - Apply learned rules automatically where confidence is high
 - Present only uncertain classifications for manual review
@@ -542,13 +566,13 @@ export interface EmailProcessingQueue {
   queuedEmails: Array<{
     emailId: string;
     folderId: string;
-    priority: "high" | "normal" | "low"; // suspicious emails get high priority
+    priority: 'high' | 'normal' | 'low'; // suspicious emails get high priority
     addedToQueue: string; // timestamp
   }>;
   processingBatches: Array<{
     batchId: string;
     emailIds: string[];
-    status: "pending" | "processing" | "completed" | "failed";
+    status: 'pending' | 'processing' | 'completed' | 'failed';
     createdAt: string;
     completedAt?: string;
   }>;
@@ -557,11 +581,11 @@ export interface EmailProcessingQueue {
 
 ### Resumable Batch Processing
 
-1) **App Startup**: Check for incomplete processing state
-2) **Resume Discovery**: Continue email discovery from last known position  
-3) **Resume Classification**: Process remaining emails in queue
-4) **Resume Actions**: Complete any pending bulk actions
-5) **Progress Display**: Show user exactly where they left off
+1. **App Startup**: Check for incomplete processing state
+2. **Resume Discovery**: Continue email discovery from last known position
+3. **Resume Classification**: Process remaining emails in queue
+4. **Resume Actions**: Complete any pending bulk actions
+5. **Progress Display**: Show user exactly where they left off
 
 ### Rate Limiting & Cost Management
 
@@ -583,10 +607,10 @@ All email actions (delete, trash, label, unsubscribe, report) are queued and exe
 export interface ActionQueueItem {
   id: string;
   emailId: string;
-  actionType: "delete" | "trash" | "label" | "unsubscribe" | "report_spam" | "report_phishing";
+  actionType: 'delete' | 'trash' | 'label' | 'unsubscribe' | 'report_spam' | 'report_phishing';
   actionParams: ActionParams;
   bulkGroupId?: string; // For grouping related actions
-  status: "pending" | "processing" | "completed" | "failed" | "retrying";
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'retrying';
   priority: number; // 1=highest (dangerous emails), 10=lowest (newsletters)
   retryCount: number;
   maxRetries: number;
@@ -597,23 +621,25 @@ export interface ActionQueueItem {
   completedAt?: string;
 }
 
-export type ActionParams = 
-  | { type: "trash" }
-  | { type: "delete", permanent: boolean }
-  | { type: "label", addLabels: string[], removeLabels: string[] }
-  | { type: "unsubscribe", method: "http" | "mailto", url: string }
-  | { type: "report_spam" }
-  | { type: "report_phishing" };
+export type ActionParams =
+  | { type: 'trash' }
+  | { type: 'delete'; permanent: boolean }
+  | { type: 'label'; addLabels: string[]; removeLabels: string[] }
+  | { type: 'unsubscribe'; method: 'http' | 'mailto'; url: string }
+  | { type: 'report_spam' }
+  | { type: 'report_phishing' };
 ```
 
 ### Gmail Rate Limiting Strategy
 
 **Gmail API Quotas (per user per day)**:
+
 - 1 billion quota units/day
 - Modify operations: ~10-50 units each
 - Batch operations: More efficient than individual calls
 
 **Rate Limiting Implementation**:
+
 - **Exponential Backoff**: 1s, 2s, 4s, 8s, 16s delays on rate limit errors
 - **Bulk Batching**: Group similar actions into single API calls where possible
 - **Priority Processing**: Process dangerous email reports before newsletter deletions
@@ -622,37 +648,39 @@ export type ActionParams =
 
 ### Action Execution Workflow
 
-1) **User Confirms Actions**: Bulk actions get queued with same `bulkGroupId`
-2) **Queue Processing**: Background service processes actions by priority
-3) **Batch Optimization**: Group similar actions for efficient API calls
-4) **Rate Limit Handling**: Automatic retries with exponential backoff
-5) **Error Recovery**: Failed actions stay queued for manual retry or investigation
-6) **Progress Tracking**: Real-time status updates in UI
-7) **Completion Notification**: User notified when action batches complete
+1. **User Confirms Actions**: Bulk actions get queued with same `bulkGroupId`
+2. **Queue Processing**: Background service processes actions by priority
+3. **Batch Optimization**: Group similar actions for efficient API calls
+4. **Rate Limit Handling**: Automatic retries with exponential backoff
+5. **Error Recovery**: Failed actions stay queued for manual retry or investigation
+6. **Progress Tracking**: Real-time status updates in UI
+7. **Completion Notification**: User notified when action batches complete
 
 ### Action Priority System
 
 ```ts
 const ACTION_PRIORITIES = {
-  report_phishing: 1,    // Highest - security critical
-  report_spam: 2,        // High - abuse prevention
-  delete: 3,             // High - permanent action
-  unsubscribe: 4,        // Medium-high - external API call required
-  trash: 5,              // Medium - recoverable action
-  label: 6               // Low - metadata only
+  report_phishing: 1, // Highest - security critical
+  report_spam: 2, // High - abuse prevention
+  delete: 3, // High - permanent action
+  unsubscribe: 4, // Medium-high - external API call required
+  trash: 5, // Medium - recoverable action
+  label: 6, // Low - metadata only
 } as const;
 ```
 
 ### Retry Logic & Error Handling
 
 **Automatic Retries** (up to 3 attempts):
+
 - **Rate Limited (429)**: Exponential backoff with jitter
 - **Network Errors (5xx)**: Short delay, retry
 - **Temporary Auth (401)**: Token refresh, retry
 
 **Manual Investigation Required**:
+
 - **Quota Exceeded**: Wait for daily reset or upgrade quota
-- **Permanent Auth (403)**: Re-authentication required  
+- **Permanent Auth (403)**: Re-authentication required
 - **Invalid Request (400)**: Action configuration error
 - **Not Found (404)**: Email no longer exists (mark as completed)
 
@@ -691,6 +719,7 @@ export interface QueueStatus {
 ---
 
 ## Classification Cues (Heuristics & Examples)
+
 - **Keep**: Known contacts; invoices; threads you replied to; 2FA codes; receipts you’ve historically kept.
 - **Newsletter/Promotion**: `List-Id`, `List-Unsubscribe`, coupon/promo language, templated layouts.
 - **Spam**: mismatched display vs. domain; obfuscated links; no unsubscribe; spammy TLDs; mass misspellings.
@@ -701,6 +730,7 @@ Return **succinct reasons** for user trust.
 ---
 
 ## Learning Rules
+
 - If user clicks **Keep** for a sender/list ≥2 times → suggest **Always keep** rule.
 - If user chooses **Unsubscribe & Delete** for a list once → suggest **Auto-triage future from this List-Id**.
 - If user **Report Dangerous** for a domain → raise risk for sibling subdomains.
@@ -709,8 +739,8 @@ Return **succinct reasons** for user trust.
 ```ts
 export interface UserRules {
   alwaysKeep: { senders: string[]; domains: string[]; listIds: string[] };
-  autoTrash:  { senders: string[]; domains: string[]; listIds: string[]; templates?: string[] };
-  weights?:   { contactsBonus?: number; dangerSignals?: string[] };
+  autoTrash: { senders: string[]; domains: string[]; listIds: string[]; templates?: string[] };
+  weights?: { contactsBonus?: number; dangerSignals?: string[] };
   exclusions?: { neverAutoTrashImportant?: boolean; respectStarred?: boolean };
 }
 ```
@@ -718,12 +748,15 @@ export interface UserRules {
 ---
 
 ## LLM Usage Policy & Authentication
+
 Use GPT-4o-mini for:
+
 - **search query suggestions** (e.g., Gmail queries),
 - **semantic classification** & **bulk grouping**,
 - short **explanations** for the UI.
 
 **Connection & Setup:**
+
 - **Guided setup**: Step-by-step wizard for OpenAI access key setup
 - **Embedded assistance**: In-app browser opens OpenAI pages at the right location
 - **Connection testing**: Real-time validation with actual email classification tests
@@ -732,6 +765,7 @@ Use GPT-4o-mini for:
 - **Smart retry**: Handle rate limits and temporary failures automatically
 
 **Classification output contract** (LLM → host app):
+
 ```json
 {
   "batchId": "<id>",
@@ -743,11 +777,11 @@ Use GPT-4o-mini for:
       "confidence": 0.97,
       "reasons": ["lookalike domain", "credential-bait", "SPF fail"],
       "bulk_key": "from:support@paypaI.com",
-      "unsubscribe_method": {"type":"none"}
+      "unsubscribe_method": { "type": "none" }
     }
   ],
   "rulesSuggestions": [
-    {"type":"auto_trash_listid","value":"deals.brandx.io","rationale":"repeated deletions"}
+    { "type": "auto_trash_listid", "value": "deals.brandx.io", "rationale": "repeated deletions" }
   ]
 }
 ```
@@ -755,6 +789,7 @@ Use GPT-4o-mini for:
 ---
 
 ## Gmail Search Builder (LLM-assisted examples)
+
 - “likely newsletters, last 30d”: `newer_than:30d has:list-unsubscribe`
 - “promotions not in contacts”: `category:promotions -from:({contacts})`
 - “suspicious lookalikes”: `subject:("reset password" OR "suspend") -in:chats`
@@ -763,6 +798,7 @@ Use GPT-4o-mini for:
 ---
 
 ## UI/UX Responsibilities (host app shell)
+
 - Two-pane triage: list on the left, **safe preview** on the right.
 - Non-numeric **likelihood chips**; color-coded categories.
 - One-click **bulk** per group; per-item overrides.
@@ -771,6 +807,7 @@ Use GPT-4o-mini for:
 ### ASCII Wireframes
 
 #### Main Side-Panel Triage Interface
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │ Smart Inbox Janitor    Progress: 1,250/45,000 processed    [⏸ Pause] [⚙ Settings] [⟳] │
@@ -809,6 +846,7 @@ Use GPT-4o-mini for:
 ```
 
 #### Bulk Action Confirmation Dialog
+
 ```
 ┌───────────────── Bulk Action Confirmation ─────────────────┐
 │                                                             │
@@ -835,10 +873,10 @@ Use GPT-4o-mini for:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-
 ---
 
 ## Failure & Recovery
+
 - If **unsubscribe** fails → fallback to **DELETE_ONLY** and show Retry.
 - If **report phishing** API absent → mark `SPAM` + Trash; if user enabled, forward to abuse mailbox.
 - Always offer **Undo/Restore** from Trash (within provider retention window).
@@ -846,6 +884,7 @@ Use GPT-4o-mini for:
 ---
 
 ## Acceptance Checklist
+
 - [ ] Batches render with non-numeric **likelihood** chips.
 - [ ] Preview pane shows **sanitized** content + **reasons**.
 - [ ] One-click **bulk** for the same `bulk_key`; per-item override works.
@@ -860,6 +899,7 @@ Use GPT-4o-mini for:
 ## Tech Stack Recommendation (Electron Desktop App)
 
 **Primary Target: Desktop Electron App**
+
 - **Electron + React + TypeScript** for mature ecosystem and Gmail API integration
 - **SQLite** via `better-sqlite3` for local storage with full SQL capabilities
 - **Node.js OAuth libraries** for robust Gmail authentication flow
@@ -869,6 +909,7 @@ Use GPT-4o-mini for:
 - **System tray integration** for background operation
 
 **Future Target: Browser Static Hosting (Architectural Compatibility)**
+
 - Same **React + TypeScript** codebase with storage adapter pattern
 - **IndexedDB** adapter implementing same `StorageProvider` interface
 - **Web Crypto API** for client-side encryption (matching desktop security)
@@ -884,6 +925,7 @@ Use GPT-4o-mini for:
 ### Electron Implementation Details
 
 **Core Dependencies:**
+
 - `electron`: Desktop app framework
 - `better-sqlite3`: High-performance SQLite with Node.js
 - `keytar`: Secure credential storage using OS keychain
@@ -891,12 +933,14 @@ Use GPT-4o-mini for:
 - `electron-builder`: App packaging and distribution
 
 **Development Stack:**
+
 - `vite`: Fast build tool and dev server
 - `electron-vite`: Vite integration for Electron
 - `tailwindcss`: Utility-first CSS framework
 - `zustand`: Lightweight state management with persistence
 
 **OS Integration Features:**
+
 - **Auto-updater**: Seamless app updates via `electron-updater`
 - **Deep linking**: Handle custom URL schemes for OAuth callbacks
 - **Menu bar integration**: Native menus and keyboard shortcuts
@@ -907,17 +951,24 @@ Use GPT-4o-mini for:
 ---
 
 ## Example Host App Output Contract (per batch)
+
 ```json
 {
   "batchId": "2025-08-19T15:04:00Z-1",
-  "items": [/* classification items */],
+  "items": [
+    /* classification items */
+  ],
   "suggestedBulkActions": [
-    {"bulk_key":"listid:news.example.com","proposed_action":"UNSUBSCRIBE_AND_DELETE","count":42},
-    {"bulk_key":"from:sales@brand.com","proposed_action":"DELETE_ONLY","count":13}
+    {
+      "bulk_key": "listid:news.example.com",
+      "proposed_action": "UNSUBSCRIBE_AND_DELETE",
+      "count": 42
+    },
+    { "bulk_key": "from:sales@brand.com", "proposed_action": "DELETE_ONLY", "count": 13 }
   ],
   "rulesSuggestions": [
-    {"type":"always_keep_sender","value":"invoices@vendor.com"},
-    {"type":"auto_trash_listid","value":"offers.brand.example"}
+    { "type": "always_keep_sender", "value": "invoices@vendor.com" },
+    { "type": "auto_trash_listid", "value": "offers.brand.example" }
   ]
 }
 ```

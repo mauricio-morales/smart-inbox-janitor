@@ -1,9 +1,9 @@
 /**
  * Centralized type exports for Smart Inbox Janitor
- * 
+ *
  * This module provides a single entry point for importing all type definitions
  * while maintaining tree-shaking compatibility and logical organization.
- * 
+ *
  * @module SharedTypes
  */
 
@@ -26,6 +26,7 @@ export {
   isErrorResult,
   createSuccessResult,
   createErrorResult,
+  createProviderError,
 } from './base.types.js';
 
 // Error hierarchy and classes
@@ -39,6 +40,9 @@ export {
   ValidationError,
   TimeoutError,
   CancellationError,
+  SecurityError,
+  CryptoError,
+  StorageError,
   isRetryableError,
   isRateLimitError,
   isAuthenticationError,
@@ -57,6 +61,9 @@ export type {
   OnboardingStep,
   GmailAuthConfig,
   GmailTokens,
+  RefreshFailureReason,
+  GmailAuthState,
+  TokenRefreshMetadata,
   GmailProviderConfig,
   OpenAIConfig,
   ClaudeConfig,
@@ -64,23 +71,23 @@ export type {
   SQLiteStorageConfig,
   IndexedDBStorageConfig,
   AppConfig,
-  LLMProviderConfig,
   StorageProviderConfig,
   UserPreferences,
 } from './config.types.js';
 
-export {
-  DEFAULT_APP_CONFIG,
-} from './config.types.js';
+export { DEFAULT_APP_CONFIG } from './config.types.js';
 
 // Email provider types
 export type {
   EmailProvider,
+  EmailProviderConfig,
   ContactsProvider,
   RelationshipStrength,
   EmailSummary,
   EmailFull,
   EmailFolder,
+  EmailHeaders,
+  FolderType,
   ContactInfo,
   UnsubscribeMethod,
   DateRange,
@@ -102,6 +109,7 @@ export type {
   StorageProvider,
   StoredAppConfig,
   UserRules,
+  UserRule,
   EmailMetadata,
   EmailClassification,
   UserAction,
@@ -111,6 +119,16 @@ export type {
   ActionQueueItem,
   ActionType,
   ActionStatus,
+  FolderState,
+  ActionHistoryItem,
+  MigrationResult,
+  BulkOperationResult,
+  EmailMetadataFilters,
+  EmailMetadataQueryResult,
+  CleanupResult,
+  DatabaseStatistics,
+  ExportResult,
+  ImportResult,
 } from './storage.types.js';
 
 // LLM provider types
@@ -126,6 +144,14 @@ export type {
   UsageStatistics,
   CostEstimation,
   ContactSignal,
+  GroupingInput,
+  GroupOutput,
+  ContentValidationInput,
+  ContentValidationResult,
+  ExplanationInput,
+  ClassificationExplanation,
+  ConnectionTestResult,
+  CostEstimationInput,
 } from './llm.types.js';
 
 // Rules engine types
@@ -138,3 +164,26 @@ export type {
   RuleTestResult,
   RuleAnalytics,
 } from './rules.types.js';
+
+// Security types
+export type {
+  SecureCredential,
+  SecurityAuditEvent,
+  SecurityEventType,
+  SecurityConfig,
+  SecurityLevel,
+  CredentialStorageOptions,
+  RotationPolicy,
+  SecurityValidationResult,
+  SecurityValidationDetails,
+  EncryptionKeyMetadata,
+  KeyDerivationMethod,
+  KeyUsageStats,
+  TokenRefreshRequest,
+  TokenRefreshResponse,
+  SecureStorageStatus,
+  StorageHealthStatus,
+  SecurityConfigSummary,
+  RecoveryInfo,
+  CredentialBackup,
+} from './security.types.js';

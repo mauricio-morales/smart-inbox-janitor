@@ -13,6 +13,7 @@ Execute a massive parallel workflow that leverages multiple AI agents working si
 ## Overview
 
 This workflow deploys 20+ parallel agents:
+
 - 5 agents for spec generation (different perspectives)
 - 5 agents for prompt plan creation
 - 5 agents for backend implementation
@@ -381,6 +382,7 @@ Create a real-time dashboard showing:
 ## Emergency Protocols
 
 If running behind schedule:
+
 1. Reduce agent count per phase
 2. Skip non-critical agents (DevOps, some QA)
 3. Focus on core functionality only
@@ -390,6 +392,7 @@ If running behind schedule:
 ## Success Metrics
 
 Showcase the power of parallel execution:
+
 - 25 AI agents working simultaneously
 - 40-minute complete implementation
 - 80%+ test coverage

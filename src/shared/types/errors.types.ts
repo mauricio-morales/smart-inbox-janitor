@@ -1,10 +1,10 @@
 /**
  * Comprehensive error hierarchy for Smart Inbox Janitor provider system
- * 
+ *
  * This module defines a hierarchical error system that provides consistent
  * error handling across all provider types with proper inheritance chains
  * and retry logic indicators.
- * 
+ *
  * @module ErrorTypes
  */
 
@@ -13,18 +13,25 @@ import { ProviderError } from './base.types.js';
 /**
  * Base class for all provider errors with common functionality
  */
-export abstract class BaseProviderError implements ProviderError {
+export abstract class BaseProviderError extends Error implements ProviderError {
   public readonly timestamp: Date;
-  
+
   constructor(
     public readonly code: string,
-    public readonly message: string,
+    message: string,
     public readonly retryable: boolean,
-    public readonly details: Record<string, unknown> = {}
+    public readonly details: Record<string, unknown> = {},
   ) {
+    super(message);
+    this.name = this.constructor.name;
     this.timestamp = new Date();
+
+    // Maintains proper stack trace for where our error was thrown (only available on V8)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
   }
-  
+
   /**
    * Convert error to a plain object for serialization
    */
@@ -71,12 +78,8 @@ export class NetworkError extends BaseProviderError {
  */
 export class RateLimitError extends BaseProviderError {
   public readonly retryAfter?: number; // Milliseconds
-  
-  constructor(
-    message: string, 
-    retryAfter?: number,
-    details?: Record<string, unknown>
-  ) {
+
+  constructor(message: string, retryAfter?: number, details?: Record<string, unknown>) {
     super('RATE_LIMITED', message, true, details);
     this.retryAfter = retryAfter;
   }
@@ -88,12 +91,12 @@ export class RateLimitError extends BaseProviderError {
 export class QuotaExceededError extends BaseProviderError {
   public readonly quotaType: string;
   public readonly resetTime?: Date;
-  
+
   constructor(
     quotaType: string,
     message: string,
     resetTime?: Date,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super('QUOTA_EXCEEDED', message, resetTime ? true : false, details);
     this.quotaType = quotaType;
@@ -106,11 +109,11 @@ export class QuotaExceededError extends BaseProviderError {
  */
 export class ValidationError extends BaseProviderError {
   public readonly fieldErrors: Record<string, string[]>;
-  
+
   constructor(
     message: string,
     fieldErrors: Record<string, string[]> = {},
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super('VALIDATION_ERROR', message, false, details);
     this.fieldErrors = fieldErrors;
@@ -122,14 +125,9 @@ export class ValidationError extends BaseProviderError {
  */
 export class TimeoutError extends BaseProviderError {
   public readonly timeoutMs: number;
-  
+
   constructor(timeoutMs: number, details?: Record<string, unknown>) {
-    super(
-      'TIMEOUT_ERROR', 
-      `Operation timed out after ${timeoutMs}ms`, 
-      true, 
-      details
-    );
+    super('TIMEOUT_ERROR', `Operation timed out after ${timeoutMs}ms`, true, details);
     this.timeoutMs = timeoutMs;
   }
 }
@@ -151,23 +149,23 @@ export class CancellationError extends BaseProviderError {
 export class GmailError extends BaseProviderError {
   public readonly googleCode?: number;
   public readonly googleReason?: string;
-  
+
   constructor(
     code: string,
     message: string,
     retryable: boolean,
     googleCode?: number,
     googleReason?: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super(code, message, retryable, details);
     this.googleCode = googleCode;
     this.googleReason = googleReason;
   }
-  
+
   static fromGoogleError(error: { code?: number; reason?: string; message?: string }): GmailError {
     const baseDetails = { originalError: error.message ?? 'Unknown error' };
-    
+
     if (error.code === 401) {
       return new GmailError(
         'GMAIL_AUTH_EXPIRED',
@@ -175,10 +173,10 @@ export class GmailError extends BaseProviderError {
         false,
         error.code,
         error.reason,
-        baseDetails
+        baseDetails,
       );
     }
-    
+
     if (error.code === 403) {
       return new GmailError(
         'GMAIL_FORBIDDEN',
@@ -186,10 +184,10 @@ export class GmailError extends BaseProviderError {
         false,
         error.code,
         error.reason,
-        baseDetails
+        baseDetails,
       );
     }
-    
+
     if (error.code === 429) {
       return new GmailError(
         'GMAIL_RATE_LIMITED',
@@ -197,28 +195,28 @@ export class GmailError extends BaseProviderError {
         true,
         error.code,
         error.reason,
-        baseDetails
+        baseDetails,
       );
     }
-    
-    if (error.code >= 500) {
+
+    if (error.code != null && error.code >= 500) {
       return new GmailError(
         'GMAIL_SERVER_ERROR',
         'Gmail server error. Please try again.',
         true,
         error.code,
         error.reason,
-        baseDetails
+        baseDetails,
       );
     }
-    
+
     return new GmailError(
       'GMAIL_UNKNOWN_ERROR',
-      error.message || 'Unknown Gmail API error',
+      error.message ?? 'Unknown Gmail API error',
       false,
       error.code,
       error.reason,
-      baseDetails
+      baseDetails,
     );
   }
 }
@@ -228,13 +226,13 @@ export class GmailError extends BaseProviderError {
  */
 export class IMAPError extends BaseProviderError {
   public readonly imapCode?: string;
-  
+
   constructor(
     code: string,
     message: string,
     retryable: boolean,
     imapCode?: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super(code, message, retryable, details);
     this.imapCode = imapCode;
@@ -249,14 +247,14 @@ export class IMAPError extends BaseProviderError {
 export class SQLiteError extends BaseProviderError {
   public readonly sqliteCode?: string;
   public readonly query?: string;
-  
+
   constructor(
     code: string,
     message: string,
     retryable: boolean,
     sqliteCode?: string,
     query?: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super(code, message, retryable, details);
     this.sqliteCode = sqliteCode;
@@ -269,13 +267,13 @@ export class SQLiteError extends BaseProviderError {
  */
 export class IndexedDBError extends BaseProviderError {
   public readonly idbErrorName?: string;
-  
+
   constructor(
     code: string,
     message: string,
     retryable: boolean,
     idbErrorName?: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super(code, message, retryable, details);
     this.idbErrorName = idbErrorName;
@@ -290,23 +288,23 @@ export class IndexedDBError extends BaseProviderError {
 export class OpenAIError extends BaseProviderError {
   public readonly openaiType?: string;
   public readonly openaiCode?: string;
-  
+
   constructor(
     code: string,
     message: string,
     retryable: boolean,
     openaiType?: string,
     openaiCode?: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super(code, message, retryable, details);
     this.openaiType = openaiType;
     this.openaiCode = openaiCode;
   }
-  
-  static fromOpenAIError(error: any): OpenAIError {
-    const baseDetails = { originalError: error.message };
-    
+
+  static fromOpenAIError(error: { type?: string; code?: string; message?: string }): OpenAIError {
+    const baseDetails = { originalError: error.message ?? 'Unknown OpenAI error' };
+
     if (error.type === 'insufficient_quota') {
       return new OpenAIError(
         'OPENAI_QUOTA_EXCEEDED',
@@ -314,10 +312,10 @@ export class OpenAIError extends BaseProviderError {
         false,
         error.type,
         error.code,
-        baseDetails
+        baseDetails,
       );
     }
-    
+
     if (error.type === 'invalid_api_key') {
       return new OpenAIError(
         'OPENAI_INVALID_KEY',
@@ -325,10 +323,10 @@ export class OpenAIError extends BaseProviderError {
         false,
         error.type,
         error.code,
-        baseDetails
+        baseDetails,
       );
     }
-    
+
     if (error.type === 'rate_limit_exceeded') {
       return new OpenAIError(
         'OPENAI_RATE_LIMITED',
@@ -336,10 +334,10 @@ export class OpenAIError extends BaseProviderError {
         true,
         error.type,
         error.code,
-        baseDetails
+        baseDetails,
       );
     }
-    
+
     if (error.type === 'server_error') {
       return new OpenAIError(
         'OPENAI_SERVER_ERROR',
@@ -347,17 +345,17 @@ export class OpenAIError extends BaseProviderError {
         true,
         error.type,
         error.code,
-        baseDetails
+        baseDetails,
       );
     }
-    
+
     return new OpenAIError(
       'OPENAI_UNKNOWN_ERROR',
-      error.message || 'Unknown OpenAI API error',
+      error.message ?? 'Unknown OpenAI API error',
       false,
       error.type,
       error.code,
-      baseDetails
+      baseDetails,
     );
   }
 }
@@ -367,13 +365,13 @@ export class OpenAIError extends BaseProviderError {
  */
 export class ClaudeError extends BaseProviderError {
   public readonly claudeType?: string;
-  
+
   constructor(
     code: string,
     message: string,
     retryable: boolean,
     claudeType?: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super(code, message, retryable, details);
     this.claudeType = claudeType;
@@ -385,13 +383,13 @@ export class ClaudeError extends BaseProviderError {
  */
 export class LocalLLMError extends BaseProviderError {
   public readonly endpoint?: string;
-  
+
   constructor(
     code: string,
     message: string,
     retryable: boolean,
     endpoint?: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super(code, message, retryable, details);
     this.endpoint = endpoint;
@@ -447,7 +445,7 @@ export enum ErrorSeverity {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical'
+  CRITICAL = 'critical',
 }
 
 /**
@@ -457,22 +455,49 @@ export function getErrorSeverity(error: ProviderError): ErrorSeverity {
   if (isAuthenticationError(error)) {
     return ErrorSeverity.HIGH;
   }
-  
+
   if (isQuotaExceededError(error)) {
     return ErrorSeverity.MEDIUM;
   }
-  
+
   if (isRateLimitError(error)) {
     return ErrorSeverity.LOW;
   }
-  
+
   if (isValidationError(error)) {
     return ErrorSeverity.MEDIUM;
   }
-  
+
   if (error.code.includes('SERVER_ERROR')) {
     return ErrorSeverity.HIGH;
   }
-  
+
   return ErrorSeverity.MEDIUM;
+}
+
+/**
+ * Security-related error for authentication, authorization, and security violations
+ */
+export class SecurityError extends BaseProviderError {
+  constructor(message: string, context?: Record<string, unknown>) {
+    super('SECURITY_ERROR', message, false, context);
+  }
+}
+
+/**
+ * Cryptographic operation error for encryption, decryption, and key management
+ */
+export class CryptoError extends BaseProviderError {
+  constructor(message: string, context?: Record<string, unknown>) {
+    super('CRYPTO_ERROR', message, false, context);
+  }
+}
+
+/**
+ * Storage-related error for database operations and data persistence
+ */
+export class StorageError extends BaseProviderError {
+  constructor(message: string, context?: Record<string, unknown>) {
+    super('STORAGE_ERROR', message, false, context);
+  }
 }
