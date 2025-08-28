@@ -79,8 +79,8 @@ void app.whenReady().then(async () => {
       console.error('Gmail OAuth manager initialization failed:', gmailOAuthInitResult.error);
     }
 
-    // Create token rotation service
-    const tokenRotationService = new TokenRotationService(secureStorageManager);
+    // Create token rotation service with OAuth manager dependency
+    const tokenRotationService = new TokenRotationService(secureStorageManager, gmailOAuthManager);
     const tokenRotationInitResult = await tokenRotationService.initialize();
 
     if (!tokenRotationInitResult.success) {

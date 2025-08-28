@@ -7,14 +7,17 @@
 
 import { TokenRotationService } from '../../../src/main/security/TokenRotationService';
 import { SecureStorageManager } from '../../../src/main/security/SecureStorageManager';
+import { GmailOAuthManager } from '../../../src/main/oauth/GmailOAuthManager';
 import { GmailTokens, createSuccessResult, createErrorResult, SecurityError } from '@shared/types';
 
 // Mock dependencies
 jest.mock('../../../src/main/security/SecureStorageManager');
+jest.mock('../../../src/main/oauth/GmailOAuthManager');
 
 describe('TokenRotationService - Startup Integration', () => {
   let tokenRotationService: TokenRotationService;
   let mockSecureStorageManager: jest.Mocked<SecureStorageManager>;
+  let mockGmailOAuthManager: jest.Mocked<GmailOAuthManager>;
 
   const mockValidTokens: GmailTokens = {
     accessToken: 'valid-access-token',
@@ -42,7 +45,12 @@ describe('TokenRotationService - Startup Integration', () => {
 
   beforeEach(() => {
     mockSecureStorageManager = new SecureStorageManager() as jest.Mocked<SecureStorageManager>;
-    tokenRotationService = new TokenRotationService(mockSecureStorageManager);
+    mockGmailOAuthManager = new GmailOAuthManager({
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+      redirectUri: 'http://localhost:8080/oauth/callback'
+    }) as jest.Mocked<GmailOAuthManager>;
+    tokenRotationService = new TokenRotationService(mockSecureStorageManager, mockGmailOAuthManager);
   });
 
   afterEach(() => {
