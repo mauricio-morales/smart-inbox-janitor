@@ -16,12 +16,15 @@ import {
   createErrorResult,
   SecurityError,
   ConfigurationError,
+  NetworkError,
+  AuthenticationError,
   GmailTokens,
   TokenRefreshRequest,
   TokenRefreshResponse,
   TokenRefreshMetadata,
 } from '@shared/types';
 import { SecureStorageManager } from './SecureStorageManager';
+import { GmailOAuthManager } from '../oauth/GmailOAuthManager';
 
 /**
  * Token rotation configuration
@@ -68,14 +71,18 @@ export interface RotationStatus {
  */
 export class TokenRotationService {
   private readonly secureStorageManager: SecureStorageManager;
+  private readonly gmailOAuthManager: GmailOAuthManager;
   private config: TokenRotationConfig;
   private rotationTimer: ReturnType<typeof setInterval> | null = null;
   private rotationStatus: RotationStatus;
   private initialized = false;
   private readonly ROTATION_TIMEOUT_MS = 30000; // 30 seconds
+  private readonly MAX_REFRESH_ATTEMPTS = 3;
+  private readonly RATE_LIMIT_DELAY_MS = 1000; // 1 second between refresh attempts
 
-  constructor(secureStorageManager: SecureStorageManager) {
+  constructor(secureStorageManager: SecureStorageManager, gmailOAuthManager: GmailOAuthManager) {
     this.secureStorageManager = secureStorageManager;
+    this.gmailOAuthManager = gmailOAuthManager;
     this.config = this.getDefaultConfig();
     this.rotationStatus = {
       active: false,
@@ -329,7 +336,7 @@ export class TokenRotationService {
           forceRefresh: true,
         };
 
-        const refreshResult = this.performTokenRefresh(refreshRequest);
+        const refreshResult = await this.performTokenRefresh(refreshRequest);
         if (!refreshResult.success) {
           return createErrorResult(refreshResult.error);
         }
@@ -508,7 +515,7 @@ export class TokenRotationService {
       forceRefresh: true,
     };
 
-    return this.performTokenRefresh(refreshRequest);
+    return await this.performTokenRefresh(refreshRequest);
   }
 
   /**
@@ -544,48 +551,159 @@ export class TokenRotationService {
   }
 
   /**
-   * Perform token refresh with OAuth provider
+   * Perform token refresh with OAuth provider using real Google OAuth implementation
    *
-   * NOTE: This method intentionally uses mock implementation instead of real Google OAuth.
-   *
-   * RATIONALE: Real Google OAuth token refresh would require:
-   * 1. Valid refresh tokens and client secrets in tests
-   * 2. Network calls to Google's OAuth endpoints during testing
-   * 3. Committing OAuth credentials to the repository
-   *
-   * For an open source project, this is impractical and insecure. The actual OAuth
-   * integration should be handled by GmailOAuthManager, not this service.
-   *
-   * This service focuses on token rotation *orchestration* (scheduling, storage,
-   * metadata tracking) while delegating actual OAuth operations to the appropriate
-   * provider.
+   * Implements robust token refresh with:
+   * - Network retry logic with exponential backoff (3 attempts max)
+   * - Rate limiting to prevent OAuth quota abuse
+   * - Comprehensive error handling and logging
+   * - Transformation between GmailTokens and TokenRefreshResponse formats
    *
    * @param request - Token refresh request
    * @returns Result containing new tokens
    */
-  private performTokenRefresh(request: TokenRefreshRequest): Result<TokenRefreshResponse> {
-    try {
-      // INTENTIONALLY MOCKED: See method documentation for rationale
-      // Real implementation would delegate to GmailOAuthManager.refreshTokens()
+  private async performTokenRefresh(request: TokenRefreshRequest): Promise<Result<TokenRefreshResponse>> {
+    const { provider, refreshToken, scopes = [] } = request;
 
-      // Simulate successful token refresh
-      const response: TokenRefreshResponse = {
-        accessToken: `ya29.${Math.random().toString(36).substring(2, 15)}`,
-        refreshToken: request.refreshToken, // Usually unchanged
-        expiresAt: new Date(Date.now() + 3600000), // 1 hour from now
-        scope: request.scopes?.join(' '),
-        tokenType: 'Bearer',
-      };
-
-      return createSuccessResult(response);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown refresh error';
+    if (provider !== 'gmail') {
       return createErrorResult(
-        new SecurityError(`Token refresh failed: ${message}`, {
-          provider: request.provider,
+        new ConfigurationError(`Unsupported provider for token refresh: ${provider}`, {
+          provider,
+          supportedProviders: ['gmail'],
         }),
       );
     }
+
+    let lastError: Error | null = null;
+    
+    // Retry logic with exponential backoff
+    for (let attempt = 1; attempt <= this.MAX_REFRESH_ATTEMPTS; attempt++) {
+      try {
+        // Rate limiting: add delay between attempts (except first attempt)
+        if (attempt > 1) {
+          const delayMs = this.RATE_LIMIT_DELAY_MS * Math.pow(2, attempt - 2); // Exponential backoff
+          await this.delay(delayMs);
+        }
+
+        // Use GmailOAuthManager to perform real token refresh
+        const refreshResult = await this.gmailOAuthManager.refreshTokens(refreshToken, attempt);
+        
+        if (!refreshResult.success) {
+          lastError = refreshResult.error;
+          
+          // Check if this is a retryable error
+          if (this.isRetryableRefreshError(refreshResult.error)) {
+            console.warn(`Token refresh attempt ${attempt}/${this.MAX_REFRESH_ATTEMPTS} failed (retryable): ${this.sanitizeErrorMessage(refreshResult.error.message)}`);
+            continue; // Retry
+          } else {
+            // Non-retryable error, fail immediately
+            return createErrorResult(
+              new AuthenticationError(`Token refresh failed: ${this.sanitizeErrorMessage(refreshResult.error.message)}`, true, {
+                provider,
+                attemptNumber: attempt,
+                errorType: 'non_retryable',
+              }),
+            );
+          }
+        }
+
+        // Success: Transform GmailTokens to TokenRefreshResponse format
+        const gmailTokens = refreshResult.data;
+        const response: TokenRefreshResponse = {
+          accessToken: gmailTokens.accessToken,
+          refreshToken: gmailTokens.refreshToken ?? refreshToken, // Fallback to original if not returned
+          expiresAt: new Date(gmailTokens.expiryDate),
+          scope: gmailTokens.scope,
+          tokenType: gmailTokens.tokenType ?? 'Bearer',
+        };
+
+        // Log successful refresh (without sensitive data)
+        console.info(`Token refresh successful for provider: ${provider}, attempt: ${attempt}/${this.MAX_REFRESH_ATTEMPTS}`);
+        
+        return createSuccessResult(response);
+
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown refresh error');
+        
+        // Check if this is a network error (retryable)
+        if (this.isNetworkError(lastError)) {
+          console.warn(`Token refresh attempt ${attempt}/${this.MAX_REFRESH_ATTEMPTS} failed (network error): ${this.sanitizeErrorMessage(lastError.message)}`);
+          continue; // Retry network errors
+        } else {
+          // Non-retryable error, fail immediately
+          break;
+        }
+      }
+    }
+
+    // All attempts failed
+    const errorMessage = lastError ? this.sanitizeErrorMessage(lastError.message) : 'Unknown error after all retry attempts';
+    console.error(`Token refresh failed after ${this.MAX_REFRESH_ATTEMPTS} attempts for provider: ${provider}: ${errorMessage}`);
+    
+    return createErrorResult(
+      new AuthenticationError(`Token refresh failed after ${this.MAX_REFRESH_ATTEMPTS} attempts: ${errorMessage}`, true, {
+        provider,
+        maxAttempts: this.MAX_REFRESH_ATTEMPTS,
+        finalError: errorMessage,
+      }),
+    );
+  }
+
+  /**
+   * Check if an error is retryable for token refresh
+   */
+  private isRetryableRefreshError(error: Error): boolean {
+    const message = error.message.toLowerCase();
+    
+    // Network errors are retryable
+    if (this.isNetworkError(error)) {
+      return true;
+    }
+    
+    // Rate limit errors are retryable
+    if (message.includes('rate_limit') || message.includes('too_many_requests')) {
+      return true;
+    }
+    
+    // Temporary server errors are retryable
+    if (message.includes('server_error') || message.includes('temporarily_unavailable')) {
+      return true;
+    }
+    
+    // Non-retryable errors: invalid_grant, client_misconfigured, consent_revoked, etc.
+    return false;
+  }
+
+  /**
+   * Check if an error is a network-related error
+   */
+  private isNetworkError(error: Error): boolean {
+    const message = error.message.toLowerCase();
+    return message.includes('enotfound') || 
+           message.includes('econnrefused') || 
+           message.includes('etimedout') || 
+           message.includes('network') ||
+           error instanceof NetworkError;
+  }
+
+  /**
+   * Sanitize error messages to prevent sensitive data exposure
+   */
+  private sanitizeErrorMessage(message: string): string {
+    // Remove potential tokens, keys, and other sensitive data
+    return message
+      .replace(/ya29\.[a-zA-Z0-9_-]+/g, '[ACCESS_TOKEN]')
+      .replace(/\b[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\b/g, '[JWT_TOKEN]')
+      .replace(/refresh_token=([^&\s]+)/g, 'refresh_token=[REDACTED]')
+      .replace(/client_secret=([^&\s]+)/g, 'client_secret=[REDACTED]')
+      .replace(/authorization_code=([^&\s]+)/g, 'authorization_code=[REDACTED]');
+  }
+
+  /**
+   * Delay execution for specified milliseconds
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
