@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Smart Inbox Janitor is an AI-powered email triage assistant built as an Electron desktop application. It helps users clean their Gmail inbox safely through intelligent classification and bulk operations. The project uses a provider-agnostic architecture with TypeScript throughout.
 
-**Key Technologies**: Electron, React, TypeScript, SQLite (better-sqlite3), Gmail API, OpenAI API
+**Key Technologies**: Electron, React, TypeScript, XState (v5), SQLite (better-sqlite3), Gmail API, OpenAI API, Material-UI (v7)
 
 ## Development Commands
 
@@ -49,11 +49,42 @@ Smart Inbox Janitor is an AI-powered email triage assistant built as an Electron
 
 ### Provider-Agnostic Design
 
-The application uses a clean provider pattern with three main categories:
+The application uses a sophisticated provider pattern with BaseProvider architecture providing common functionality:
 
 1. **EmailProvider** (`src/providers/email/`) - Gmail API integration (future: IMAP)
 2. **LLMProvider** (`src/providers/llm/`) - OpenAI GPT-4o-mini (future: Claude, local)
 3. **StorageProvider** (`src/providers/storage/`) - SQLite with encryption (future: IndexedDB)
+
+### BaseProvider Architecture
+
+All providers extend the `BaseProvider<TConfig>` abstract class (`src/shared/base/BaseProvider.ts`) which provides:
+
+- **Lifecycle Management**: Initialize, shutdown, configuration updates with hooks
+- **State Management**: Centralized initialization state tracking
+- **Performance Monitoring**: Built-in metrics collection and caching
+- **Dependency Management**: Initialization dependency resolution
+- **Health Checks**: Enhanced health checks with state and metrics
+- **Configuration Validation**: Cached validation with startup checks
+
+### XState State Machine Architecture
+
+The application uses **XState v5** for robust UI state management:
+
+- **StartupMachine** (`src/renderer/src/machines/startupMachine.ts`) - Manages application startup flow
+- **State Machine Integration** - Prevents infinite loops and provides deterministic UI states
+- **Provider Status Management** - Tracks individual provider health and setup requirements
+- **Timeout Handling** - Built-in timeout management for provider checks
+
+Key states: `initializing`, `checking_providers`, `dashboard_ready`, `setup_required`, `setup_timeout`
+
+### Startup Orchestration System
+
+Coordinates provider health checks and app readiness:
+
+- **StartupOrchestrator** (`src/renderer/src/services/StartupOrchestrator.ts`) - Orchestrates provider checks
+- **StartupStateMachine** (`src/renderer/src/components/StartupStateMachine.tsx`) - React integration with XState
+- **Parallel Provider Checks** - All provider health checks run concurrently
+- **Individual Timeouts** - Each provider has independent timeout handling
 
 ### Project Structure
 
@@ -61,13 +92,19 @@ The application uses a clean provider pattern with three main categories:
 src/
 ├── main/           # Electron main process (Node.js)
 ├── renderer/       # React UI (browser context)
-├── preload/        # Secure IPC bridge
+├── preload/        # Secure IPC bridge with type-safe interfaces
 ├── shared/         # Shared types and utilities
+│   ├── base/       # BaseProvider architecture
 │   ├── types/      # TypeScript interfaces
 │   ├── schemas/    # Zod validation schemas
 │   ├── factories/  # Test data factories
-│   └── utils/      # Shared utilities
-└── providers/      # Provider implementations
+│   └── utils/      # Shared utilities & provider initialization
+├── providers/      # Provider implementations
+└── renderer/src/
+    ├── machines/   # XState state machines
+    ├── services/   # Orchestration services
+    ├── hooks/      # Custom React hooks
+    └── components/ # React components with state management
 ```
 
 ### Result Pattern
@@ -91,6 +128,27 @@ try {
 }
 ```
 
+## React Integration Patterns
+
+### Custom Hooks
+
+- **useElectronAPI** (`src/renderer/src/hooks/useElectronAPI.ts`) - Provides type-safe access to Electron APIs
+- **useProviderStatus** (`src/renderer/src/hooks/useProviderStatus.ts`) - Real-time provider health monitoring
+- **useMachine** (from @xstate/react) - XState integration for state management
+
+### State Management
+
+- **XState v5**: Finite state machines for complex UI flows
+- **Provider Status**: Real-time health monitoring and setup requirements
+- **Modal Management**: Coordinated setup flows for different providers
+- **Error Boundaries**: Graceful error handling with state recovery
+
+### Component Architecture
+
+- **StartupStateMachine**: Central orchestrator for application startup
+- **ProviderSetupCard**: Reusable provider status and setup components
+- **Modal Coordination**: OpenAI and Gmail setup modals with state synchronization
+
 ## Key Development Patterns
 
 ### TypeScript Configuration
@@ -109,13 +167,35 @@ try {
 
 ### Provider Implementation
 
-When implementing new providers, follow existing patterns:
+When implementing new providers, follow the BaseProvider architecture:
 
-1. Extend the appropriate base interface (`EmailProvider`, `LLMProvider`, `StorageProvider`)
-2. Implement all required methods with proper return types
-3. Use the `Result` pattern consistently
-4. Add comprehensive error handling with appropriate error types
-5. Include health checks and graceful shutdown
+1. **Extend BaseProvider**: `class MyProvider extends BaseProvider<MyConfig>`
+2. **Implement Abstract Methods**:
+   - `performInitialization(config)`: Provider-specific setup
+   - `performShutdown()`: Cleanup and resource deallocation
+   - `performConfigurationValidation(config)`: Config validation logic
+   - `performHealthCheck()`: Provider health assessment
+3. **Use Lifecycle Hooks** (optional):
+   - `onPreInitialize()`, `onPostInitialize()`: Setup hooks
+   - `onPreShutdown()`, `onPostShutdown()`: Cleanup hooks
+   - `onConfigurationChanged()`: Config update handling
+4. **Configuration**:
+   - Define typed configuration extending `BaseProviderConfig`
+   - Use `getStartupValidationConfig()` for validation rules
+   - Implement `getInitializationDependencies()` if needed
+5. **State Management**: Use `ensureInitialized()` in methods requiring initialization
+6. **Performance**: Enable metrics with `enablePerformanceMetrics: true` in config
+
+### XState Machine Development
+
+When creating new state machines:
+
+1. **Define States**: Use explicit finite states, avoid boolean flags
+2. **Type Safety**: Define context interfaces and event types
+3. **Actors**: Use `fromPromise` for async operations
+4. **Guards**: Implement state transition logic in guards
+5. **Actions**: Use `assign` for context updates, separate actions for side effects
+6. **Integration**: Use `useMachine` hook with `.provide()` for implementations
 
 ### Security Considerations
 
@@ -123,6 +203,84 @@ When implementing new providers, follow existing patterns:
 - Use the `CredentialEncryption` service for secure token storage
 - All database operations use parameterized queries
 - Implement proper rate limiting for external APIs
+
+## Advanced Security Architecture
+
+The application implements a comprehensive multi-layer security system:
+
+### SecureStorageManager (`src/main/security/SecureStorageManager.ts`)
+
+- **ZERO-PASSWORD Experience**: Uses OS-level security (keychain) for transparent authentication
+- **Hybrid Storage**: Combines OS keychain with encrypted SQLite for optimal security
+- **Automatic Token Rotation**: Built-in lifecycle management for OAuth tokens
+- **Security Audit Logging**: Comprehensive logging for compliance and monitoring
+- **Recovery Procedures**: Handles corrupted storage scenarios gracefully
+
+### CredentialEncryption (`src/main/security/CredentialEncryption.ts`)
+
+- **OS Keychain Integration**: Platform-specific secure storage (keytar)
+- **Encryption at Rest**: SQLCipher encryption for database storage
+- **Master Key Management**: Derived from system entropy
+- **Token Rotation Service**: Automated credential renewal
+
+### SecurityAuditLogger (`src/main/security/SecurityAuditLogger.ts`)
+
+- **Operation Logging**: All credential operations are audited
+- **Security Event Tracking**: Failed authentications, unauthorized access attempts
+- **Compliance Features**: Audit trails for security compliance requirements
+
+### OAuth Management
+
+- **GmailOAuthManager**: Handles Gmail OAuth2 flow with refresh tokens
+- **TokenRotationService**: Automatic token renewal before expiration
+- **Secure Token Storage**: Encrypted tokens with automatic cleanup
+
+## Provider Initialization System
+
+Sophisticated initialization utilities (`src/shared/utils/provider-initialization.utils.ts`):
+
+### Features
+
+- **Caching System**: Configuration validation caching to improve performance
+- **Lazy Initialization**: Providers initialize only when needed
+- **Performance Monitoring**: Built-in metrics collection and timing
+- **Dependency Management**: Initialization dependency resolution
+- **State Tracking**: Centralized initialization state management
+
+### Decorators
+
+- `@CachedInitialization`: Caches method results based on provider state
+- `@LazyInitialization`: Defers initialization until first use
+- `@MonitorInitialization`: Collects performance metrics
+
+### Validation
+
+- **Startup Validation**: Comprehensive configuration validation at startup
+- **Cached Results**: Validation results cached with configurable TTL
+- **Custom Validators**: Extensible validation system
+
+## IPC Bridge Architecture
+
+Secure Inter-Process Communication between main and renderer processes:
+
+### Preload Bridge (`src/preload/index.ts`)
+
+- **Type-Safe Interfaces**: Full TypeScript coverage for all IPC operations
+- **Context Isolation**: Uses Electron's contextBridge for security
+- **Provider Abstraction**: Direct mapping to provider methods
+- **Result Pattern Integration**: Consistent error handling across IPC boundary
+
+### API Surface
+
+```typescript
+interface ElectronAPI {
+  email: EmailProvider; // Gmail operations
+  storage: StorageProvider; // Database operations
+  llm: LLMProvider; // AI operations
+  app: AppControls; // Window management
+  oauth: OAuthOperations; // Authentication flows
+}
+```
 
 ## Database & Storage
 
@@ -184,17 +342,40 @@ Key tables/entities:
 - Check `eslint.config.js` for current rules
 - Strict boolean expressions required - use explicit checks
 
+### XState Issues
+
+- **State Machine Not Updating**: Check that events are properly typed and guards return boolean
+- **Async Operations**: Use `fromPromise` actors for async operations, not direct promises
+- **Context Updates**: Use `assign()` for context updates, not direct mutation
+- **Type Issues**: Ensure event types match machine definition
+
+### Provider Issues
+
+- **BaseProvider Errors**: Ensure `performInitialization()` and other abstract methods are implemented
+- **Result Pattern**: All async operations must return `Result<T>` types
+- **Health Checks**: Use enhanced health checks from BaseProvider for debugging
+- **Initialization State**: Check `getInitializationState()` for provider state debugging
+- **Performance**: Use `getInitializationMetrics()` to analyze initialization performance
+
+### Security Issues
+
+- **Token Storage**: Use `SecureStorageManager` for all credential operations
+- **Audit Logging**: Check `SecurityAuditLogger` for credential operation logs
+- **Encryption**: Verify `CredentialEncryption` setup if storage operations fail
+- **OAuth Flows**: Use `GmailOAuthManager` for Gmail authentication issues
+
 ### Database Issues
 
 - Check encryption setup if database won't open
 - Use `healthCheck()` methods to diagnose provider issues
 - Check migrations if schema errors occur
+- Use `SecureStorageManager.healthCheck()` for storage diagnostics
 
-### Provider Issues
+### IPC Communication Issues
 
-- All providers must implement the `Result` pattern
-- Use `healthCheck()` to verify provider status
-- Check configuration objects match expected interfaces
+- **Type Safety**: Ensure renderer types match preload bridge definitions
+- **Result Handling**: All IPC calls return `Result<T>` - check `.success` property
+- **Context Isolation**: Use `window.electronAPI` in renderer, never `ipcRenderer` directly
 
 ## Build & Deployment
 
@@ -286,9 +467,30 @@ Use `Box` with CSS Grid for complex layouts when Grid component is insufficient.
 - Use React DevTools for renderer debugging
 - Electron DevTools for main process debugging
 
+### State Machine Debugging
+
+- **XState Inspector**: Use browser XState inspector for state visualization
+- **Console Logging**: State machines log transitions and context changes
+- **State Matching**: Use `state.matches('stateName')` for debugging current state
+- **Event Debugging**: Log events sent to state machines
+
+### Provider Debugging
+
+- **Initialization State**: Check `provider.getInitializationState()` for detailed state
+- **Performance Metrics**: Use `provider.getInitializationMetrics()` for performance analysis
+- **Health Checks**: Enhanced health checks include initialization metrics and state
+- **Configuration**: Use `provider.getConfig()` to verify current configuration
+
+### Security Debugging
+
+- **Audit Logs**: Check `SecurityAuditLogger` for credential operation history
+- **Storage Status**: Use `SecureStorageManager.getSecureStorageStatus()` for diagnostics
+- **Encryption**: Verify `CredentialEncryption` health check for encryption status
+
 ### Log Analysis
 
-- Security audit logs in database
+- Security audit logs in database with detailed operation tracking
 - Console logging available (warn level in production)
-- Error tracking through Result pattern
-- Performance metrics collection available
+- Error tracking through Result pattern with detailed error contexts
+- Performance metrics collection with timing and caching statistics
+- State machine transition logging for UI flow analysis

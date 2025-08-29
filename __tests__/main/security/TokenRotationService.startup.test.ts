@@ -48,9 +48,12 @@ describe('TokenRotationService - Startup Integration', () => {
     mockGmailOAuthManager = new GmailOAuthManager({
       clientId: 'test-client-id',
       clientSecret: 'test-client-secret',
-      redirectUri: 'http://localhost:8080/oauth/callback'
+      redirectUri: 'http://localhost:8080/oauth/callback',
     }) as jest.Mocked<GmailOAuthManager>;
-    tokenRotationService = new TokenRotationService(mockSecureStorageManager, mockGmailOAuthManager);
+    tokenRotationService = new TokenRotationService(
+      mockSecureStorageManager,
+      mockGmailOAuthManager,
+    );
   });
 
   afterEach(() => {

@@ -301,7 +301,7 @@ export class TokenRotationService {
   shutdown(): Result<void> {
     try {
       console.info('Shutting down TokenRotationService');
-      
+
       this.stopRotationScheduler();
 
       // Properly reset all status including metrics
@@ -316,7 +316,7 @@ export class TokenRotationService {
       };
 
       this.initialized = false;
-      
+
       console.info('TokenRotationService shutdown complete');
 
       return createSuccessResult(undefined);
@@ -434,12 +434,9 @@ export class TokenRotationService {
 
     try {
       console.info('Starting token rotation check cycle');
-      
+
       // Add timeout protection for rotation operations
-      await Promise.race([
-        this.performRotationCheckWithRetry(),
-        this.createTimeoutPromise()
-      ]);
+      await Promise.race([this.performRotationCheckWithRetry(), this.createTimeoutPromise()]);
 
       // Atomically update successful rotation status
       this.atomicUpdateRotationStatus({
@@ -449,13 +446,13 @@ export class TokenRotationService {
 
       const duration = Date.now() - rotationStartTime;
       console.info(`Token rotation check cycle completed successfully in ${duration}ms`);
-      
     } catch (error) {
       const duration = Date.now() - rotationStartTime;
-      const errorMessage = error instanceof Error ? this.sanitizeErrorMessage(error.message) : 'Unknown error';
-      
+      const errorMessage =
+        error instanceof Error ? this.sanitizeErrorMessage(error.message) : 'Unknown error';
+
       console.error(`Token rotation check cycle failed after ${duration}ms: ${errorMessage}`);
-      
+
       // Atomically increment failure count
       const newFailedAttempts = this.rotationStatus.failedAttempts + 1;
       this.atomicUpdateRotationStatus({
@@ -469,10 +466,13 @@ export class TokenRotationService {
       } else {
         // Log retry information
         const nextRetryDelay = Math.min(
-          this.config.rotationIntervalMs * Math.pow(this.config.retryDelayMultiplier, newFailedAttempts - 1),
-          this.config.rotationIntervalMs * 4 // Cap at 4x normal interval
+          this.config.rotationIntervalMs *
+            Math.pow(this.config.retryDelayMultiplier, newFailedAttempts - 1),
+          this.config.rotationIntervalMs * 4, // Cap at 4x normal interval
         );
-        console.warn(`Will retry rotation check in ${Math.round(nextRetryDelay / 1000)} seconds (attempt ${newFailedAttempts}/${this.config.maxRetryAttempts})`);
+        console.warn(
+          `Will retry rotation check in ${Math.round(nextRetryDelay / 1000)} seconds (attempt ${newFailedAttempts}/${this.config.maxRetryAttempts})`,
+        );
       }
     } finally {
       // Atomically clear rotation in progress flag
@@ -487,36 +487,46 @@ export class TokenRotationService {
    */
   private async performRotationCheckWithRetry(): Promise<void> {
     let lastError: Error | null = null;
-    
+
     for (let attempt = 1; attempt <= this.config.maxRetryAttempts; attempt++) {
       try {
         if (attempt > 1) {
-          const retryDelay = this.config.rotationIntervalMs * Math.pow(this.config.retryDelayMultiplier, attempt - 2) / 10; // Shorter retry delays than full rotation interval
-          console.info(`Retrying rotation check in ${Math.round(retryDelay / 1000)} seconds (attempt ${attempt}/${this.config.maxRetryAttempts})`);
+          const retryDelay =
+            (this.config.rotationIntervalMs *
+              Math.pow(this.config.retryDelayMultiplier, attempt - 2)) /
+            10; // Shorter retry delays than full rotation interval
+          console.info(
+            `Retrying rotation check in ${Math.round(retryDelay / 1000)} seconds (attempt ${attempt}/${this.config.maxRetryAttempts})`,
+          );
           await this.delay(retryDelay);
         }
-        
+
         // Perform the actual rotation check
         await this.performRotationCheck();
-        
+
         // Success - exit retry loop
         if (attempt > 1) {
-          console.info(`Rotation check succeeded on attempt ${attempt}/${this.config.maxRetryAttempts}`);
+          console.info(
+            `Rotation check succeeded on attempt ${attempt}/${this.config.maxRetryAttempts}`,
+          );
         }
         return;
-        
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Unknown rotation error');
         const errorMessage = this.sanitizeErrorMessage(lastError.message);
-        
+
         if (attempt === this.config.maxRetryAttempts) {
-          console.error(`Rotation check failed on all ${this.config.maxRetryAttempts} attempts: ${errorMessage}`);
+          console.error(
+            `Rotation check failed on all ${this.config.maxRetryAttempts} attempts: ${errorMessage}`,
+          );
         } else {
-          console.warn(`Rotation check attempt ${attempt}/${this.config.maxRetryAttempts} failed: ${errorMessage}`);
+          console.warn(
+            `Rotation check attempt ${attempt}/${this.config.maxRetryAttempts} failed: ${errorMessage}`,
+          );
         }
       }
     }
-    
+
     // All attempts failed
     if (lastError) {
       throw lastError;
@@ -547,10 +557,10 @@ export class TokenRotationService {
    */
   private async checkGmailTokenRotation(): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       console.info('Checking Gmail tokens for rotation need');
-      
+
       const tokensResult = await this.secureStorageManager.getGmailTokens();
       if (!tokensResult.success || !tokensResult.data) {
         console.info('No Gmail tokens found for rotation check');
@@ -563,17 +573,19 @@ export class TokenRotationService {
       const bufferTime = currentTime + this.config.expirationBufferMs;
       const timeUntilExpiry = expirationTime - currentTime;
 
-      console.info(`Gmail tokens expire in ${Math.round(timeUntilExpiry / 1000 / 60)} minutes, buffer: ${this.config.expirationBufferMs / 1000 / 60} minutes`);
+      console.info(
+        `Gmail tokens expire in ${Math.round(timeUntilExpiry / 1000 / 60)} minutes, buffer: ${this.config.expirationBufferMs / 1000 / 60} minutes`,
+      );
 
       // Check if tokens expire within the buffer period
       if (expirationTime <= bufferTime) {
         console.info('Gmail tokens require rotation - initiating rotation process');
-        
+
         const rotationResult = await this.rotateProviderTokens('gmail');
         if (!rotationResult.success) {
           const errorMessage = this.sanitizeErrorMessage(rotationResult.error.message);
           console.error(`Gmail token rotation failed: ${errorMessage}`);
-          
+
           // Use Result pattern consistently - don't throw, let caller handle
           throw new SecurityError(`Gmail token rotation failed: ${errorMessage}`, {
             provider: 'gmail',
@@ -583,10 +595,10 @@ export class TokenRotationService {
             bufferTime: this.config.expirationBufferMs,
           });
         }
-        
+
         const duration = Date.now() - startTime;
         console.info(`Gmail token rotation completed successfully in ${duration}ms`);
-        
+
         // Update performance metrics
         this.updateRotationMetrics('gmail', duration, true);
       } else {
@@ -594,13 +606,14 @@ export class TokenRotationService {
       }
     } catch (error) {
       const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? this.sanitizeErrorMessage(error.message) : 'Unknown error';
-      
+      const errorMessage =
+        error instanceof Error ? this.sanitizeErrorMessage(error.message) : 'Unknown error';
+
       console.error(`Gmail token rotation check failed after ${duration}ms: ${errorMessage}`);
-      
+
       // Update performance metrics for failed attempt
       this.updateRotationMetrics('gmail', duration, false);
-      
+
       // Re-throw to be handled by the caller (checkAndRotateTokens)
       throw error;
     }
@@ -712,7 +725,9 @@ export class TokenRotationService {
    * @param request - Token refresh request
    * @returns Result containing new tokens
    */
-  private async performTokenRefresh(request: TokenRefreshRequest): Promise<Result<TokenRefreshResponse>> {
+  private async performTokenRefresh(
+    request: TokenRefreshRequest,
+  ): Promise<Result<TokenRefreshResponse>> {
     const { provider, refreshToken, scopes = [] } = request;
 
     if (provider !== 'gmail') {
@@ -725,7 +740,7 @@ export class TokenRotationService {
     }
 
     let lastError: Error | null = null;
-    
+
     // Retry logic with exponential backoff
     for (let attempt = 1; attempt <= this.MAX_REFRESH_ATTEMPTS; attempt++) {
       try {
@@ -737,22 +752,28 @@ export class TokenRotationService {
 
         // Use GmailOAuthManager to perform real token refresh
         const refreshResult = await this.gmailOAuthManager.refreshTokens(refreshToken, attempt);
-        
+
         if (!refreshResult.success) {
           lastError = refreshResult.error;
-          
+
           // Check if this is a retryable error
           if (this.isRetryableRefreshError(refreshResult.error)) {
-            console.warn(`Token refresh attempt ${attempt}/${this.MAX_REFRESH_ATTEMPTS} failed (retryable): ${this.sanitizeErrorMessage(refreshResult.error.message)}`);
+            console.warn(
+              `Token refresh attempt ${attempt}/${this.MAX_REFRESH_ATTEMPTS} failed (retryable): ${this.sanitizeErrorMessage(refreshResult.error.message)}`,
+            );
             continue; // Retry
           } else {
             // Non-retryable error, fail immediately
             return createErrorResult(
-              new AuthenticationError(`Token refresh failed: ${this.sanitizeErrorMessage(refreshResult.error.message)}`, true, {
-                provider,
-                attemptNumber: attempt,
-                errorType: 'non_retryable',
-              }),
+              new AuthenticationError(
+                `Token refresh failed: ${this.sanitizeErrorMessage(refreshResult.error.message)}`,
+                true,
+                {
+                  provider,
+                  attemptNumber: attempt,
+                  errorType: 'non_retryable',
+                },
+              ),
             );
           }
         }
@@ -768,16 +789,19 @@ export class TokenRotationService {
         };
 
         // Log successful refresh (without sensitive data)
-        console.info(`Token refresh successful for provider: ${provider}, attempt: ${attempt}/${this.MAX_REFRESH_ATTEMPTS}`);
-        
-        return createSuccessResult(response);
+        console.info(
+          `Token refresh successful for provider: ${provider}, attempt: ${attempt}/${this.MAX_REFRESH_ATTEMPTS}`,
+        );
 
+        return createSuccessResult(response);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Unknown refresh error');
-        
+
         // Check if this is a network error (retryable)
         if (this.isNetworkError(lastError)) {
-          console.warn(`Token refresh attempt ${attempt}/${this.MAX_REFRESH_ATTEMPTS} failed (network error): ${this.sanitizeErrorMessage(lastError.message)}`);
+          console.warn(
+            `Token refresh attempt ${attempt}/${this.MAX_REFRESH_ATTEMPTS} failed (network error): ${this.sanitizeErrorMessage(lastError.message)}`,
+          );
           continue; // Retry network errors
         } else {
           // Non-retryable error, fail immediately
@@ -787,15 +811,23 @@ export class TokenRotationService {
     }
 
     // All attempts failed
-    const errorMessage = lastError ? this.sanitizeErrorMessage(lastError.message) : 'Unknown error after all retry attempts';
-    console.error(`Token refresh failed after ${this.MAX_REFRESH_ATTEMPTS} attempts for provider: ${provider}: ${errorMessage}`);
-    
+    const errorMessage = lastError
+      ? this.sanitizeErrorMessage(lastError.message)
+      : 'Unknown error after all retry attempts';
+    console.error(
+      `Token refresh failed after ${this.MAX_REFRESH_ATTEMPTS} attempts for provider: ${provider}: ${errorMessage}`,
+    );
+
     return createErrorResult(
-      new AuthenticationError(`Token refresh failed after ${this.MAX_REFRESH_ATTEMPTS} attempts: ${errorMessage}`, true, {
-        provider,
-        maxAttempts: this.MAX_REFRESH_ATTEMPTS,
-        finalError: errorMessage,
-      }),
+      new AuthenticationError(
+        `Token refresh failed after ${this.MAX_REFRESH_ATTEMPTS} attempts: ${errorMessage}`,
+        true,
+        {
+          provider,
+          maxAttempts: this.MAX_REFRESH_ATTEMPTS,
+          finalError: errorMessage,
+        },
+      ),
     );
   }
 
@@ -804,22 +836,22 @@ export class TokenRotationService {
    */
   private isRetryableRefreshError(error: Error): boolean {
     const message = error.message.toLowerCase();
-    
+
     // Network errors are retryable
     if (this.isNetworkError(error)) {
       return true;
     }
-    
+
     // Rate limit errors are retryable
     if (message.includes('rate_limit') || message.includes('too_many_requests')) {
       return true;
     }
-    
+
     // Temporary server errors are retryable
     if (message.includes('server_error') || message.includes('temporarily_unavailable')) {
       return true;
     }
-    
+
     // Non-retryable errors: invalid_grant, client_misconfigured, consent_revoked, etc.
     return false;
   }
@@ -829,11 +861,13 @@ export class TokenRotationService {
    */
   private isNetworkError(error: Error): boolean {
     const message = error.message.toLowerCase();
-    return message.includes('enotfound') || 
-           message.includes('econnrefused') || 
-           message.includes('etimedout') || 
-           message.includes('network') ||
-           error instanceof NetworkError;
+    return (
+      message.includes('enotfound') ||
+      message.includes('econnrefused') ||
+      message.includes('etimedout') ||
+      message.includes('network') ||
+      error instanceof NetworkError
+    );
   }
 
   /**
@@ -853,7 +887,7 @@ export class TokenRotationService {
    * Delay execution for specified milliseconds
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -886,10 +920,10 @@ export class TokenRotationService {
    */
   private updateRotationMetrics(provider: string, durationMs: number, success: boolean): void {
     const metrics = this.rotationStatus.metrics[provider] || this.initializeMetrics();
-    
+
     metrics.totalAttempts++;
     metrics.lastDurationMs = durationMs;
-    
+
     if (success) {
       metrics.successfulRotations++;
       metrics.lastRotationAt = new Date();
@@ -897,15 +931,17 @@ export class TokenRotationService {
       metrics.failedRotations++;
       metrics.lastFailureAt = new Date();
     }
-    
+
     // Calculate running average duration
-    const totalDuration = (metrics.averageDurationMs * (metrics.totalAttempts - 1)) + durationMs;
+    const totalDuration = metrics.averageDurationMs * (metrics.totalAttempts - 1) + durationMs;
     metrics.averageDurationMs = Math.round(totalDuration / metrics.totalAttempts);
-    
+
     this.rotationStatus.metrics[provider] = metrics;
-    
+
     // Log metrics for monitoring (without sensitive data)
-    console.info(`Rotation metrics for ${provider}: ${metrics.successfulRotations}/${metrics.totalAttempts} successful, avg duration: ${metrics.averageDurationMs}ms`);
+    console.info(
+      `Rotation metrics for ${provider}: ${metrics.successfulRotations}/${metrics.totalAttempts} successful, avg duration: ${metrics.averageDurationMs}ms`,
+    );
   }
 
   /**
@@ -930,19 +966,20 @@ export class TokenRotationService {
   } {
     const status = this.getRotationStatus();
     const now = Date.now();
-    
+
     // Calculate health metrics
     const gmailMetrics = status.metrics.gmail || this.initializeMetrics();
-    const recentErrorRate = gmailMetrics.totalAttempts > 0 
-      ? gmailMetrics.failedRotations / gmailMetrics.totalAttempts 
-      : 0;
-    
+    const recentErrorRate =
+      gmailMetrics.totalAttempts > 0
+        ? gmailMetrics.failedRotations / gmailMetrics.totalAttempts
+        : 0;
+
     const isHealthy = recentErrorRate < 0.5 && status.failedAttempts < this.config.maxRetryAttempts;
-    
-    const nextRotationIn = status.nextRotation 
-      ? Math.max(0, status.nextRotation.getTime() - now) 
+
+    const nextRotationIn = status.nextRotation
+      ? Math.max(0, status.nextRotation.getTime() - now)
       : undefined;
-      
+
     return {
       ...status,
       uptime: this.initialized ? now - (status.lastRotation?.getTime() || now) : 0,
