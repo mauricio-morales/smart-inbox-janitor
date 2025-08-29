@@ -728,7 +728,7 @@ export class TokenRotationService {
   private async performTokenRefresh(
     request: TokenRefreshRequest,
   ): Promise<Result<TokenRefreshResponse>> {
-    const { provider, refreshToken, scopes = [] } = request;
+    const { provider, refreshToken } = request;
 
     if (provider !== 'gmail') {
       return createErrorResult(
