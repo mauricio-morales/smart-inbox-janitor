@@ -17,9 +17,16 @@ import {
  * ElectronAPI interface subset needed for provider checks
  */
 interface ElectronAPISubset {
-  checkGmailConnection: () => Promise<any>;
-  checkOpenAIConnection: () => Promise<any>;
-  healthCheck: () => Promise<{ status: string; timestamp: Date }>;
+  oauth: {
+    checkGmailConnection: () => Promise<any>;
+    checkOpenAIConnection: () => Promise<any>;
+  };
+  storage: {
+    healthCheck: () => Promise<{
+      success: boolean;
+      data?: { healthy: boolean; status: string; message?: string };
+    }>;
+  };
 }
 
 /**
@@ -191,15 +198,24 @@ export class StartupOrchestrator {
    */
   private async checkGmailProvider(): Promise<ProviderStatus> {
     try {
-      const result = await this.electronAPI.checkGmailConnection();
+      const result = await this.electronAPI.oauth.checkGmailConnection();
+
+      // Check if this is an API not ready error
+      if (!result.success && result.error?.code === 'API_NOT_READY') {
+        return createErrorProviderStatus(
+          'gmail',
+          'System initializing - please wait...',
+          'initial_setup',
+        );
+      }
 
       // Handle different possible result structures
-      if (result?.isConnected) {
+      if (result.success && result.data?.isConnected) {
         return createConnectedProviderStatus(
           'gmail',
-          result.accountEmail ? `Connected as ${result.accountEmail}` : 'Connected',
+          result.data.accountEmail ? `Connected as ${result.data.accountEmail}` : 'Connected',
         );
-      } else if (result?.requiresAuth) {
+      } else if (result.success && result.data?.requiresAuth) {
         return createErrorProviderStatus(
           'gmail',
           'Gmail session expired - please sign in again',
@@ -208,8 +224,10 @@ export class StartupOrchestrator {
       } else {
         return createErrorProviderStatus(
           'gmail',
-          result.error || 'Gmail not configured - please set up Gmail integration',
-          'initial_setup',
+          result.success
+            ? result.data?.error || 'Gmail not configured - please set up Gmail integration'
+            : result.error?.message || 'Gmail connection failed',
+          result.success ? 'initial_setup' : 'full_reconfiguration',
         );
       }
     } catch (error) {
@@ -227,22 +245,33 @@ export class StartupOrchestrator {
    */
   private async checkOpenAIProvider(): Promise<ProviderStatus> {
     try {
-      const result = await this.electronAPI.checkOpenAIConnection();
+      const result = await this.electronAPI.oauth.checkOpenAIConnection();
 
-      // Handle different possible result structures
-      if (result?.isConnected && result.modelAvailable) {
-        return createConnectedProviderStatus('openai', 'OpenAI GPT-4o-mini Configured');
-      } else if (result?.error) {
+      // Check if this is an API not ready error
+      if (!result.success && result.error?.code === 'API_NOT_READY') {
         return createErrorProviderStatus(
           'openai',
-          `OpenAI API key error: ${result.error}`,
+          'System initializing - please wait...',
+          'initial_setup',
+        );
+      }
+
+      // Handle different possible result structures
+      if (result.success && result.data?.isConnected && result.data?.modelAvailable) {
+        return createConnectedProviderStatus('openai', 'OpenAI GPT-4o-mini Configured');
+      } else if (result.success && result.data?.error) {
+        return createErrorProviderStatus(
+          'openai',
+          `OpenAI API key error: ${result.data.error}`,
           'full_reconfiguration',
         );
       } else {
         return createErrorProviderStatus(
           'openai',
-          'OpenAI API key not configured - please set up OpenAI integration',
-          'initial_setup',
+          result.success
+            ? 'OpenAI API key not configured - please set up OpenAI integration'
+            : result.error?.message || 'OpenAI connection failed',
+          result.success ? 'initial_setup' : 'full_reconfiguration',
         );
       }
     } catch (error) {
@@ -260,14 +289,14 @@ export class StartupOrchestrator {
    */
   private async checkStorageProvider(): Promise<ProviderStatus> {
     try {
-      const result = await this.electronAPI.healthCheck();
+      const result = await this.electronAPI.storage.healthCheck();
 
-      if (result && result.status === 'ok') {
+      if (result.success && result.data?.healthy && result.data?.status === 'healthy') {
         return createConnectedProviderStatus('storage', 'Database ready');
       } else {
         return createErrorProviderStatus(
           'storage',
-          'Storage health check failed',
+          result.data?.message || 'Storage health check failed',
           'full_reconfiguration',
         );
       }
@@ -307,6 +336,81 @@ export class StartupOrchestrator {
  * @param electronAPI - ElectronAPI instance for provider checks
  * @returns StartupOrchestrator instance
  */
-export function createStartupOrchestrator(electronAPI: ElectronAPISubset): StartupOrchestrator {
-  return new StartupOrchestrator(electronAPI);
+export function createStartupOrchestrator(electronAPI: any): StartupOrchestrator {
+  const keys = Object.keys(electronAPI || {});
+  console.log('[createStartupOrchestrator] electronAPI keys:', keys);
+  console.log('[createStartupOrchestrator] oauth available:', !!electronAPI?.oauth);
+  console.log('[createStartupOrchestrator] storage available:', !!electronAPI?.storage);
+  console.log('[createStartupOrchestrator] actual keys array:', keys);
+
+  // Check if electronAPI is actually available and has the expected structure
+  if (!electronAPI || !electronAPI.oauth || !electronAPI.storage) {
+    console.error('[createStartupOrchestrator] electronAPI not properly initialized:', {
+      available: !!electronAPI,
+      hasOauth: !!electronAPI?.oauth,
+      hasStorage: !!electronAPI?.storage,
+    });
+  }
+
+  // Try multiple ways to access the API methods
+  const gmailCheck = electronAPI?.oauth?.checkGmailConnection || electronAPI?.checkGmailConnection;
+  const openaiCheck =
+    electronAPI?.oauth?.checkOpenAIConnection || electronAPI?.checkOpenAIConnection;
+  const storageCheck = electronAPI?.storage?.healthCheck || electronAPI?.healthCheck;
+
+  console.log('[createStartupOrchestrator] Method availability:', {
+    gmailCheck: typeof gmailCheck,
+    openaiCheck: typeof openaiCheck,
+    storageCheck: typeof storageCheck,
+  });
+
+  return new StartupOrchestrator({
+    oauth: {
+      checkGmailConnection:
+        gmailCheck ||
+        (() => {
+          console.warn('[StartupOrchestrator] Gmail check unavailable - API not ready');
+          return Promise.resolve({
+            success: false,
+            error: {
+              code: 'API_NOT_READY',
+              message: 'Electron API not available - initialization in progress',
+              retryable: true,
+              timestamp: new Date(),
+              details: { provider: 'gmail' },
+            },
+          });
+        }),
+      checkOpenAIConnection:
+        openaiCheck ||
+        (() => {
+          console.warn('[StartupOrchestrator] OpenAI check unavailable - API not ready');
+          return Promise.resolve({
+            success: false,
+            error: {
+              code: 'API_NOT_READY',
+              message: 'Electron API not available - initialization in progress',
+              retryable: true,
+              timestamp: new Date(),
+              details: { provider: 'openai' },
+            },
+          });
+        }),
+    },
+    storage: {
+      healthCheck:
+        storageCheck ||
+        (() => {
+          console.warn('[StartupOrchestrator] Storage check unavailable - API not ready');
+          return Promise.resolve({
+            success: false,
+            data: {
+              healthy: false,
+              status: 'unhealthy',
+              message: 'Electron API not available - initialization in progress',
+            },
+          });
+        }),
+    },
+  });
 }

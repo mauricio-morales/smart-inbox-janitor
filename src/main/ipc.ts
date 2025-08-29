@@ -27,260 +27,70 @@ export function setupIPC(
 ): void {
   // Email provider operations
   ipcMain.handle('email:list', async (_, options?: ListOptions) => {
-    try {
-      return await emailProvider.list(options);
-    } catch (error) {
-      // console.error('Email list error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    // Providers return Result<T> - no need for try/catch
+    return await emailProvider.list(options);
   });
 
   ipcMain.handle('email:get', async (_, emailId: string, options?: GetEmailOptions) => {
-    try {
-      return await emailProvider.get(emailId, options);
-    } catch (error) {
-      // console.error('Email get error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    return await emailProvider.get(emailId, options);
   });
 
   ipcMain.handle('email:batchModify', async (_, request: BatchModifyRequest) => {
-    try {
-      return await emailProvider.batchModify(request);
-    } catch (error) {
-      // console.error('Email batch modify error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    return await emailProvider.batchModify(request);
   });
 
   ipcMain.handle('email:batchDelete', async (_, request: BatchDeleteRequest) => {
-    try {
-      return await emailProvider.batchDelete(request);
-    } catch (error) {
-      // console.error('Email batch delete error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    return await emailProvider.batchDelete(request);
   });
 
   ipcMain.handle('email:search', async (_, query: string, options?: SearchOptions) => {
-    try {
-      return await emailProvider.search(query, options);
-    } catch (error) {
-      // console.error('Email search error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    return await emailProvider.search(query, options);
   });
 
   ipcMain.handle('email:getFolders', async () => {
-    try {
-      return await emailProvider.getFolders();
-    } catch (error) {
-      // console.error('Get folders error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    return await emailProvider.getFolders();
   });
 
   // Storage provider operations
   ipcMain.handle('storage:getUserRules', async () => {
-    try {
-      return await storageProvider.getUserRules();
-    } catch (error) {
-      // console.error('Get user rules error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    return await storageProvider.getUserRules();
   });
 
   ipcMain.handle('storage:updateUserRules', async (_, rules: UserRules) => {
-    try {
-      return await storageProvider.updateUserRules(rules);
-    } catch (error) {
-      // console.error('Update user rules error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    return await storageProvider.updateUserRules(rules);
   });
 
   ipcMain.handle('storage:getEmailMetadata', async (_, emailId: string) => {
-    try {
-      return await storageProvider.getEmailMetadata(emailId);
-    } catch (error) {
-      // console.error('Get email metadata error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    return await storageProvider.getEmailMetadata(emailId);
   });
 
   ipcMain.handle(
     'storage:setEmailMetadata',
     async (_, emailId: string, metadata: EmailMetadata) => {
-      try {
-        return await storageProvider.setEmailMetadata(emailId, metadata);
-      } catch (error) {
-        // console.error('Set email metadata error:', error);
-        return {
-          success: false,
-          error: {
-            code: 'IPC_ERROR',
-            message: error instanceof Error ? error.message : 'Unknown error',
-            retryable: false,
-            timestamp: new Date(),
-            details: {},
-          },
-        };
-      }
+      return await storageProvider.setEmailMetadata(emailId, metadata);
     },
   );
 
   ipcMain.handle('storage:getConfig', async () => {
-    try {
-      return await storageProvider.getConfig();
-    } catch (error) {
-      // console.error('Get config error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    return await storageProvider.getConfig();
   });
 
   ipcMain.handle('storage:updateConfig', async (_, config: Partial<StoredAppConfig>) => {
-    try {
-      return await storageProvider.updateConfig(config);
-    } catch (error) {
-      // console.error('Update config error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    return await storageProvider.updateConfig(config);
   });
 
   // LLM provider operations
   ipcMain.handle('llm:classify', async (_, input: ClassifyInput) => {
-    try {
-      return await llmProvider.classifyEmails(input);
-    } catch (error) {
-      // console.error('LLM classify error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    return await llmProvider.classifyEmails(input);
   });
 
   ipcMain.handle('llm:healthCheck', async () => {
-    try {
-      return await llmProvider.healthCheck();
-    } catch (error) {
-      // console.error('LLM health check error:', error);
-      return {
-        success: false,
-        error: {
-          code: 'IPC_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          retryable: false,
-          timestamp: new Date(),
-          details: {},
-        },
-      };
-    }
+    return await llmProvider.healthCheck();
+  });
+
+  // Storage provider health check
+  ipcMain.handle('storage:healthCheck', async () => {
+    return await storageProvider.healthCheck();
   });
 
   // Application-level operations
@@ -322,7 +132,7 @@ export function setupIPC(
     return window ? window.isMaximized() : false;
   });
 
-  // Shell operations
+  // Shell operations (keep try/catch - shell doesn't use Result pattern)
   ipcMain.handle('shell:openExternal', async (_, url: string) => {
     try {
       await shell.openExternal(url);

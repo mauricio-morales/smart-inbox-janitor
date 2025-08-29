@@ -44,7 +44,15 @@ void app.whenReady().then(async () => {
 
   // Initialize providers before setting up IPC
   try {
-    await storageProvider.initialize({ databasePath: './data/app.db' });
+    console.log('Initializing SQLite storage provider...');
+    const storageInitResult = await storageProvider.initialize({ databasePath: './data/app.db' });
+
+    if (!storageInitResult.success) {
+      console.error('Failed to initialize SQLite storage provider:', storageInitResult.error);
+      console.error('Storage error details:', JSON.stringify(storageInitResult.error, null, 2));
+      throw new Error(`Storage initialization failed: ${storageInitResult.error.message}`);
+    }
+    console.log('✓ SQLite storage provider initialized successfully');
 
     // Initialize secure storage manager with the storage provider
     console.log('Initializing secure storage manager...');
@@ -58,12 +66,14 @@ void app.whenReady().then(async () => {
     if (!secureStorageInitResult.success) {
       console.error('Failed to initialize secure storage manager:', secureStorageInitResult.error);
       console.error('Error details:', JSON.stringify(secureStorageInitResult.error, null, 2));
-    } else {
-      console.log('Secure storage manager initialized successfully');
+      throw new Error(
+        `Secure storage initialization failed: ${secureStorageInitResult.error.message}`,
+      );
     }
+    console.log('✓ Secure storage manager initialized successfully');
 
     // PATTERN: Gmail startup authentication integration
-    // Initialize startup authentication services
+    // Initialize startup authentication services (wait for secure storage first)
     console.log('Initializing startup authentication services...');
 
     // Create OAuth manager for Gmail authentication
@@ -77,6 +87,9 @@ void app.whenReady().then(async () => {
 
     if (!gmailOAuthInitResult.success) {
       console.error('Gmail OAuth manager initialization failed:', gmailOAuthInitResult.error);
+      // Continue without OAuth manager - it may be reconfigured later
+    } else {
+      console.log('✓ Gmail OAuth manager initialized successfully');
     }
 
     // Create token rotation service with OAuth manager dependency
@@ -85,16 +98,20 @@ void app.whenReady().then(async () => {
 
     if (!tokenRotationInitResult.success) {
       console.error('Token rotation service initialization failed:', tokenRotationInitResult.error);
+      // Continue without token rotation - manual refresh will be needed
+    } else {
+      console.log('✓ Token rotation service initialized successfully');
     }
 
-    // Create startup auth service
+    // Create startup auth service (depends on both OAuth manager and secure storage)
     const gmailStartupAuth = new GmailStartupAuth(gmailOAuthManager, secureStorageManager);
     const startupAuthInitResult = await gmailStartupAuth.initialize();
 
     if (!startupAuthInitResult.success) {
       console.error('Gmail startup auth initialization failed:', startupAuthInitResult.error);
+      // Continue without startup auth - manual OAuth flow will be needed
     } else {
-      console.log('Gmail startup auth initialized successfully');
+      console.log('✓ Gmail startup auth initialized successfully');
     }
 
     // CRITICAL: Perform startup token validation and refresh
@@ -135,7 +152,9 @@ void app.whenReady().then(async () => {
     }
 
     // Setup IPC handlers AFTER all services are initialized
+    console.log('Setting up IPC handlers...');
     setupIPC(emailProvider, llmProvider, storageProvider, secureStorageManager);
+    console.log('✓ IPC handlers registered successfully');
 
     // Note: Email and LLM providers will be initialized during OAuth flow
   } catch (error) {

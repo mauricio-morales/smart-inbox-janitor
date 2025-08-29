@@ -265,18 +265,26 @@ export class SecureStorageManager {
    */
   async getGmailTokens(): Promise<Result<GmailTokens | null>> {
     try {
+      console.log('[SecureStorageManager] getGmailTokens called');
       this.ensureInitialized();
 
       // Check cache first
       if (this.credentials.gmail) {
+        console.log('[SecureStorageManager] Found Gmail tokens in cache');
         return createSuccessResult(this.credentials.gmail);
       }
 
       // Retrieve from storage
+      console.log('[SecureStorageManager] Retrieving Gmail tokens from storage...');
       const tokenResult = await this.storageProvider.getEncryptedTokens();
       if (!tokenResult.success) {
+        console.error('[SecureStorageManager] Failed to get encrypted tokens:', tokenResult.error);
         return createErrorResult(tokenResult.error);
       }
+
+      console.log('[SecureStorageManager] Got encrypted tokens from storage:', {
+        tokenProviders: Object.keys(tokenResult.data || {}),
+      });
 
       const encryptedGmailToken = tokenResult.data.gmail;
       if (

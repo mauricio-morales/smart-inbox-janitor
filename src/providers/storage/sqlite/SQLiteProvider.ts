@@ -83,7 +83,15 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
 
   async initialize(config: SQLiteStorageConfig): Promise<Result<void>> {
     try {
+      console.log('[SQLiteProvider] Starting initialization with config:', {
+        databasePath: config.databasePath,
+        hasEncryptionKey: !!config.encryptionKey,
+        walMode: config.walMode,
+        timeoutMs: config.timeoutMs,
+      });
+
       if (!config.databasePath) {
+        console.error('[SQLiteProvider] No database path provided');
         return createErrorResult(
           new ConfigurationError('Database path is required for SQLite provider', {
             config,
@@ -100,9 +108,11 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
       }
 
       // Open database connection
+      console.log('[SQLiteProvider] Opening database connection to:', this.config.databasePath);
       this.db = new Database(this.config.databasePath, {
         timeout: this.config.timeoutMs ?? DEFAULT_TIMEOUT_OPTIONS.timeoutMs,
       });
+      console.log('[SQLiteProvider] Database connection opened successfully');
 
       // Configure database settings
       await this.configureDatabaseSettings();
@@ -116,10 +126,16 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
       this.runMigrations();
 
       this.initialized = true;
+      console.log('[SQLiteProvider] ✅ Initialization completed successfully');
 
       return Promise.resolve(createSuccessResult(undefined));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown initialization error';
+      console.error('[SQLiteProvider] ❌ Initialization failed:', {
+        error: message,
+        databasePath: this.config?.databasePath,
+        encryptionEnabled: Boolean(this.config?.encryptionKey),
+      });
       return createErrorResult(
         new ConfigurationError(`SQLite provider initialization failed: ${message}`, {
           databasePath: this.config?.databasePath,
@@ -518,6 +534,12 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
 
   getEncryptedTokens(): Promise<Result<Record<string, string>>> {
     try {
+      console.log('[SQLiteProvider] getEncryptedTokens called');
+      console.log('[SQLiteProvider] Initialization status:', {
+        initialized: this.initialized,
+        hasDb: !!this.db,
+      });
+
       this.ensureInitialized();
 
       const query = `SELECT provider, encrypted_token FROM ${TABLES.ENCRYPTED_TOKENS}`;
@@ -525,10 +547,17 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
       const stmt = db.prepare(query);
 
       const rows = stmt.all() as Array<{ provider: string; encrypted_token: string }>;
+      console.log('[SQLiteProvider] Retrieved encrypted tokens:', {
+        rowCount: rows.length,
+        providers: rows.map((r) => r.provider),
+      });
 
       const tokens: Record<string, string> = {};
       for (const row of rows) {
         tokens[row.provider] = row.encrypted_token;
+        console.log(
+          `[SQLiteProvider] Token for ${row.provider}: ${row.encrypted_token.substring(0, 20)}...`,
+        );
       }
 
       return Promise.resolve(createSuccessResult(tokens));
@@ -1329,7 +1358,16 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
   }
 
   private ensureInitialized(): void {
+    console.log('[SQLiteProvider] ensureInitialized check:', {
+      initialized: this.initialized,
+      hasDb: !!this.db,
+    });
     if (!this.initialized || this.db == null) {
+      console.error('[SQLiteProvider] Provider not initialized! State:', {
+        initialized: this.initialized,
+        hasDb: !!this.db,
+        dbPath: this.config?.databasePath,
+      });
       throw new Error('SQLite provider not initialized');
     }
   }

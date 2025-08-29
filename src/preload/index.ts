@@ -41,6 +41,7 @@ export interface ElectronAPI {
     updateConfig: (
       config: Partial<StoredAppConfig>,
     ) => Promise<ReturnType<StorageProvider['updateConfig']>>;
+    healthCheck: () => Promise<ReturnType<StorageProvider['healthCheck']>>;
   };
   llm: {
     classify: (input: ClassifyInput) => Promise<ReturnType<LLMProvider['classifyEmails']>>;
@@ -97,6 +98,7 @@ const api: ElectronAPI = {
       ipcRenderer.invoke('storage:setEmailMetadata', emailId, metadata),
     getConfig: () => ipcRenderer.invoke('storage:getConfig'),
     updateConfig: (config) => ipcRenderer.invoke('storage:updateConfig', config),
+    healthCheck: () => ipcRenderer.invoke('storage:healthCheck'),
   },
   llm: {
     classify: (input) => ipcRenderer.invoke('llm:classify', input),
