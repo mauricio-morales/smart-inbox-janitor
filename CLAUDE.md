@@ -204,6 +204,140 @@ When creating new state machines:
 - All database operations use parameterized queries
 - Implement proper rate limiting for external APIs
 
+## Console Mode Provider Validation & Debugging
+
+**IMPORTANT FOR AI AGENTS**: Smart Inbox Janitor includes a console-mode provider validation system for debugging and automated testing without UI dependencies.
+
+### Console Mode Commands
+
+**Primary debugging commands for AI agents:**
+
+```bash
+# Basic console validation (recommended for AI agents)
+npm run debug:providers
+
+# JSON output only (ideal for AI parsing)
+npm run debug:providers:json
+
+# Test specific providers
+npm run debug:gmail           # Gmail provider only
+npm run debug:openai         # OpenAI provider only
+npm run debug:storage        # Storage provider only
+
+# CI/CD integration
+npm run test:providers:ci    # Headless with JSON output & 30s timeout
+npm run validate:console     # Exit on first failure with 60s timeout
+```
+
+### Console Mode Features
+
+- **Headless Operation**: Runs without UI, only console output
+- **Structured JSON Output**: AI-agent parseable status and results
+- **Exit Codes**: Meaningful exit codes for automation (0=success, 1=auth, 2=network, 3=config, etc.)
+- **Provider Health Checks**: Direct provider validation without IPC
+- **Environment Variable Validation**: Checks required OAuth and API keys
+- **Timeout Handling**: Configurable timeouts with graceful failure
+
+### AI Agent Integration
+
+The console mode is specifically designed for AI agents to validate provider status:
+
+```bash
+# AI agent usage pattern
+npm run debug:providers:json | jq '.type == "validation_summary"'
+echo "Exit code: $?"
+```
+
+**Expected JSON Output Types:**
+
+- `validation_start` - Validation beginning
+- `provider_result` - Individual provider status
+- `validation_summary` - Final summary with exit code
+- `console_app_summary` - Application-level summary
+
+**Exit Codes for Automation:**
+
+- `0` - All providers healthy
+- `1` - Authentication failures (OAuth tokens invalid)
+- `2` - Network connectivity issues
+- `3` - Configuration errors (missing env vars)
+- `4` - Setup required (initial OAuth setup needed)
+- `5` - Timeout errors
+- `99` - Unknown errors
+
+### Environment Variables Required
+
+For console mode provider validation:
+
+```bash
+# Gmail Provider (required for gmail validation)
+GMAIL_CLIENT_ID=your_gmail_oauth_client_id
+GMAIL_CLIENT_SECRET=your_gmail_oauth_client_secret
+
+# OpenAI Provider (required for openai validation)
+OPENAI_API_KEY=your_openai_api_key
+
+# Optional
+GMAIL_REDIRECT_URI=http://localhost:8080/oauth/callback
+DATABASE_PATH=./data/console-validation.db
+```
+
+### Console Mode Usage Examples
+
+```bash
+# 1. Basic validation with human-readable output
+npm run debug:providers --verbose --format=table
+
+# 2. AI agent monitoring
+npm run debug:providers:json > provider_status.json
+EXIT_CODE=$?
+jq '.type, .exitCode, .connectedProviders' provider_status.json
+
+# 3. Retry on failure with timeout
+npm run debug:providers --retry --retry-attempts=3 --timeout=90
+
+# 4. Single provider deep validation
+npm run debug:gmail --verbose
+```
+
+### Troubleshooting Console Mode
+
+**Issue: App icon appears but no UI** ✅ **This is correct behavior**
+
+- Console mode successfully prevents UI creation
+- App may appear in dock/taskbar but no windows should open
+- Process will exit automatically after validation
+
+**Issue: Exit code 3 (Configuration Error)**
+
+- Missing required environment variables
+- Run `npm run debug:providers --verbose` to see which env vars are missing
+
+**Issue: Exit code 4 (Setup Required)**
+
+- Providers need initial OAuth setup through UI mode
+- Run normal app first: `npm run dev`
+- Complete OAuth flows, then retry console mode
+
+**Issue: Exit code 5 (Timeout)**
+
+- Network connectivity issues or slow API responses
+- Increase timeout: `npm run debug:providers --timeout=120`
+
+### Console Mode Architecture
+
+**Key Files:**
+
+- `src/console/` - Console-mode implementation
+- `src/shared/cli/CommandParser.ts` - Command-line argument parsing
+- `src/main/ConsoleMode.ts` - Headless Electron configuration
+- `src/console/ProviderValidator.ts` - Direct provider validation without IPC
+
+**Integration Point:**
+
+- `src/main/index.ts` - Console mode detection and routing
+- Detects `--console` or `--headless` flags and prevents UI creation
+
 ## Advanced Security Architecture
 
 The application implements a comprehensive multi-layer security system:
