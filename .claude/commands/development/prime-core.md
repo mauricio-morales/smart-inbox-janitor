@@ -13,6 +13,7 @@ Read key files in the src/ directory
 > List any additional files that are important to understand the project.
 
 Explain back to me:
+
 - Project structure
 - Project purpose and goals
 - Key files and their purposes

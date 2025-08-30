@@ -53,12 +53,12 @@ $ claude -p "Build a React component" --output-format stream-json
 The TypeScript SDK is included in the main [`@anthropic-ai/claude-code`](https://www.npmjs.com/package/@anthropic-ai/claude-code) package on NPM:
 
 ```ts
-import { query, type SDKMessage } from "@anthropic-ai/claude-code";
+import { query, type SDKMessage } from '@anthropic-ai/claude-code';
 
 const messages: SDKMessage[] = [];
 
 for await (const message of query({
-  prompt: "Write a haiku about foo.py",
+  prompt: 'Write a haiku about foo.py',
   abortController: new AbortController(),
   options: {
     maxTurns: 3,
@@ -187,11 +187,7 @@ Create a JSON configuration file with your MCP servers:
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/path/to/allowed/files"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/files"]
     },
     "github": {
       "command": "npx",
@@ -263,37 +259,32 @@ For example, a TypeScript MCP permission prompt tool implementation might look l
 
 ```ts
 const server = new McpServer({
-  name: "Test permission prompt MCP Server",
-  version: "0.0.1",
+  name: 'Test permission prompt MCP Server',
+  version: '0.0.1',
 });
 
 server.tool(
-  "approval_prompt",
+  'approval_prompt',
   'Simulate a permission check - approve if the input contains "allow", otherwise deny',
   {
-    tool_name: z
-      .string()
-      .describe("The name of the tool requesting permission"),
-    input: z.object({}).passthrough().describe("The input for the tool"),
-    tool_use_id: z
-      .string()
-      .optional()
-      .describe("The unique tool use request ID"),
+    tool_name: z.string().describe('The name of the tool requesting permission'),
+    input: z.object({}).passthrough().describe('The input for the tool'),
+    tool_use_id: z.string().optional().describe('The unique tool use request ID'),
   },
   async ({ tool_name, input }) => {
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: JSON.stringify(
-            JSON.stringify(input).includes("allow")
+            JSON.stringify(input).includes('allow')
               ? {
-                  behavior: "allow",
+                  behavior: 'allow',
                   updatedInput: input,
                 }
               : {
-                  behavior: "deny",
-                  message: "Permission denied by test approval_prompt tool",
+                  behavior: 'deny',
+                  message: 'Permission denied by test approval_prompt tool',
                 },
           ),
         },
@@ -392,22 +383,22 @@ Messages returned from the JSON API are strictly typed according to the followin
 type SDKMessage =
   // An assistant message
   | {
-      type: "assistant";
+      type: 'assistant';
       message: Message; // from Anthropic SDK
       session_id: string;
     }
 
   // A user message
   | {
-      type: "user";
+      type: 'user';
       message: MessageParam; // from Anthropic SDK
       session_id: string;
     }
 
   // Emitted as the last message
   | {
-      type: "result";
-      subtype: "success";
+      type: 'result';
+      subtype: 'success';
       duration_ms: float;
       duration_api_ms: float;
       is_error: boolean;
@@ -419,8 +410,8 @@ type SDKMessage =
 
   // Emitted as the last message, when we've reached the maximum number of turns
   | {
-      type: "result";
-      subtype: "error_max_turns" | "error_during_execution";
+      type: 'result';
+      subtype: 'error_max_turns' | 'error_during_execution';
       duration_ms: float;
       duration_api_ms: float;
       is_error: boolean;
@@ -431,8 +422,8 @@ type SDKMessage =
 
   // Emitted as the first message at the start of a conversation
   | {
-      type: "system";
-      subtype: "init";
+      type: 'system';
+      subtype: 'init';
       apiKeySource: string;
       cwd: string;
       session_id: string;
@@ -442,7 +433,7 @@ type SDKMessage =
         status: string;
       }[];
       model: string;
-      permissionMode: "default" | "acceptEdits" | "bypassPermissions" | "plan";
+      permissionMode: 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan';
     };
 ```
 

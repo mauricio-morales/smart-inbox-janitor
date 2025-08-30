@@ -60,6 +60,7 @@ PRPs enable working TypeScript/React code on the first attempt through:
    - Implementation is ready and working with full type safety
 
 **Failure Protocol**: When validation fails, use the TypeScript/React patterns and gotchas from the PRP to fix issues, then re-run validation until passing. Pay special attention to:
+
 - TypeScript compilation errors and type mismatches
 - React hydration issues between server and client
 - Next.js App Router specific requirements

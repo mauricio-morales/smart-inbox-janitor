@@ -21,12 +21,8 @@
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/dist-electron/main/index.js",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "runtimeArgs": [
-        "--enable-logging"
-      ],
+      "skipFiles": ["<node_internals>/**"],
+      "runtimeArgs": ["--enable-logging"],
       "env": {
         "NODE_ENV": "development",
         "ELECTRON_IS_DEV": "1"
@@ -46,7 +42,7 @@
       "sourceMaps": true,
       "presentation": {
         "hidden": false,
-        "group": "debug", 
+        "group": "debug",
         "order": 3
       }
     },
@@ -58,9 +54,7 @@
       "args": ["--runInBand"],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "presentation": {
         "hidden": false,
         "group": "test",
@@ -71,10 +65,7 @@
   "compounds": [
     {
       "name": "🔍 Debug Full App",
-      "configurations": [
-        "🔧 Debug Main Process",
-        "🌐 Debug Renderer Process"
-      ],
+      "configurations": ["🔧 Debug Main Process", "🌐 Debug Renderer Process"],
       "presentation": {
         "hidden": false,
         "group": "compound",

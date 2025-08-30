@@ -4,42 +4,42 @@
     "ms-vscode.vscode-typescript-next",
     "esbenp.prettier-vscode",
     "dbaeumer.vscode-eslint",
-    
+
     // Electron development
     "ms-vscode.vscode-electron",
-    
+
     // React development
     "ms-vscode.vscode-react-typescript",
     "bradlc.vscode-tailwindcss",
-    
+
     // Material-UI support
     "vscode-material-ui.material-ui-snippets",
-    
+
     // Testing
     "orta.vscode-jest",
     "ms-vscode.test-adapter-converter",
-    
+
     // Git and GitHub
     "github.vscode-github-actions",
     "github.vscode-pull-request-github",
     "eamodio.gitlens",
-    
+
     // Markdown and documentation
     "yzhang.markdown-all-in-one",
     "davidanson.vscode-markdownlint",
-    
+
     // JSON and configuration files
     "ms-vscode.vscode-json",
-    
+
     // Code quality and security
     "snyk-security.snyk-vulnerability-scanner",
     "streetsidesoftware.code-spell-checker",
-    
+
     // Productivity
     "ms-vscode.vscode-todo-highlight",
     "gruntfuggly.todo-tree",
     "aaron-bond.better-comments",
-    
+
     // File icons and themes
     "vscode-icons-team.vscode-icons",
     "ms-vscode.theme-github-dark-plus"

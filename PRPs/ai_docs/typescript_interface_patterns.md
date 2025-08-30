@@ -31,7 +31,7 @@ Never throw exceptions from provider interfaces - use Result types:
 
 ```typescript
 // ✅ Good: Result pattern prevents runtime exceptions
-type EmailResult = 
+type EmailResult =
   | { success: true; messageId: string; timestamp: Date }
   | { success: false; error: ProviderError };
 
@@ -89,22 +89,22 @@ Use builders for complex message/request construction:
 // ✅ Good: Builder pattern with fluent interface
 class EmailMessageBuilder {
   private message: Partial<EmailMessage> = {};
-  
+
   to(recipients: string | string[]): this {
     this.message.to = Array.isArray(recipients) ? recipients : [recipients];
     return this;
   }
-  
+
   subject(subject: string): this {
     this.message.subject = subject;
     return this;
   }
-  
+
   body(content: EmailBody): this {
     this.message.body = content;
     return this;
   }
-  
+
   build(): EmailMessage {
     this.validateRequired();
     return this.message as EmailMessage;
@@ -128,11 +128,11 @@ interface ProviderFactory<TProvider, TConfig = unknown> {
 // ✅ Good: Provider registry for runtime switching
 class ProviderRegistry<T extends BaseProvider> {
   private factories = new Map<string, ProviderFactory<T>>();
-  
+
   register<C>(name: string, factory: ProviderFactory<T, C>): void {
     this.factories.set(name, factory);
   }
-  
+
   async create<C>(name: string, config: C): Promise<T> {
     const factory = this.factories.get(name);
     if (!factory) {
@@ -140,7 +140,7 @@ class ProviderRegistry<T extends BaseProvider> {
     }
     return factory.create(config);
   }
-  
+
   listAvailable(): string[] {
     return Array.from(this.factories.keys());
   }
@@ -165,7 +165,7 @@ interface AsyncProvider {
 // Helper function for timeout wrapper
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
+    setTimeout(() => reject(new Error('Operation timed out')), timeoutMs),
   );
   return Promise.race([promise, timeoutPromise]);
 }
@@ -195,10 +195,10 @@ interface BatchOptions {
 
 ### JSDoc Standards
 
-```typescript
+````typescript
 /**
  * Email provider interface for sending transactional and marketing emails
- * 
+ *
  * @example
  * ```typescript
  * const provider = new GmailProvider({ apiKey: 'your-key' });
@@ -208,7 +208,7 @@ interface BatchOptions {
  *   subject: 'Welcome',
  *   body: { text: 'Welcome!' }
  * });
- * 
+ *
  * if (result.success) {
  *   console.log('Sent:', result.messageId);
  * } else {
@@ -219,18 +219,18 @@ interface BatchOptions {
 interface EmailProvider {
   /**
    * Sends an email message
-   * 
+   *
    * @param message - The email message to send
    * @param options - Optional sending configuration
    * @returns Promise resolving to send result (never rejects)
-   * 
+   *
    * @remarks
    * This method never throws exceptions. All errors are returned
    * in the result object for consistent error handling.
    */
   send(message: EmailMessage, options?: SendOptions): Promise<EmailResult>;
 }
-```
+````
 
 ## Type Safety Patterns
 
@@ -259,13 +259,13 @@ type Priority = 'low' | 'normal' | 'high' | 'urgent';
 
 // ✅ Good: Const assertions for reusable values
 const EMAIL_STATUSES = ['pending', 'sent', 'delivered', 'failed', 'bounced'] as const;
-type EmailStatus = typeof EMAIL_STATUSES[number];
+type EmailStatus = (typeof EMAIL_STATUSES)[number];
 
 // ✅ Good: Enums for complex cases with methods
 enum ProviderType {
   EMAIL = 'email',
   STORAGE = 'storage',
-  NOTIFICATION = 'notification'
+  NOTIFICATION = 'notification',
 }
 ```
 
@@ -308,11 +308,11 @@ function isEmailProvider(provider: unknown): provider is EmailProvider {
 // ✅ Good: Use type guards in factories
 function createProvider(config: ProviderConfig): EmailProvider {
   const provider = createProviderInternal(config);
-  
+
   if (!isEmailProvider(provider)) {
     throw new Error('Invalid provider implementation');
   }
-  
+
   return provider;
 }
 ```
@@ -327,12 +327,14 @@ const EmailMessageSchema = z.object({
   to: z.union([z.string().email(), z.array(z.string().email())]),
   from: z.string().email(),
   subject: z.string().min(1),
-  body: z.object({
-    text: z.string().optional(),
-    html: z.string().optional(),
-  }).refine(data => data.text || data.html, {
-    message: "Either text or html body is required"
-  })
+  body: z
+    .object({
+      text: z.string().optional(),
+      html: z.string().optional(),
+    })
+    .refine((data) => data.text || data.html, {
+      message: 'Either text or html body is required',
+    }),
 });
 
 type EmailMessage = z.infer<typeof EmailMessageSchema>;
@@ -349,10 +351,10 @@ function validateEmailMessage(data: unknown): EmailMessage {
 
 ```typescript
 // ❌ Bad: Hungarian notation is outdated
-interface IEmailProvider { }
+interface IEmailProvider {}
 
 // ✅ Good: Clean interface names
-interface EmailProvider { }
+interface EmailProvider {}
 ```
 
 ### ❌ Don't Throw Exceptions from Provider Methods
