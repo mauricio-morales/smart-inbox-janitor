@@ -5,8 +5,8 @@
       "label": "🔍 Full CI/CD Check",
       "detail": "Run complete local validation matching GitHub Actions CI",
       "type": "shell",
-      "command": "npm",
-      "args": ["run", "ci:check"],
+      "command": "dotnet",
+      "args": ["build", "--configuration", "Release"],
       "group": {
         "kind": "build",
         "isDefault": true
@@ -19,128 +19,143 @@
         "showReuseMessage": true,
         "clear": false
       },
-      "problemMatcher": ["$tsc", "$eslint-stylish"]
+      "problemMatcher": "$msCompile",
+      "dependsOrder": "sequence",
+      "dependsOn": ["🧪 Code Quality Check", "🧪 Run Unit Tests"]
     },
     {
-      "label": "🧪 Code Quality Check",
-      "detail": "Run linting, type checking, and formatting validation",
+      "label": "🧪 Code Quality Check", 
+      "detail": "Run formatting validation and code analysis",
       "type": "shell",
-      "command": "npm",
-      "args": ["run", "ci:quality"],
+      "command": "dotnet",
+      "args": ["format", "--verify-no-changes"],
       "group": "build",
       "presentation": {
         "echo": true,
         "reveal": "always",
         "panel": "shared"
       },
-      "problemMatcher": ["$tsc", "$eslint-stylish"]
+      "problemMatcher": "$msCompile"
     },
     {
       "label": "🏗️ Build All Targets",
-      "detail": "Build for all platforms (matching CI matrix)",
-      "type": "shell",
-      "command": "npm",
-      "args": ["run", "ci:build"],
+      "detail": "Build for all platforms (Release configuration)",
+      "type": "shell", 
+      "command": "dotnet",
+      "args": ["build", "--configuration", "Release"],
       "group": "build",
       "presentation": {
         "echo": true,
         "reveal": "always",
         "panel": "new"
       },
-      "problemMatcher": []
+      "problemMatcher": "$msCompile"
     },
     {
       "label": "🔐 Security Audit",
-      "detail": "Run dependency and security audits",
+      "detail": "Run NuGet vulnerability checks",
       "type": "shell",
-      "command": "npm",
-      "args": ["run", "ci:security"],
+      "command": "dotnet",
+      "args": ["list", "package", "--vulnerable", "--include-transitive"],
       "group": "build",
       "presentation": {
         "echo": true,
-        "reveal": "always",
+        "reveal": "always", 
         "panel": "shared"
       },
       "problemMatcher": []
     },
     {
-      "label": "📦 Package Check",
-      "detail": "Validate package.json and dependencies",
+      "label": "🧽 Clean & Restore",
+      "detail": "Clean bin/obj folders and restore NuGet packages",
       "type": "shell",
-      "command": "npm",
-      "args": ["run", "ci:package"],
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "🧽 Clean & Fresh Install",
-      "detail": "Clean node_modules and reinstall (CI fresh environment)",
-      "type": "shell",
-      "command": "npm",
-      "args": ["run", "ci:clean"],
-      "group": "build",
+      "command": "dotnet",
+      "args": ["clean"],
+      "group": "build", 
       "presentation": {
         "echo": true,
         "reveal": "always",
         "panel": "new"
+      },
+      "problemMatcher": [],
+      "dependsOrder": "sequence",
+      "dependsOn": ["Clean Solution", "Restore Packages"]
+    },
+    {
+      "label": "Clean Solution",
+      "detail": "Clean all build artifacts",
+      "type": "shell",
+      "command": "dotnet", 
+      "args": ["clean"],
+      "presentation": {
+        "echo": false,
+        "reveal": "silent"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Restore Packages",
+      "detail": "Restore NuGet packages",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["restore"],
+      "presentation": {
+        "echo": false,
+        "reveal": "silent"
       },
       "problemMatcher": []
     },
     {
       "label": "⚡ Quick Check",
-      "detail": "Fast validation - lint, type-check, build",
+      "detail": "Fast validation - format check and build",
       "type": "shell",
-      "command": "npm",
-      "args": ["run", "ci:quick"],
+      "command": "dotnet", 
+      "args": ["build"],
       "group": "build",
       "presentation": {
         "echo": true,
         "reveal": "silent",
         "panel": "shared"
       },
-      "problemMatcher": ["$tsc", "$eslint-stylish"]
+      "problemMatcher": "$msCompile"
     },
     {
       "label": "📱 Build macOS App",
-      "detail": "Build macOS .app bundle in dist-electron folder",
+      "detail": "Build macOS application bundle",
       "type": "shell",
-      "command": "npm",
-      "args": ["run", "build:mac"],
+      "command": "dotnet",
+      "args": ["publish", "src/TransMailPanda/TransMailPanda/TransMailPanda.csproj", "-c", "Release", "-r", "osx-x64", "--self-contained"],
       "group": "build",
       "presentation": {
         "echo": true,
         "reveal": "always",
         "panel": "new"
       },
-      "problemMatcher": []
+      "problemMatcher": "$msCompile"
     },
     {
-      "label": "🚀 Run macOS App",
-      "detail": "Launch the built macOS application",
+      "label": "🚀 Run Application",
+      "detail": "Run the TransMail Panda application",
       "type": "shell",
-      "command": "open",
-      "args": ["${workspaceFolder}/dist-electron/mac/Smart Inbox Janitor.app"],
+      "command": "dotnet",
+      "args": ["run", "--project", "src/TransMailPanda/TransMailPanda/TransMailPanda.csproj"],
       "group": "build",
       "presentation": {
         "echo": true,
-        "reveal": "silent",
-        "panel": "shared"
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
       },
-      "problemMatcher": [],
-      "dependsOrder": "sequence",
-      "dependsOn": "📱 Build macOS App"
+      "problemMatcher": []
     },
     {
       "label": "🔥 Dev Mode",
-      "detail": "Start development server with hot reload",
-      "type": "shell",
-      "command": "npm",
-      "args": ["run", "dev"],
+      "detail": "Start development with hot reload (watch mode)",
+      "type": "shell", 
+      "command": "dotnet",
+      "args": ["watch", "run", "--project", "src/TransMailPanda/TransMailPanda/TransMailPanda.csproj"],
       "group": {
         "kind": "build",
         "isDefault": false
@@ -153,15 +168,44 @@
         "showReuseMessage": false,
         "clear": true
       },
-      "problemMatcher": []
+      "problemMatcher": "$msCompile"
     },
     {
       "label": "🧪 Run Unit Tests",
-      "detail": "Run Jest unit tests with coverage (matching CI)",
+      "detail": "Run xUnit tests with coverage",
       "type": "shell",
-      "command": "npm",
-      "args": ["test", "--", "--coverage", "--watchAll=false"],
+      "command": "dotnet",
+      "args": ["test", "--collect:\"XPlat Code Coverage\"", "--configuration", "Release"],
       "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "🔄 Watch Unit Tests",
+      "detail": "Run tests in watch mode for active development",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["watch", "test", "--project", "src/Tests"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new",
+        "focus": true
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "🎨 Format Code",
+      "detail": "Format code using dotnet format",
+      "type": "shell",
+      "command": "dotnet", 
+      "args": ["format"],
+      "group": "build",
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -170,17 +214,16 @@
       "problemMatcher": []
     },
     {
-      "label": "🔄 Watch Unit Tests",
-      "detail": "Run Jest in watch mode for active development",
+      "label": "📊 Show Solution Info",
+      "detail": "Display solution structure and project dependencies",
       "type": "shell",
-      "command": "npm",
-      "args": ["run", "test:watch"],
-      "group": "test",
+      "command": "dotnet",
+      "args": ["sln", "list"],
+      "group": "build",
       "presentation": {
         "echo": true,
         "reveal": "always",
-        "panel": "new",
-        "focus": true
+        "panel": "shared"
       },
       "problemMatcher": []
     }
