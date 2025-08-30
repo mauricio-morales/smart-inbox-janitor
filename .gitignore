@@ -1,3 +1,6 @@
+# Secrets
+secrets/
+
 # Logs
 logs
 *.log
@@ -81,6 +84,8 @@ out
 # Nuxt.js build / generate output
 .nuxt
 dist
+dist-electron/
+out/
 
 # Gatsby files
 .cache/
@@ -137,3 +142,17 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Application data directory (contains encrypted SQLite database and user data)
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Application-specific temporary and sensitive files
+app-data.db*
+*.key
+*.pem
+*.p12
+oauth-cache/
+temp-credentials/

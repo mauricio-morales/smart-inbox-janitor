@@ -202,38 +202,38 @@ def identify_success_patterns():
 ```yaml
 # PRPs/knowledge_base/failure_patterns.yaml
 failure_patterns:
-  - id: "async_context_mixing"
-    description: "Mixing sync and async code contexts"
-    frequency: "high"
+  - id: 'async_context_mixing'
+    description: 'Mixing sync and async code contexts'
+    frequency: 'high'
     detection_signs:
-      - "RuntimeError: cannot be called from a running event loop"
-      - "SyncError in async context"
+      - 'RuntimeError: cannot be called from a running event loop'
+      - 'SyncError in async context'
     prevention:
-      - "Always use async/await consistently"
-      - "Use asyncio.run() for top-level async calls"
-    related_libraries: ["asyncio", "aiohttp", "fastapi"]
+      - 'Always use async/await consistently'
+      - 'Use asyncio.run() for top-level async calls'
+    related_libraries: ['asyncio', 'aiohttp', 'fastapi']
 
-  - id: "pydantic_v2_breaking_changes"
-    description: "Pydantic v2 syntax changes"
-    frequency: "medium"
+  - id: 'pydantic_v2_breaking_changes'
+    description: 'Pydantic v2 syntax changes'
+    frequency: 'medium'
     detection_signs:
-      - "ValidationError: Field required"
+      - 'ValidationError: Field required'
       - "AttributeError: 'Field' object has no attribute"
     prevention:
-      - "Use Field() instead of ... for optional fields"
-      - "Update to v2 syntax for validators"
-    related_libraries: ["pydantic", "fastapi"]
+      - 'Use Field() instead of ... for optional fields'
+      - 'Update to v2 syntax for validators'
+    related_libraries: ['pydantic', 'fastapi']
 
-  - id: "environment_variable_missing"
-    description: "Missing environment variables"
-    frequency: "medium"
+  - id: 'environment_variable_missing'
+    description: 'Missing environment variables'
+    frequency: 'medium'
     detection_signs:
       - "KeyError: 'API_KEY'"
-      - "None type has no attribute"
+      - 'None type has no attribute'
     prevention:
-      - "Always check .env.example completeness"
-      - "Use default values in config"
-    related_libraries: ["python-dotenv", "pydantic-settings"]
+      - 'Always check .env.example completeness'
+      - 'Use default values in config'
+    related_libraries: ['python-dotenv', 'pydantic-settings']
 ```
 
 ### Success Metrics Database
@@ -241,32 +241,32 @@ failure_patterns:
 ```yaml
 # PRPs/knowledge_base/success_metrics.yaml
 success_metrics:
-  - feature_type: "api_integration"
+  - feature_type: 'api_integration'
     avg_token_usage: 2500
     avg_implementation_time: 35
     success_rate: 85
     common_patterns:
-      - "async http client usage"
-      - "proper error handling"
-      - "rate limiting implementation"
+      - 'async http client usage'
+      - 'proper error handling'
+      - 'rate limiting implementation'
 
-  - feature_type: "database_operations"
+  - feature_type: 'database_operations'
     avg_token_usage: 1800
     avg_implementation_time: 25
     success_rate: 92
     common_patterns:
-      - "sqlalchemy async sessions"
-      - "proper migration handling"
-      - "connection pooling"
+      - 'sqlalchemy async sessions'
+      - 'proper migration handling'
+      - 'connection pooling'
 
-  - feature_type: "cli_applications"
+  - feature_type: 'cli_applications'
     avg_token_usage: 1200
     avg_implementation_time: 20
     success_rate: 95
     common_patterns:
-      - "click or typer usage"
-      - "proper argument parsing"
-      - "colored output"
+      - 'click or typer usage'
+      - 'proper argument parsing'
+      - 'colored output'
 ```
 
 ## Analysis Report Generation

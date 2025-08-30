@@ -19,15 +19,12 @@
         "showReuseMessage": true,
         "clear": false
       },
-      "problemMatcher": [
-        "$tsc",
-        "$eslint-stylish"
-      ]
+      "problemMatcher": ["$tsc", "$eslint-stylish"]
     },
     {
       "label": "🧪 Code Quality Check",
       "detail": "Run linting, type checking, and formatting validation",
-      "type": "shell", 
+      "type": "shell",
       "command": "npm",
       "args": ["run", "ci:quality"],
       "group": "build",
@@ -36,10 +33,7 @@
         "reveal": "always",
         "panel": "shared"
       },
-      "problemMatcher": [
-        "$tsc",
-        "$eslint-stylish"
-      ]
+      "problemMatcher": ["$tsc", "$eslint-stylish"]
     },
     {
       "label": "🏗️ Build All Targets",
@@ -70,7 +64,7 @@
       "problemMatcher": []
     },
     {
-      "label": "📦 Package Check", 
+      "label": "📦 Package Check",
       "detail": "Validate package.json and dependencies",
       "type": "shell",
       "command": "npm",
@@ -109,10 +103,86 @@
         "reveal": "silent",
         "panel": "shared"
       },
-      "problemMatcher": [
-        "$tsc",
-        "$eslint-stylish"
-      ]
+      "problemMatcher": ["$tsc", "$eslint-stylish"]
+    },
+    {
+      "label": "📱 Build macOS App",
+      "detail": "Build macOS .app bundle in dist-electron folder",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "build:mac"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🚀 Run macOS App",
+      "detail": "Launch the built macOS application",
+      "type": "shell",
+      "command": "open",
+      "args": ["${workspaceFolder}/dist-electron/mac/Smart Inbox Janitor.app"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "dependsOrder": "sequence",
+      "dependsOn": "📱 Build macOS App"
+    },
+    {
+      "label": "🔥 Dev Mode",
+      "detail": "Start development server with hot reload",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "dev"],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🧪 Run Unit Tests",
+      "detail": "Run Jest unit tests with coverage (matching CI)",
+      "type": "shell",
+      "command": "npm",
+      "args": ["test", "--", "--coverage", "--watchAll=false"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🔄 Watch Unit Tests",
+      "detail": "Run Jest in watch mode for active development",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "test:watch"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new",
+        "focus": true
+      },
+      "problemMatcher": []
     }
   ]
 }

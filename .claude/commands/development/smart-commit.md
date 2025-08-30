@@ -1,14 +1,14 @@
 ---
 name: commit
 description: Analyze changes and create a smart git commit
-arguments: "Additional instructions for the commit"
+arguments: 'Additional instructions for the commit'
 ---
 
 additional instructions = $ARGUMENTS
 
 type = "feat", "fix", "docs", "style", "refactor", "perf", "test", "chore"
 
-# Smart Git CommitPRPs/ai_docs
+# Smart Git Commit
 
 Please help me create a git commit by:
 

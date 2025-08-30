@@ -66,12 +66,12 @@ export function Layout({ children }: LayoutProps): React.JSX.Element {
       </Toolbar>
       <Divider />
       <List>
-        {menuItems.map(item => (
+        {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
               selected={location.pathname === item.path}
               onClick={() => {
-                navigate(item.path);
+                void navigate(item.path);
                 setMobileOpen(false);
               }}
             >
@@ -127,7 +127,10 @@ export function Layout({ children }: LayoutProps): React.JSX.Element {
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: DRAWER_WIDTH },
+            ['& .MuiDrawer-paper']: {
+              boxSizing: 'border-box',
+              width: DRAWER_WIDTH,
+            },
           }}
         >
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
@@ -143,7 +146,10 @@ export function Layout({ children }: LayoutProps): React.JSX.Element {
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: DRAWER_WIDTH },
+            ['& .MuiDrawer-paper']: {
+              boxSizing: 'border-box',
+              width: DRAWER_WIDTH,
+            },
           }}
           open
         >

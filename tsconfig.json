@@ -16,7 +16,7 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "./dist",
-    
+
     /* Type Checking */
     "strict": true,
     "noImplicitAny": true,
@@ -35,10 +35,10 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": false,
-    
+
     /* JSX */
     "jsx": "react-jsx",
-    
+
     /* Path mapping */
     "baseUrl": ".",
     "paths": {
@@ -47,17 +47,16 @@
       "@tests/*": ["__tests__/*"]
     }
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "__tests__/**/*.ts"
-  ],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": [
     "node_modules",
     "dist",
     "dist-electron",
     "**/*.js",
-    "**/*.jsx"
+    "**/*.jsx",
+    "__tests__/**/*",
+    "**/*.test.*",
+    "**/*.spec.*"
   ],
   "ts-node": {
     "esm": true

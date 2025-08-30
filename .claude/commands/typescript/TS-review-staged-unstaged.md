@@ -86,38 +86,47 @@ Create a concise review report with:
 # TypeScript/Astro Code Review #[number]
 
 ## Summary
+
 [2-3 sentence overview focusing on Astro-specific patterns and TypeScript quality]
 
 ## Issues Found
 
 ### 🔴 Critical (Must Fix)
+
 - [Issue with file:line and suggested fix - focus on type safety, hydration, security]
 
 ### 🟡 Important (Should Fix)
+
 - [Issue with file:line and suggested fix - focus on performance, patterns]
 
 ### 🟢 Minor (Consider)
+
 - [Improvement suggestions for optimization, maintainability]
 
 ## Good Practices
+
 - [What was done well - highlight proper Astro patterns, TypeScript usage]
 
 ## Astro-Specific Findings
+
 - [Hydration strategy assessment]
 - [Bundle size impact]
 - [Content collection usage]
 - [Performance optimizations]
 
 ## TypeScript Quality
+
 - [Type safety assessment]
 - [Strict mode compliance]
 - [Interface definitions]
 
 ## Test Coverage
+
 Current: X% | Required: 80%
 Missing tests: [list with focus on component and API tests]
 
 ## Build Validation
+
 - [ ] `astro check` passes
 - [ ] `pnpm run lint` passes
 - [ ] `pnpm run build` succeeds
