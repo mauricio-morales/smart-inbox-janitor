@@ -140,7 +140,7 @@ Set `"Logging:LogLevel:Default": "Debug"` in `appsettings.json` for verbose logg
 
 ## 📞 Support
 
-- Check the [GitHub Issues](https://github.com/your-repo/smart-inbox-janitor/issues)
+- Check the [GitHub Issues](https://github.com/mauricio-morales/trashmail-panda/issues)
 - Review troubleshooting section above
 - Ensure all prerequisites are met
 - Verify .NET 8.0 SDK is properly installed with `dotnet --version`
