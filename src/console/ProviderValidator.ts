@@ -7,8 +7,6 @@
  * @module ProviderValidator
  */
 
-import type { Result, HealthStatus } from '@shared/types';
-import { createErrorResult } from '@shared/types';
 import { GmailProvider } from '@providers/email/gmail/GmailProvider';
 import { OpenAIProvider } from '@providers/llm/openai/OpenAIProvider';
 import { SQLiteProvider } from '@providers/storage/sqlite/SQLiteProvider';
@@ -21,7 +19,7 @@ import {
   type ProviderValidationResult,
   type ValidationSummary,
 } from './ConsoleLogger';
-import { ExitCodes, getExitCodeForError } from './ExitCodes';
+import { getExitCodeForError } from './ExitCodes';
 import type { ConsoleConfig } from '@shared/cli/CommandParser';
 import { StructuredLogger } from '@shared/debugging/StructuredLogger';
 
