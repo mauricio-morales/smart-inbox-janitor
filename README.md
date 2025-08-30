@@ -140,31 +140,46 @@ Smart Inbox Janitor adapts to your preferences:
 
 ### Tech Stack
 
-- **Framework**: Electron + React + TypeScript
-- **Database**: SQLite with better-sqlite3
-- **Authentication**: Google OAuth with secure token storage
-- **Build**: Vite with electron-builder
-- **UI**: TailwindCSS with modern components
+- **Framework**: .NET 8.0 + Avalonia UI 11 (Cross-platform desktop)
+- **MVVM**: CommunityToolkit.Mvvm for lightweight MVVM bindings
+- **Database**: SQLite with SQLCipher encryption (Microsoft.Data.Sqlite)
+- **Authentication**: Google OAuth with OS keychain secure storage
+- **Email API**: Google.Apis.Gmail.v1 official client
+- **HTML Preview**: Avalonia.WebView for safe, sandboxed email previews
+- **DI/Logging**: Microsoft.Extensions.Hosting/DI/Logging
+- **Resilience**: Polly for retries and exponential backoff
+- **Security**: OS keychain APIs (DPAPI, macOS Keychain, libsecret)
 
 ### Project Structure
 
 ```
 smart-inbox-janitor/
 ├── src/
-│   ├── main/          # Electron main process
-│   ├── renderer/      # React UI components
-│   ├── shared/        # Shared types and utilities
-│   └── providers/     # Email, LLM, and storage providers
-├── migrations/        # Database schema migrations
-└── docs/             # Additional documentation
+│   ├── TransMailPanda/     # Main Avalonia application
+│   │   ├── Views/          # Avalonia XAML views
+│   │   ├── ViewModels/     # MVVM view models
+│   │   ├── Models/         # Domain models
+│   │   └── Services/       # Application services
+│   ├── Shared/             # Shared types and utilities
+│   │   ├── Base/           # IProvider architecture
+│   │   ├── Models/         # Data transfer objects
+│   │   ├── Extensions/     # Extension methods
+│   │   └── Utils/          # Shared utilities
+│   ├── Providers/          # Provider implementations
+│   │   ├── Email/          # Gmail provider
+│   │   ├── LLM/            # OpenAI provider
+│   │   └── Storage/        # SQLite provider
+│   └── Tests/              # xUnit test projects
+├── data/                   # Local database storage
+└── PRPs/                   # Project documentation
 ```
 
 ### Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Follow TypeScript and React best practices
-4. Add tests for new functionality
+3. Follow C# and Avalonia UI best practices
+4. Add xUnit tests for new functionality
 5. Submit a pull request
 
 ## 📈 Roadmap
@@ -206,4 +221,4 @@ TransMail Panda is designed to help manage your email safely. Always review AI s
 
 ---
 
-**Made with ❤️ for email productivity using .NET and Avalonia UI**
+**Made with ❤️ for email productivity using .NET 8.0 and Avalonia UI 11**
