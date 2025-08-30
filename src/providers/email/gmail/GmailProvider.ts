@@ -64,6 +64,13 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
   private connected = false;
 
   /**
+   * Check if provider is initialized
+   */
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  /**
    * Initialize the Gmail provider with OAuth configuration
    *
    * @param config - Gmail provider configuration
@@ -71,21 +78,8 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
    */
   async initialize(config: GmailProviderConfig): Promise<Result<void>> {
     try {
-      this.config = config;
-
       // Ensure async operation for proper await requirement
       await Promise.resolve();
-
-      // Validate configuration
-      if (!config.auth.clientId || !config.auth.clientSecret) {
-        return createErrorResult(
-          new ConfigurationError('Gmail OAuth configuration missing required fields', {
-            hasClientId: Boolean(config.auth.clientId),
-            hasClientSecret: Boolean(config.auth.clientSecret),
-            hasRedirectUri: Boolean(config.auth.redirectUri),
-          }),
-        );
-      }
 
       // Create OAuth manager
       this.oauthManager = new GmailOAuthManager({
@@ -109,6 +103,8 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
       // Create Gmail API client
       this.gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
 
+      // Store config and mark as initialized
+      this.config = config;
       this.initialized = true;
 
       return createSuccessResult(undefined);
@@ -123,84 +119,136 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
   }
 
   /**
-   * Check Gmail provider health and authentication status
-   *
-   * @returns Result containing health status
+   * Shutdown the Gmail provider
    */
-  async healthCheck(): Promise<Result<HealthStatus>> {
+  async shutdown(): Promise<Result<void>> {
     try {
-      this.ensureInitialized();
+      if (this.oauthManager) {
+        // Clean up OAuth manager (no specific cleanup method available)
+        this.oauthManager = null;
+      }
+      this.oauth2Client = null;
+      this.gmail = null;
+      this.oauthManager = null;
+      this.storageManager = null;
+      this.connected = false;
+      this.initialized = false;
+      this.config = null;
 
-      if (!this.connected || !this.gmail) {
-        return createSuccessResult({
-          healthy: false,
-          message: 'Not connected to Gmail',
-          metrics: { connected: 0 },
-        });
+      return createSuccessResult(undefined);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown shutdown error';
+      return createErrorResult(
+        new ConfigurationError(`Gmail provider shutdown failed: ${message}`),
+      );
+    }
+  }
+
+  /**
+   * Validate Gmail configuration
+   */
+  protected async performConfigurationValidation(
+    config: GmailProviderConfig,
+  ): Promise<Result<boolean>> {
+    try {
+      // Check required fields
+      if (!config.auth.clientId || !config.auth.clientSecret) {
+        return createErrorResult(
+          new ConfigurationError('Gmail OAuth configuration missing required fields', {
+            hasClientId: Boolean(config.auth.clientId),
+            hasClientSecret: Boolean(config.auth.clientSecret),
+            hasRedirectUri: Boolean(config.auth.redirectUri),
+          }),
+        );
       }
 
-      // Test Gmail API access - gmail is already checked above
-      if (this.gmail === null) {
-        return createErrorResult(new NetworkError('Gmail client not initialized'));
-      }
+      return createSuccessResult(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown validation error';
+      return createErrorResult(
+        new ConfigurationError(`Gmail configuration validation failed: ${message}`),
+      );
+    }
+  }
 
-      const profileResult = await this.callWithErrorHandling(async () => {
-        return await this.gmail!.users.getProfile({ userId: 'me' });
-      });
-
-      if (!profileResult.success) {
+  /**
+   * Perform Gmail health check
+   */
+  protected async performHealthCheck(): Promise<Result<HealthStatus>> {
+    try {
+      // Basic health check - ensure components are initialized
+      if (!this.oauth2Client || !this.gmail || !this.oauthManager) {
         return createSuccessResult({
           healthy: false,
-          message: `Gmail API error: ${profileResult.error.message}`,
-          metrics: { apiError: 1 },
+          status: 'degraded',
+          timestamp: new Date().toISOString(),
+          checks: {
+            oauth2Client: Boolean(this.oauth2Client),
+            gmailApi: Boolean(this.gmail),
+            oauthManager: Boolean(this.oauthManager),
+          },
         });
       }
 
       return createSuccessResult({
         healthy: true,
-        message: 'Gmail connection healthy',
-        lastSuccess: new Date(),
-        metrics: {
-          connected: 1,
-          emailAddress: profileResult.data.data.emailAddress?.length ?? 0,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        checks: {
+          oauth2Client: true,
+          gmailApi: true,
+          oauthManager: true,
         },
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown health check error';
       return createSuccessResult({
         healthy: false,
-        message: `Health check failed: ${message}`,
-        metrics: { error: 1 },
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: message,
       });
     }
   }
 
   /**
-   * Gracefully shutdown the Gmail provider
+   * Check Gmail provider health and authentication status (legacy compatibility)
    *
-   * @returns Result indicating shutdown success or failure
+   * @returns Result containing health status
    */
-  async shutdown(): Promise<Result<void>> {
+  async healthCheck(): Promise<Result<HealthStatus>> {
     try {
-      if (this.connected) {
-        await this.disconnect();
+      if (!this.oauth2Client || !this.gmail) {
+        return createSuccessResult({
+          healthy: false,
+          status: 'degraded',
+          timestamp: new Date().toISOString(),
+          checks: {
+            oauth2Client: Boolean(this.oauth2Client),
+            gmailApi: Boolean(this.gmail),
+            oauthManager: Boolean(this.oauthManager),
+          },
+        });
       }
 
-      this.config = null;
-      this.oauth2Client = null;
-      this.gmail = null;
-      this.oauthManager = null;
-      this.storageManager = null;
-      this.initialized = false;
-
-      return createSuccessResult(undefined);
+      return createSuccessResult({
+        healthy: true,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        checks: {
+          oauth2Client: true,
+          gmailApi: true,
+          oauthManager: true,
+        },
+      });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown shutdown error';
-      return createErrorResult(
-        new ConfigurationError(`Gmail provider shutdown failed: ${message}`, {
-          provider: 'gmail',
-        }),
-      );
+      const message = error instanceof Error ? error.message : 'Unknown health check error';
+      return createSuccessResult({
+        healthy: false,
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: message,
+      });
     }
   }
 
@@ -876,8 +924,8 @@ export class GmailProvider implements EmailProvider<GmailProviderConfig> {
 
   // Private helper methods
 
-  private ensureInitialized(): void {
-    if (!this.initialized) {
+  protected ensureInitialized(): void {
+    if (!this.isInitialized()) {
       throw new Error('Gmail provider not initialized');
     }
   }

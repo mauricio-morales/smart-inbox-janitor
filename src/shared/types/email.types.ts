@@ -8,7 +8,7 @@
  * @module EmailTypes
  */
 
-import { BaseProvider, Result, TimeoutOptions } from './base.types.js';
+import { Result, TimeoutOptions, HealthStatus } from './base.types.js';
 import { GmailProviderConfig, IMAPProviderConfig } from './config.types.js';
 
 /**
@@ -19,7 +19,14 @@ import { GmailProviderConfig, IMAPProviderConfig } from './config.types.js';
  *
  * @template TConfig - Provider-specific configuration type
  */
-export interface EmailProvider<TConfig = EmailProviderConfig> extends BaseProvider<TConfig> {
+export interface EmailProvider<TConfig = EmailProviderConfig> {
+  readonly name: string;
+  readonly version: string;
+  initialize(config: TConfig): Promise<Result<void>>;
+  shutdown(): Promise<Result<void>>;
+  healthCheck(): Promise<Result<HealthStatus>>;
+  getConfig(): Readonly<TConfig>;
+  isInitialized(): boolean;
   /**
    * Establish connection to the email provider
    *

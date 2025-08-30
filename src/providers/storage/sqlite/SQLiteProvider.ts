@@ -75,11 +75,17 @@ const CURRENT_SCHEMA_VERSION = 1;
 export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
   readonly name = 'sqlite';
   readonly version = '1.0.0';
-
-  private db: Database.Database | null = null;
   private config: SQLiteStorageConfig | null = null;
-  private encryptionEnabled = false;
+  private db: Database.Database | null = null;
   private initialized = false;
+  private encryptionEnabled = false;
+
+  /**
+   * Check if provider is initialized
+   */
+  isInitialized(): boolean {
+    return this.initialized;
+  }
 
   async initialize(config: SQLiteStorageConfig): Promise<Result<void>> {
     try {
@@ -125,6 +131,7 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
       this.createTables();
       this.runMigrations();
 
+      // Mark as initialized
       this.initialized = true;
       console.log('[SQLiteProvider] ✅ Initialization completed successfully');
 
@@ -147,7 +154,7 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
 
   healthCheck(): Promise<Result<HealthStatus>> {
     try {
-      if (!this.initialized || this.db == null) {
+      if (!this.isInitialized() || this.db == null) {
         return Promise.resolve(
           createSuccessResult({
             healthy: false,
@@ -155,7 +162,7 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
             message: 'Database not initialized',
             timestamp: new Date(),
             details: {
-              initialized: this.initialized,
+              initialized: this.isInitialized(),
               databaseConnected: Boolean(this.db),
             },
           }),
@@ -212,6 +219,7 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
         this.db = null;
       }
 
+      // Clear initialized state
       this.initialized = false;
       this.config = null;
       this.encryptionEnabled = false;
@@ -536,7 +544,7 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     try {
       console.log('[SQLiteProvider] getEncryptedTokens called');
       console.log('[SQLiteProvider] Initialization status:', {
-        initialized: this.initialized,
+        initialized: this.isInitialized(),
         hasDb: !!this.db,
       });
 
@@ -1052,7 +1060,7 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     return Promise.resolve(createSuccessResult([]));
   }
 
-  getConfig(): Promise<Result<StoredAppConfig>> {
+  getStoredAppConfig(): Promise<Result<StoredAppConfig>> {
     // TODO: Implement application configuration retrieval
     // Why not implemented in this PR:
     // Configuration management requires the settings schema to be finalized
@@ -1357,17 +1365,8 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
     console.log('Database migrations completed');
   }
 
-  private ensureInitialized(): void {
-    console.log('[SQLiteProvider] ensureInitialized check:', {
-      initialized: this.initialized,
-      hasDb: !!this.db,
-    });
-    if (!this.initialized || this.db == null) {
-      console.error('[SQLiteProvider] Provider not initialized! State:', {
-        initialized: this.initialized,
-        hasDb: !!this.db,
-        dbPath: this.config?.databasePath,
-      });
+  protected ensureInitialized(): void {
+    if (!this.isInitialized() || this.db == null) {
       throw new Error('SQLite provider not initialized');
     }
   }
@@ -1378,5 +1377,38 @@ export class SQLiteProvider implements StorageProvider<SQLiteStorageConfig> {
       throw new Error('Database is null after initialization check');
     }
     return this.db;
+  }
+
+  /**
+   * Get database statistics for monitoring
+   */
+  async getDatabaseStatistics(): Promise<Result<DatabaseStatistics>> {
+    try {
+      if (!this.db) {
+        return createErrorResult(new StorageError('Database not initialized'));
+      }
+
+      const stats = {
+        totalRecords: 0,
+        databaseSizeBytes: 0,
+        lastAccessTime: new Date().toISOString(),
+        isHealthy: true,
+      };
+
+      return createSuccessResult(stats);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return createErrorResult(new StorageError(`Failed to get database statistics: ${message}`));
+    }
+  }
+
+  /**
+   * Get current provider configuration
+   */
+  getConfig(): Readonly<SQLiteStorageConfig> {
+    if (!this.config) {
+      throw new Error('SQLite provider not initialized');
+    }
+    return this.config;
   }
 }

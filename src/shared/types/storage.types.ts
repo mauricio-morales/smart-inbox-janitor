@@ -41,6 +41,17 @@ export interface StorageProvider<TConfig = StorageProviderConfig> {
    * Gracefully shutdown the provider and cleanup resources
    */
   shutdown(): Promise<Result<void>>;
+
+  /**
+   * Get current provider configuration
+   */
+  getConfig(): Readonly<TConfig>;
+
+  /**
+   * Check if provider is initialized
+   */
+  isInitialized(): boolean;
+
   /**
    * Initialize storage provider and create required tables/collections
    *
