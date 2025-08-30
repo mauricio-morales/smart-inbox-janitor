@@ -50,13 +50,15 @@ jobs:
           # assignee_trigger: "claude-bot"
 
           # Optional: Allow Claude to run specific commands
-          # allowed_tools: "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
+          allowed_tools: "Bash(dotnet build),Bash(dotnet test),Bash(dotnet run),Bash(dotnet format),Bash(dotnet restore),Bash(dotnet clean)"
 
           # Optional: Add custom instructions for Claude to customize its behavior for your project
-          # custom_instructions: |
-          #   Follow our coding standards
-          #   Ensure all new code has tests
-          #   Use TypeScript for new files
+          custom_instructions: |
+            This is a .NET 9 Avalonia desktop application using C# and MVVM pattern.
+            Follow Microsoft C# coding standards and use strongly typed return types.
+            Ensure all new code has proper error handling using Result<T> pattern.
+            Use dependency injection and the provider pattern for services.
+            All providers should implement appropriate interfaces from TransMailPanda.Shared.
 
           # Optional: Custom environment variables for Claude
           # claude_env: |

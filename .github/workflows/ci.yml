@@ -1,0 +1,312 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # Job 1: Build and Test
+  build-and-test:
+    name: Build & Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        configuration: [Debug, Release]
+        include:
+          - os: ubuntu-latest
+            runtime: linux-x64
+          - os: windows-latest
+            runtime: win-x64
+          - os: macos-latest
+            runtime: osx-x64
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Full history for GitVersion
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build solution
+      run: dotnet build --configuration ${{ matrix.configuration }} --no-restore
+
+    - name: Run unit tests
+      run: dotnet test --configuration ${{ matrix.configuration }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}-${{ matrix.configuration }}
+        path: |
+          ./coverage/**/*.xml
+          ./TestResults/**/*.trx
+
+    - name: Upload coverage to Codecov
+      if: matrix.os == 'ubuntu-latest' && matrix.configuration == 'Release'
+      uses: codecov/codecov-action@v4
+      with:
+        directory: ./coverage
+        fail_ci_if_error: false
+        verbose: true
+
+  # Job 2: Code Quality
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Check code formatting
+      run: dotnet format --verify-no-changes --verbosity diagnostic
+
+    - name: Run code analysis
+      run: dotnet build --configuration Release --verbosity normal /p:TreatWarningsAsErrors=true
+
+  # Job 3: Security Audit
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Check for vulnerable packages
+      run: |
+        # List all packages and check for vulnerabilities
+        dotnet list package --vulnerable --include-transitive > vulnerability-report.txt 2>&1 || true
+        
+        # Check if vulnerabilities were found
+        if grep -q "vulnerable" vulnerability-report.txt; then
+          echo "❌ Security vulnerabilities found:"
+          cat vulnerability-report.txt
+          exit 1
+        else
+          echo "✅ No security vulnerabilities found"
+        fi
+
+    - name: Upload security report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-report
+        path: vulnerability-report.txt
+
+  # Job 4: Package and Publish (Release builds only)
+  package:
+    name: Package Application
+    runs-on: ${{ matrix.os }}
+    needs: [build-and-test, code-quality, security-audit]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            runtime: linux-x64
+            artifact-name: transmail-panda-linux
+          - os: windows-latest
+            runtime: win-x64
+            artifact-name: transmail-panda-windows
+          - os: macos-latest
+            runtime: osx-x64
+            artifact-name: transmail-panda-macos
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Publish application
+      run: |
+        dotnet publish src/TransMailPanda/TransMailPanda/TransMailPanda.csproj \
+          --configuration Release \
+          --runtime ${{ matrix.runtime }} \
+          --self-contained true \
+          --output ./publish/${{ matrix.runtime }} \
+          -p:PublishSingleFile=true \
+          -p:PublishTrimmed=true \
+          -p:TrimMode=partial
+
+    - name: Create application package (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        # Create macOS .app bundle structure
+        mkdir -p ./publish/TransMailPanda.app/Contents/MacOS
+        mkdir -p ./publish/TransMailPanda.app/Contents/Resources
+        
+        # Move executable
+        mv ./publish/${{ matrix.runtime }}/TransMailPanda ./publish/TransMailPanda.app/Contents/MacOS/
+        
+        # Create Info.plist
+        cat > ./publish/TransMailPanda.app/Contents/Info.plist << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>TransMailPanda</string>
+            <key>CFBundleIconFile</key>
+            <string>icon.icns</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.transmailpanda.app</string>
+            <key>CFBundleInfoDictionaryVersion</key>
+            <string>6.0</string>
+            <key>CFBundleName</key>
+            <string>TransMail Panda</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0.0</string>
+            <key>CFBundleVersion</key>
+            <string>1.0.0</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.15</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+            <key>NSHumanReadableCopyright</key>
+            <string>© 2024 TransMail Panda</string>
+        </dict>
+        </plist>
+        EOF
+
+    - name: Upload application artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact-name }}
+        path: |
+          ./publish/${{ matrix.runtime }}/**/*
+          ./publish/TransMailPanda.app/**/*
+        retention-days: 30
+
+  # Job 5: Integration Tests (if we had them)
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Run integration tests
+      run: |
+        if [ -d "src/Tests/Integration" ]; then
+          dotnet test src/Tests/Integration --configuration Release --verbosity normal
+        else
+          echo "No integration tests found - skipping"
+        fi
+
+  # Job 6: Deployment (main branch only)
+  deploy:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    needs: [package, integration-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+
+    - name: List downloaded artifacts
+      run: find ./artifacts -type f -name "*.exe" -o -name "TransMailPanda" -o -name "*.app"
+
+    - name: Deploy to production
+      run: |
+        echo "🚀 Deployment step - implement your deployment strategy here"
+        echo "Available artifacts:"
+        ls -la ./artifacts/
+        
+        # TODO: Implement actual deployment logic
+        # Examples:
+        # - Upload to GitHub Releases
+        # - Deploy to Azure/AWS
+        # - Update package managers
+        # - Notify stakeholders
+
+  # Job 7: Notification
+  notify:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [build-and-test, code-quality, security-audit, package]
+    if: always()
+    
+    steps:
+    - name: Notify success
+      if: needs.build-and-test.result == 'success' && needs.code-quality.result == 'success'
+      run: |
+        echo "✅ CI Pipeline completed successfully!"
+        echo "Build: ${{ needs.build-and-test.result }}"
+        echo "Code Quality: ${{ needs.code-quality.result }}"
+        echo "Security: ${{ needs.security-audit.result }}"
+        
+    - name: Notify failure
+      if: needs.build-and-test.result == 'failure' || needs.code-quality.result == 'failure' || needs.security-audit.result == 'failure'
+      run: |
+        echo "❌ CI Pipeline failed!"
+        echo "Build: ${{ needs.build-and-test.result }}"
+        echo "Code Quality: ${{ needs.code-quality.result }}"
+        echo "Security: ${{ needs.security-audit.result }}"
+        exit 1
