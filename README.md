@@ -74,8 +74,8 @@ TransMail Panda helps users clean their mailbox through intelligent automation:
 1. **Clone and install**:
 
    ```bash
-   git clone https://github.com/mauricio-morales/smart-inbox-janitor.git
-   cd smart-inbox-janitor
+   git clone https://github.com/mauricio-morales/trashmail-panda.git
+   cd trashmail-panda
    npm install
    ```
 
@@ -153,7 +153,7 @@ Smart Inbox Janitor adapts to your preferences:
 ### Project Structure
 
 ```
-smart-inbox-janitor/
+trashmail-panda/
 ├── src/
 │   ├── TransMailPanda/     # Main Avalonia application
 │   │   ├── Views/          # Avalonia XAML views
@@ -212,7 +212,7 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 ## 🤝 Support
 
 - **Issues**: Report bugs and request features on GitHub
-- **Documentation**: Check the [app definition](smart-inbox-janitor-app-definition.md) for detailed specs
+- **Documentation**: Check the [app definition](trashmail-panda-app-definition.md) for detailed specs
 - **Discussions**: Join community discussions for help and ideas
 
 ## ⚠️ Disclaimer

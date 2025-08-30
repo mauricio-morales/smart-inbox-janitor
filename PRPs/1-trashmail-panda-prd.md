@@ -52,7 +52,7 @@ TransMail Panda is a **free, open-source desktop application** that:
 - **"For Dummies" UX**: Must be usable by users with zero technical knowledge
 - **Local-Only Processing**: No cloud services, no data hosting, no user accounts
 - **Free Forever**: Open source with no monetization, premium features, or paid services
-- **Desktop First**: Avalonia UI cross-platform app for Phase 1, web version for Phase 2
+- **Desktop First**: Avalonia UI cross-platform app for Phase 1
 - **Gmail Personal Focus**: Optimized for personal accounts (not enterprise/workspace)
 
 ### Success Scenarios
@@ -450,13 +450,6 @@ security_concerns:
 ---
 
 ## Future Roadmap (Post-MVP)
-
-### Phase 2: Browser Version
-
-- Static website deployment (GitHub Pages)
-- IndexedDB storage adapter
-- Web Crypto API for token encryption
-- Progressive Web App capabilities
 
 ### Community-Driven Features
 
