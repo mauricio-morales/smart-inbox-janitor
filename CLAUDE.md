@@ -4,209 +4,219 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Smart Inbox Janitor is an AI-powered email triage assistant built as an Electron desktop application. It helps users clean their Gmail inbox safely through intelligent classification and bulk operations. The project uses a provider-agnostic architecture with TypeScript throughout.
+TransMail Panda is an AI-powered email triage assistant built as a cross-platform .NET desktop application. It helps users clean their Gmail inbox safely through intelligent classification and bulk operations. The project uses a provider-agnostic architecture with C# throughout.
 
-**Key Technologies**: Electron, React, TypeScript, XState (v5), SQLite (better-sqlite3), Gmail API, OpenAI API, Material-UI (v7)
+**Key Technologies**: Avalonia UI 11, CommunityToolkit.Mvvm, Microsoft.Extensions.Hosting/DI/Logging, Microsoft.Data.Sqlite + SQLitePCLRaw.bundle_e_sqlcipher, Google.Apis.Gmail.v1, System.Text.Json, Polly
 
 ## Development Commands
 
 ### Essential Daily Commands
 
-- `npm run dev` - Start development server with hot reload
-- `npm run build` - Build the application for production
-- `npm run type-check` - Run TypeScript type checking
-- `npm run lint` - Run ESLint (use `npm run lint:fix` to auto-fix)
-- `npm run format` - Format code with Prettier
-- `npm run test` - Run Jest tests (use `npm run test:watch` for watch mode)
+- `dotnet run --project src/TransMailPanda` - Start development server with hot reload
+- `dotnet build` - Build the application for production
+- `dotnet format --verify-no-changes` - Verify code formatting
+- `dotnet format` - Format code with .NET formatter
+- `dotnet test` - Run xUnit tests (use `dotnet test --watch` for watch mode)
 
 ### CI/CD Validation (Before Push)
 
-- `npm run ci:quick` - Fast validation: lint + type-check + build
-- `npm run ci:check` - Full CI validation matching GitHub Actions
-- `npm run ci:quality` - Code quality checks only
-- `npm run ci:security` - Security audit
+- `dotnet build --configuration Release` - Fast validation: build + test
+- `dotnet test --configuration Release` - Full test suite
+- `dotnet format --verify-no-changes` - Code quality checks only
+- `dotnet tool restore && dotnet security-scan` - Security audit
 
 ### VS Code Tasks (Cmd+Shift+P → "Tasks: Run Task")
 
 - **🔍 Full CI/CD Check** (`Ctrl+Shift+C`) - Complete validation
-- **⚡ Quick Check** (`Ctrl+Shift+Q`) - Fast lint/build/type-check
-- **🧪 Code Quality Check** (`Ctrl+Shift+T`) - Linting and formatting
-- **🧽 Clean & Fresh Install** - Reset node_modules
+- **⚡ Quick Check** (`Ctrl+Shift+Q`) - Fast build/test
+- **🧪 Code Quality Check** (`Ctrl+Shift+T`) - Formatting and analysis
+- **🧽 Clean & Restore** - Clean bin/obj and restore packages
 
 ### Testing Commands
 
-- `npm run test:types` - Test type definitions
-- `npm run test:schemas` - Test Zod schemas
-- `npm run test:factories` - Test data factories
-- `npm run test:coverage` - Generate coverage report
+- `dotnet test --collect:"XPlat Code Coverage"` - Generate coverage report
+- `dotnet test --filter Category=Integration` - Run integration tests
+- `dotnet test --filter Category=Unit` - Run unit tests only
+- `dotnet test --verbosity normal` - Detailed test output
 
 ### Build Commands
 
-- `npm run build:win` / `npm run build:mac` / `npm run build:linux` - Platform builds
-- `npm run clean` - Remove build artifacts
+- `dotnet publish -c Release -r win-x64` - Windows x64 build
+- `dotnet publish -c Release -r osx-x64` - macOS x64 build  
+- `dotnet publish -c Release -r linux-x64` - Linux x64 build
+- `dotnet clean` - Remove build artifacts
 
 ## Architecture Overview
 
 ### Provider-Agnostic Design
 
-The application uses a sophisticated provider pattern with BaseProvider architecture providing common functionality:
+The application uses a sophisticated provider pattern with IProvider interface providing common functionality:
 
-1. **EmailProvider** (`src/providers/email/`) - Gmail API integration (future: IMAP)
-2. **LLMProvider** (`src/providers/llm/`) - OpenAI GPT-4o-mini (future: Claude, local)
-3. **StorageProvider** (`src/providers/storage/`) - SQLite with encryption (future: IndexedDB)
+1. **IEmailProvider** (`src/Providers/Email/`) - Gmail API integration (future: IMAP)
+2. **ILLMProvider** (`src/Providers/LLM/`) - OpenAI GPT-4o-mini (future: Claude, local)
+3. **IStorageProvider** (`src/Providers/Storage/`) - SQLite with SQLCipher encryption
 
-### BaseProvider Architecture
+### Base Provider Architecture
 
-All providers extend the `BaseProvider<TConfig>` abstract class (`src/shared/base/BaseProvider.ts`) which provides:
+All providers implement the `IProvider<TConfig>` interface (`src/Shared/Base/IProvider.cs`) which provides:
 
-- **Lifecycle Management**: Initialize, shutdown, configuration updates with hooks
+- **Lifecycle Management**: Initialize, shutdown, configuration updates with dependency injection
 - **State Management**: Centralized initialization state tracking
-- **Performance Monitoring**: Built-in metrics collection and caching
-- **Dependency Management**: Initialization dependency resolution
-- **Health Checks**: Enhanced health checks with state and metrics
-- **Configuration Validation**: Cached validation with startup checks
+- **Performance Monitoring**: Built-in metrics collection and caching with IMetrics
+- **Dependency Management**: Constructor injection with IServiceProvider
+- **Health Checks**: Enhanced health checks with IHealthCheck integration
+- **Configuration Validation**: DataAnnotations validation with startup checks
 
-### XState State Machine Architecture
+### MVVM State Management Architecture
 
-The application uses **XState v5** for robust UI state management:
+The application uses **CommunityToolkit.Mvvm** for robust UI state management:
 
-- **StartupMachine** (`src/renderer/src/machines/startupMachine.ts`) - Manages application startup flow
-- **State Machine Integration** - Prevents infinite loops and provides deterministic UI states
+- **StartupViewModel** (`src/ViewModels/StartupViewModel.cs`) - Manages application startup flow
+- **ObservableObject Integration** - INotifyPropertyChanged implementation with source generators
 - **Provider Status Management** - Tracks individual provider health and setup requirements
-- **Timeout Handling** - Built-in timeout management for provider checks
+- **Async Command Handling** - Built-in async command execution with cancellation
 
-Key states: `initializing`, `checking_providers`, `dashboard_ready`, `setup_required`, `setup_timeout`
+Key states: `Initializing`, `CheckingProviders`, `DashboardReady`, `SetupRequired`, `SetupTimeout`
 
 ### Startup Orchestration System
 
 Coordinates provider health checks and app readiness:
 
-- **StartupOrchestrator** (`src/renderer/src/services/StartupOrchestrator.ts`) - Orchestrates provider checks
-- **StartupStateMachine** (`src/renderer/src/components/StartupStateMachine.tsx`) - React integration with XState
-- **Parallel Provider Checks** - All provider health checks run concurrently
-- **Individual Timeouts** - Each provider has independent timeout handling
+- **StartupOrchestrator** (`src/Services/StartupOrchestrator.cs`) - Orchestrates provider checks
+- **StartupView** (`src/Views/StartupView.axaml`) - Avalonia UI integration with MVVM
+- **Parallel Provider Checks** - All provider health checks run concurrently with Task.WhenAll
+- **Individual Timeouts** - Each provider has independent timeout handling with CancellationToken
 
 ### Project Structure
 
 ```
 src/
-├── main/           # Electron main process (Node.js)
-├── renderer/       # React UI (browser context)
-├── preload/        # Secure IPC bridge with type-safe interfaces
-├── shared/         # Shared types and utilities
-│   ├── base/       # BaseProvider architecture
-│   ├── types/      # TypeScript interfaces
-│   ├── schemas/    # Zod validation schemas
-│   ├── factories/  # Test data factories
-│   └── utils/      # Shared utilities & provider initialization
-├── providers/      # Provider implementations
-└── renderer/src/
-    ├── machines/   # XState state machines
-    ├── services/   # Orchestration services
-    ├── hooks/      # Custom React hooks
-    └── components/ # React components with state management
+├── TransMailPanda/         # Main Avalonia application
+│   ├── Views/              # Avalonia XAML views
+│   ├── ViewModels/         # MVVM view models
+│   ├── Models/             # Domain models
+│   └── Services/           # Application services
+├── Shared/                 # Shared types and utilities
+│   ├── Base/               # IProvider architecture
+│   ├── Models/             # Data transfer objects
+│   ├── Extensions/         # Extension methods
+│   └── Utils/              # Shared utilities & provider initialization
+├── Providers/              # Provider implementations
+│   ├── Email/              # Gmail provider
+│   ├── LLM/                # OpenAI provider  
+│   └── Storage/            # SQLite provider
+└── Tests/                  # xUnit test projects
+    ├── Unit/               # Unit tests
+    ├── Integration/        # Integration tests
+    └── Fixtures/           # Test fixtures
 ```
 
 ### Result Pattern
 
 **CRITICAL**: All provider methods use the `Result<T>` pattern instead of throwing exceptions:
 
-```typescript
+```csharp
 // ✅ Correct
-const result = await provider.getEmails();
-if (result.success) {
-  console.log(result.data);
-} else {
-  console.error(result.error);
+var result = await provider.GetEmailsAsync();
+if (result.IsSuccess)
+{
+    Console.WriteLine(result.Value);
+}
+else
+{
+    Console.WriteLine(result.Error);
 }
 
 // ❌ Never do this
-try {
-  const emails = await provider.getEmails();
-} catch (error) {
-  // Providers don't throw!
+try
+{
+    var emails = await provider.GetEmailsAsync();
+}
+catch (Exception ex)
+{
+    // Providers don't throw!
 }
 ```
 
-## React Integration Patterns
+## Avalonia MVVM Patterns
 
-### Custom Hooks
+### ViewModels and Services
 
-- **useElectronAPI** (`src/renderer/src/hooks/useElectronAPI.ts`) - Provides type-safe access to Electron APIs
-- **useProviderStatus** (`src/renderer/src/hooks/useProviderStatus.ts`) - Real-time provider health monitoring
-- **useMachine** (from @xstate/react) - XState integration for state management
+- **IApplicationService** (`src/Services/IApplicationService.cs`) - Provides access to application services
+- **IProviderStatusService** (`src/Services/IProviderStatusService.cs`) - Real-time provider health monitoring  
+- **ObservableObject** (from CommunityToolkit.Mvvm) - MVVM base class for property change notification
 
 ### State Management
 
-- **XState v5**: Finite state machines for complex UI flows
+- **CommunityToolkit.Mvvm**: Observable properties and commands for UI binding
 - **Provider Status**: Real-time health monitoring and setup requirements
-- **Modal Management**: Coordinated setup flows for different providers
-- **Error Boundaries**: Graceful error handling with state recovery
+- **Dialog Management**: Coordinated setup flows for different providers with Avalonia dialogs
+- **Error Handling**: Graceful error handling with Result<T> pattern and user notifications
 
-### Component Architecture
+### View Architecture
 
-- **StartupStateMachine**: Central orchestrator for application startup
-- **ProviderSetupCard**: Reusable provider status and setup components
-- **Modal Coordination**: OpenAI and Gmail setup modals with state synchronization
+- **StartupView**: Central orchestrator for application startup
+- **ProviderSetupUserControl**: Reusable provider status and setup controls
+- **Dialog Coordination**: OpenAI and Gmail setup dialogs with view model coordination
 
 ## Key Development Patterns
 
-### TypeScript Configuration
+### C# Configuration
 
-- **Strict mode enabled** - All strict TypeScript checks active
-- **Path mapping**: Use `@shared/*`, `@providers/*`, `@tests/*`
-- **No `any` types** - Use proper typing or `unknown`
-- **Explicit return types** required on functions
+- **Nullable reference types enabled** - All nullable checks active
+- **Global using statements**: Common namespaces in GlobalUsings.cs
+- **No object types** - Use proper typing with generics
+- **Explicit return types** preferred for clarity
 
 ### Error Handling
 
-- Use `Result<T, E>` for all async operations
-- Import error utilities from `@shared/types`
+- Use `Result<T, TError>` for all async operations
+- Import error utilities from `Shared.Base`
 - Error classes: `ConfigurationError`, `AuthenticationError`, `NetworkError`, `ValidationError`
-- Use `createSuccessResult()` and `createErrorResult()` helpers
+- Use `Result.Success()` and `Result.Failure()` factory methods
 
 ### Provider Implementation
 
-When implementing new providers, follow the BaseProvider architecture:
+When implementing new providers, follow the IProvider architecture:
 
-1. **Extend BaseProvider**: `class MyProvider extends BaseProvider<MyConfig>`
-2. **Implement Abstract Methods**:
-   - `performInitialization(config)`: Provider-specific setup
-   - `performShutdown()`: Cleanup and resource deallocation
-   - `performConfigurationValidation(config)`: Config validation logic
-   - `performHealthCheck()`: Provider health assessment
-3. **Use Lifecycle Hooks** (optional):
-   - `onPreInitialize()`, `onPostInitialize()`: Setup hooks
-   - `onPreShutdown()`, `onPostShutdown()`: Cleanup hooks
-   - `onConfigurationChanged()`: Config update handling
+1. **Implement IProvider**: `class MyProvider : IProvider<MyConfig>`
+2. **Implement Interface Methods**:
+   - `InitializeAsync(config)`: Provider-specific setup
+   - `ShutdownAsync()`: Cleanup and resource deallocation
+   - `ValidateConfigurationAsync(config)`: Config validation logic
+   - `HealthCheckAsync()`: Provider health assessment
+3. **Use Dependency Injection**:
+   - Constructor injection for dependencies
+   - Register as singleton or scoped based on needs
+   - Use IOptions<T> pattern for configuration
 4. **Configuration**:
-   - Define typed configuration extending `BaseProviderConfig`
-   - Use `getStartupValidationConfig()` for validation rules
-   - Implement `getInitializationDependencies()` if needed
-5. **State Management**: Use `ensureInitialized()` in methods requiring initialization
-6. **Performance**: Enable metrics with `enablePerformanceMetrics: true` in config
+   - Define typed configuration with DataAnnotations validation
+   - Use IOptionsMonitor<T> for configuration changes
+   - Implement IValidateOptions<T> for complex validation
+5. **State Management**: Use internal state tracking with thread safety
+6. **Performance**: Enable metrics with IMetrics integration
 
-### XState Machine Development
+### MVVM Development
 
-When creating new state machines:
+When creating new view models:
 
-1. **Define States**: Use explicit finite states, avoid boolean flags
-2. **Type Safety**: Define context interfaces and event types
-3. **Actors**: Use `fromPromise` for async operations
-4. **Guards**: Implement state transition logic in guards
-5. **Actions**: Use `assign` for context updates, separate actions for side effects
-6. **Integration**: Use `useMachine` hook with `.provide()` for implementations
+1. **Define Properties**: Use ObservableProperty attribute for data binding
+2. **Type Safety**: Use strong typing with nullable reference types
+3. **Commands**: Use RelayCommand and AsyncRelayCommand for user actions
+4. **Validation**: Implement INotifyDataErrorInfo for validation feedback
+5. **State Changes**: Use PropertyChanged.Fody for automatic notifications
+6. **Integration**: Use dependency injection for service access
 
 ### Security Considerations
 
 - **Never log or expose sensitive data** (tokens, emails, API keys)
-- Use the `CredentialEncryption` service for secure token storage
-- All database operations use parameterized queries
-- Implement proper rate limiting for external APIs
+- Use OS keychain APIs (DPAPI, macOS Keychain, libsecret) for secure token storage
+- All database operations use parameterized queries with Entity Framework
+- Implement proper rate limiting with Polly for external APIs
 
 ## Console Mode Provider Validation & Debugging
 
-**IMPORTANT FOR AI AGENTS**: Smart Inbox Janitor includes a console-mode provider validation system for debugging and automated testing without UI dependencies.
+**IMPORTANT FOR AI AGENTS**: TransMail Panda includes a console-mode provider validation system for debugging and automated testing without UI dependencies.
 
 ### Console Mode Commands
 
@@ -214,19 +224,19 @@ When creating new state machines:
 
 ```bash
 # Basic console validation (recommended for AI agents)
-npm run debug:providers
+dotnet run --project src/TransMailPanda.Console
 
 # JSON output only (ideal for AI parsing)
-npm run debug:providers:json
+dotnet run --project src/TransMailPanda.Console -- --format json
 
 # Test specific providers
-npm run debug:gmail           # Gmail provider only
-npm run debug:openai         # OpenAI provider only
-npm run debug:storage        # Storage provider only
+dotnet run --project src/TransMailPanda.Console -- --provider gmail
+dotnet run --project src/TransMailPanda.Console -- --provider openai
+dotnet run --project src/TransMailPanda.Console -- --provider storage
 
 # CI/CD integration
-npm run test:providers:ci    # Headless with JSON output & 30s timeout
-npm run validate:console     # Exit on first failure with 60s timeout
+dotnet run --project src/TransMailPanda.Console -- --format json --timeout 30
+dotnet run --project src/TransMailPanda.Console -- --exit-on-failure --timeout 60
 ```
 
 ### Console Mode Features

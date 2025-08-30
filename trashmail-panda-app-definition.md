@@ -1,12 +1,12 @@
-# Smart Inbox Janitor — AI Agent System Prompt (Gmail-first, AI-interchangeable)
+# TransMail Panda — AI Agent System Prompt (Gmail-first, AI-interchangeable)
 
-> **Purpose:** This `.md` is a production-minded system/prompt spec for an **email triage assistant** focused on **Gmail-first** support and **interchangeable LLM backends** (OpenAI/ChatGPT, Claude, local Llama, etc.). It includes guardrails, provider-agnostic interfaces (Email/Contacts/LLM), batch workflow, learning rules, UI expectations, and ASCII wireframes.
+> **Purpose:** This `.md` is a production-minded system/prompt spec for an **email triage assistant** focused on **Gmail-first** support and **interchangeable LLM backends** (OpenAI/ChatGPT, Claude, local Llama, etc.). It includes guardrails, provider-agnostic interfaces (Email/Contacts/LLM), batch workflow, learning rules, UI expectations, and wireframes.
 
 ---
 
 ## Mission
 
-You are **Smart Inbox Janitor**, an AI that helps a user clean their mailbox safely and fast. You:
+You are **TransMail Panda**, an AI that helps a user clean their mailbox safely and fast. You:
 
 1. fetch batches of emails,
 2. score & explain _junk/spam/potentially dangerous vs. keep_,
@@ -62,7 +62,7 @@ The app provides a **zero-configuration**, guided authentication experience wher
 
 **Simple Sign-In Process:**
 
-- **Smart Inbox Janitor is pre-registered** with Google as a trusted application
+- **TransMail Panda is pre-registered** with Google as a trusted application
 - **Users just sign in** with their existing Gmail credentials (no developer setup required)
 - **Embedded sign-in window** within the app (no external browser navigation)
 - **Automatic session management** - handles renewals transparently
@@ -115,7 +115,7 @@ Step 2: Get Your Access Key
 → Copy the key that starts with "sk-"
 → [Take Me There] button opens the exact page
 
-Step 3: Connect to Smart Inbox Janitor
+Step 3: Connect to TransMail Panda
 → Paste your access key in the box below
 → We'll test it to make sure everything works
 → [Test Connection] verifies with a sample email
@@ -132,26 +132,40 @@ Step 3: Connect to Smart Inbox Janitor
 
 ### Connection State Management
 
-```ts
-export interface ConnectionState {
-  gmail: {
-    isSignedIn: boolean;
-    accountEmail?: string;
-    accountName?: string;
-    profilePicture?: string;
-    sessionExpiresAt?: string;
-    lastRefreshAt?: string;
-    needsReSignIn: boolean;
-  };
-  openai: {
-    hasValidKey: boolean;
-    keyLastFour?: string; // Only show last 4 chars for privacy
-    lastValidated?: string;
-    monthlySpendingUSD?: number;
-    estimatedDailyRate?: number;
-  };
-  setupComplete: boolean;
-  onboardingStep?: 'gmail-signin' | 'openai-setup' | 'ready';
+```csharp
+public class ConnectionState
+{
+    public GmailConnection Gmail { get; set; } = new();
+    public OpenAiConnection OpenAi { get; set; } = new();
+    public bool SetupComplete { get; set; }
+    public OnboardingStep? OnboardingStep { get; set; }
+}
+
+public class GmailConnection
+{
+    public bool IsSignedIn { get; set; }
+    public string? AccountEmail { get; set; }
+    public string? AccountName { get; set; }
+    public string? ProfilePicture { get; set; }
+    public DateTime? SessionExpiresAt { get; set; }
+    public DateTime? LastRefreshAt { get; set; }
+    public bool NeedsReSignIn { get; set; }
+}
+
+public class OpenAiConnection
+{
+    public bool HasValidKey { get; set; }
+    public string? KeyLastFour { get; set; } // Only show last 4 chars for privacy
+    public DateTime? LastValidated { get; set; }
+    public decimal? MonthlySpendingUSD { get; set; }
+    public decimal? EstimatedDailyRate { get; set; }
+}
+
+public enum OnboardingStep
+{
+    GmailSignin,
+    OpenaiSetup,
+    Ready
 }
 ```
 
@@ -195,21 +209,30 @@ export interface ConnectionState {
 
 Design against these **abstract interfaces** so we can add providers (e.g., IMAP) later.
 
-```ts
+```csharp
 // Email provider (start with Gmail)
-export interface EmailProvider {
-  connect(): Promise<void>; // OAuth (Gmail). Store tokens securely.
-  list(options: ListOptions): Promise<EmailSummary[]>; // batched listing with search/filter
-  get(id: string): Promise<EmailFull>; // full body + headers
-  batchModify(req: BatchModifyRequest): Promise<void>; // add/remove labels, mark spam, move to trash
-  delete(id: string): Promise<void>; // hard delete (rare; prefer trash)
-  reportSpam?(id: string): Promise<void>; // provider-optional
-  reportPhishing?(id: string): Promise<void>; // provider-optional
+public interface IEmailProvider
+{
+    Task ConnectAsync(); // OAuth (Gmail). Store tokens securely.
+    Task<IReadOnlyList<EmailSummary>> ListAsync(ListOptions options); // batched listing with search/filter
+    Task<EmailFull> GetAsync(string id); // full body + headers
+    Task BatchModifyAsync(BatchModifyRequest request); // add/remove labels, mark spam, move to trash
+    Task DeleteAsync(string id); // hard delete (rare; prefer trash)
+    Task ReportSpamAsync(string id); // provider-optional
+    Task ReportPhishingAsync(string id); // provider-optional
 }
 
-export interface ContactsProvider {
-  isKnown(emailOrDomain: string): Promise<boolean>;
-  relationshipStrength(email: string): Promise<'none' | 'weak' | 'strong'>;
+public interface IContactsProvider
+{
+    Task<bool> IsKnownAsync(string emailOrDomain);
+    Task<RelationshipStrength> GetRelationshipStrengthAsync(string email);
+}
+
+public enum RelationshipStrength
+{
+    None,
+    Weak,
+    Strong
 }
 ```
 
@@ -229,67 +252,87 @@ All user data, learning profiles, email metadata, and configuration must be stor
 
 Abstract the storage layer to support both desktop and browser environments:
 
-```ts
-export interface StorageProvider {
-  init(): Promise<void>;
+```csharp
+public interface IStorageProvider
+{
+    Task InitAsync();
 
-  // User rules and learning data
-  getUserRules(): Promise<UserRules>;
-  updateUserRules(rules: UserRules): Promise<void>;
+    // User rules and learning data
+    Task<UserRules> GetUserRulesAsync();
+    Task UpdateUserRulesAsync(UserRules rules);
 
-  // Email metadata cache (for classification history)
-  getEmailMetadata(emailId: string): Promise<EmailMetadata | null>;
-  setEmailMetadata(emailId: string, metadata: EmailMetadata): Promise<void>;
-  bulkSetEmailMetadata(entries: Array<{ id: string; metadata: EmailMetadata }>): Promise<void>;
+    // Email metadata cache (for classification history)
+    Task<EmailMetadata?> GetEmailMetadataAsync(string emailId);
+    Task SetEmailMetadataAsync(string emailId, EmailMetadata metadata);
+    Task BulkSetEmailMetadataAsync(IReadOnlyList<EmailMetadataEntry> entries);
 
-  // Classification history and analytics
-  getClassificationHistory(filters?: HistoryFilters): Promise<ClassificationHistoryItem[]>;
-  addClassificationResult(result: ClassificationHistoryItem): Promise<void>;
+    // Classification history and analytics
+    Task<IReadOnlyList<ClassificationHistoryItem>> GetClassificationHistoryAsync(HistoryFilters? filters = null);
+    Task AddClassificationResultAsync(ClassificationHistoryItem result);
 
-  // Encrypted token storage
-  getEncryptedTokens(): Promise<Record<string, string>>;
-  setEncryptedToken(provider: string, encryptedToken: string): Promise<void>;
+    // Encrypted token storage
+    Task<IReadOnlyDictionary<string, string>> GetEncryptedTokensAsync();
+    Task SetEncryptedTokenAsync(string provider, string encryptedToken);
 
-  // Configuration
-  getConfig(): Promise<AppConfig>;
-  updateConfig(config: Partial<AppConfig>): Promise<void>;
+    // Configuration
+    Task<AppConfig> GetConfigAsync();
+    Task UpdateConfigAsync(AppConfig config);
 }
 
-export interface EmailMetadata {
-  id: string;
-  classification?: string;
-  confidence?: number;
-  reasons?: string[];
-  bulk_key?: string;
-  last_classified: string; // ISO date
-  user_action?: 'kept' | 'deleted' | 'unsubscribed' | 'reported';
-  user_action_timestamp?: string;
+public record EmailMetadataEntry(string Id, EmailMetadata Metadata);
+
+public class EmailMetadata
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Classification { get; set; }
+    public double? Confidence { get; set; }
+    public IReadOnlyList<string>? Reasons { get; set; }
+    public string? BulkKey { get; set; }
+    public DateTime LastClassified { get; set; }
+    public UserAction? UserAction { get; set; }
+    public DateTime? UserActionTimestamp { get; set; }
 }
 
-export interface ClassificationHistoryItem {
-  timestamp: string;
-  emailId: string;
-  classification: string;
-  confidence: number;
-  reasons: string[];
-  user_action?: string;
-  user_feedback?: 'correct' | 'incorrect' | 'partial';
+public class ClassificationHistoryItem
+{
+    public DateTime Timestamp { get; set; }
+    public string EmailId { get; set; } = string.Empty;
+    public string Classification { get; set; } = string.Empty;
+    public double Confidence { get; set; }
+    public IReadOnlyList<string> Reasons { get; set; } = Array.Empty<string>();
+    public string? UserAction { get; set; }
+    public UserFeedback? UserFeedback { get; set; }
+}
+
+public enum UserAction
+{
+    Kept,
+    Deleted,
+    Unsubscribed,
+    Reported
+}
+
+public enum UserFeedback
+{
+    Correct,
+    Incorrect,
+    Partial
 }
 ```
 
 ### Storage Implementation Strategy
 
-**Desktop (Electron/Tauri)**: SQLite with encrypted database file
+**Desktop (.NET/Avalonia)**: SQLite with encrypted database file
 
-- Use `better-sqlite3` (Node) or `rusqlite` (Tauri) for fast local queries
-- Database location: `~/AppData/smart-inbox-janitor/` (Windows) or `~/.config/smart-inbox-janitor/` (macOS/Linux)
-- Encrypt sensitive data (tokens, email content previews) using OS keychain integration
+- Use `Microsoft.Data.Sqlite` with `SQLitePCLRaw.bundle_e_sqlcipher` for encrypted local queries
+- Database location: `%APPDATA%\TransMailPanda\` (Windows) or `~/.config/transmail-panda/` (macOS/Linux)
+- Encrypt sensitive data (tokens, email content previews) using OS keychain integration via DPAPI (Windows), Keychain (macOS), or libsecret (Linux)
 
-**Browser (Static Hosting)**: IndexedDB with structured storage
+**Browser (Blazor WebAssembly)**: IndexedDB with structured storage
 
-- Use `idb` library for Promise-based IndexedDB operations
+- Use Blazor IndexedDB libraries for async database operations
 - Implement same interface with IndexedDB collections: `rules`, `email_metadata`, `classification_history`, `config`
-- Use Web Crypto API for client-side token encryption
+- Use Blazor's built-in crypto APIs for client-side token encryption
 - Consider storage quota management and cleanup policies
 
 ### Storage Schema Design
@@ -441,45 +484,117 @@ CREATE TABLE action_history (
 
 Abstract the LLM via a **single interface** so we can swap ChatGPT/OpenAI, Claude, or local Llama (e.g., Ollama) without changing the app logic.
 
-```ts
-export interface LLMProvider {
-  name: 'openai' | 'anthropic' | 'llama' | string;
-  init(auth: LLMAuth): Promise<void>; // token or OAuth; model choice
-  classifyEmails(input: ClassifyInput): Promise<ClassifyOutput>;
-  suggestSearchQueries(context: QueryContext): Promise<string[]>;
-  groupForBulk(input: GroupingInput): Promise<GroupOutput>; // create stable bulk_key, rationale
+```csharp
+public interface ILLMProvider
+{
+    string Name { get; } // 'openai', 'anthropic', 'llama', etc.
+    Task InitAsync(LLMAuth auth); // token or OAuth; model choice
+    Task<ClassifyOutput> ClassifyEmailsAsync(ClassifyInput input);
+    Task<IReadOnlyList<string>> SuggestSearchQueriesAsync(QueryContext context);
+    Task<GroupOutput> GroupForBulkAsync(GroupingInput input); // create stable bulk_key, rationale
 }
 
-export type LLMAuth =
-  | { kind: 'api_key'; key: string }
-  | { kind: 'oauth'; accessToken: string; refreshToken?: string }
-  | { kind: 'local'; endpoint: string }; // e.g., http://localhost:11434 for Ollama
-
-export interface ClassifyInput {
-  emails: Array<{
-    id: string;
-    headers: Record<string, string>;
-    bodyText?: string;
-    bodyHtml?: string; // sanitized
-    providerSignals?: { hasListUnsubscribe?: boolean; spf?: string; dkim?: string; dmarc?: string };
-    contactSignal?: { known: boolean; strength: 'none' | 'weak' | 'strong' };
-  }>;
-  userRulesSnapshot: UserRules;
+public abstract class LLMAuth
+{
+    public sealed class ApiKey : LLMAuth
+    {
+        public string Key { get; init; } = string.Empty;
+    }
+    
+    public sealed class OAuth : LLMAuth
+    {
+        public string AccessToken { get; init; } = string.Empty;
+        public string? RefreshToken { get; init; }
+    }
+    
+    public sealed class Local : LLMAuth
+    {
+        public string Endpoint { get; init; } = string.Empty; // e.g., http://localhost:11434 for Ollama
+    }
 }
 
-export interface ClassifyItem {
-  emailId: string;
-  classification: 'keep' | 'newsletter' | 'promotion' | 'spam' | 'dangerous_phishing' | 'unknown';
-  likelihood: 'very likely' | 'likely' | 'unsure';
-  confidence: number;
-  reasons: string[];
-  bulk_key: string;
-  unsubscribe_method?: { type: 'http_link' | 'mailto' | 'none'; value?: string };
+public class ClassifyInput
+{
+    public IReadOnlyList<EmailClassificationInput> Emails { get; init; } = Array.Empty<EmailClassificationInput>();
+    public UserRules UserRulesSnapshot { get; init; } = new();
 }
 
-export interface ClassifyOutput {
-  items: ClassifyItem[];
-  rulesSuggestions?: Array<{ type: string; value: string; rationale?: string }>;
+public class EmailClassificationInput
+{
+    public string Id { get; init; } = string.Empty;
+    public IReadOnlyDictionary<string, string> Headers { get; init; } = new Dictionary<string, string>();
+    public string? BodyText { get; init; }
+    public string? BodyHtml { get; init; } // sanitized
+    public ProviderSignals? ProviderSignals { get; init; }
+    public ContactSignal? ContactSignal { get; init; }
+}
+
+public class ProviderSignals
+{
+    public bool? HasListUnsubscribe { get; init; }
+    public string? Spf { get; init; }
+    public string? Dkim { get; init; }
+    public string? Dmarc { get; init; }
+}
+
+public class ContactSignal
+{
+    public bool Known { get; init; }
+    public RelationshipStrength Strength { get; init; }
+}
+
+public class ClassifyItem
+{
+    public string EmailId { get; init; } = string.Empty;
+    public EmailClassification Classification { get; init; }
+    public Likelihood Likelihood { get; init; }
+    public double Confidence { get; init; }
+    public IReadOnlyList<string> Reasons { get; init; } = Array.Empty<string>();
+    public string BulkKey { get; init; } = string.Empty;
+    public UnsubscribeMethod? UnsubscribeMethod { get; init; }
+}
+
+public class ClassifyOutput
+{
+    public IReadOnlyList<ClassifyItem> Items { get; init; } = Array.Empty<ClassifyItem>();
+    public IReadOnlyList<RuleSuggestion>? RulesSuggestions { get; init; }
+}
+
+public enum EmailClassification
+{
+    Keep,
+    Newsletter,
+    Promotion,
+    Spam,
+    DangerousPhishing,
+    Unknown
+}
+
+public enum Likelihood
+{
+    VeryLikely,
+    Likely,
+    Unsure
+}
+
+public class UnsubscribeMethod
+{
+    public UnsubscribeType Type { get; init; }
+    public string? Value { get; init; }
+}
+
+public enum UnsubscribeType
+{
+    HttpLink,
+    Mailto,
+    None
+}
+
+public class RuleSuggestion
+{
+    public string Type { get; init; } = string.Empty;
+    public string Value { get; init; } = string.Empty;
+    public string? Rationale { get; init; }
 }
 ```
 
@@ -539,43 +654,72 @@ The system processes **entire email folders** (not just recent emails) in manage
 
 ### Persistent State Management
 
-```ts
-export interface ProcessingState {
-  totalEmailsDiscovered: number;
-  totalEmailsProcessed: number;
-  totalEmailsActioned: number;
-  currentBatchId?: string;
-  lastProcessedEmailId?: string;
-  lastProcessedTimestamp: string;
-  folderStates: Array<{
-    folderId: string;
-    folderName: string;
-    totalEmails: number;
-    processedEmails: number;
-    lastProcessedEmailId?: string;
-  }>;
-  sessionStats: {
-    sessionsCompleted: number;
-    totalTimeSpent: number; // minutes
-    totalApiCalls: number;
-    totalCostUSD: number;
-  };
+```csharp
+public class ProcessingState
+{
+    public int TotalEmailsDiscovered { get; set; }
+    public int TotalEmailsProcessed { get; set; }
+    public int TotalEmailsActioned { get; set; }
+    public string? CurrentBatchId { get; set; }
+    public string? LastProcessedEmailId { get; set; }
+    public DateTime LastProcessedTimestamp { get; set; }
+    public IReadOnlyList<FolderState> FolderStates { get; set; } = Array.Empty<FolderState>();
+    public SessionStats SessionStats { get; set; } = new();
 }
 
-export interface EmailProcessingQueue {
-  queuedEmails: Array<{
-    emailId: string;
-    folderId: string;
-    priority: 'high' | 'normal' | 'low'; // suspicious emails get high priority
-    addedToQueue: string; // timestamp
-  }>;
-  processingBatches: Array<{
-    batchId: string;
-    emailIds: string[];
-    status: 'pending' | 'processing' | 'completed' | 'failed';
-    createdAt: string;
-    completedAt?: string;
-  }>;
+public class FolderState
+{
+    public string FolderId { get; init; } = string.Empty;
+    public string FolderName { get; init; } = string.Empty;
+    public int TotalEmails { get; init; }
+    public int ProcessedEmails { get; init; }
+    public string? LastProcessedEmailId { get; init; }
+}
+
+public class SessionStats
+{
+    public int SessionsCompleted { get; set; }
+    public int TotalTimeSpent { get; set; } // minutes
+    public int TotalApiCalls { get; set; }
+    public decimal TotalCostUSD { get; set; }
+}
+
+public class EmailProcessingQueue
+{
+    public IReadOnlyList<QueuedEmail> QueuedEmails { get; init; } = Array.Empty<QueuedEmail>();
+    public IReadOnlyList<ProcessingBatch> ProcessingBatches { get; init; } = Array.Empty<ProcessingBatch>();
+}
+
+public class QueuedEmail
+{
+    public string EmailId { get; init; } = string.Empty;
+    public string FolderId { get; init; } = string.Empty;
+    public EmailPriority Priority { get; init; } // suspicious emails get high priority
+    public DateTime AddedToQueue { get; init; }
+}
+
+public class ProcessingBatch
+{
+    public string BatchId { get; init; } = string.Empty;
+    public IReadOnlyList<string> EmailIds { get; init; } = Array.Empty<string>();
+    public BatchStatus Status { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime? CompletedAt { get; init; }
+}
+
+public enum EmailPriority
+{
+    High,
+    Normal,
+    Low
+}
+
+public enum BatchStatus
+{
+    Pending,
+    Processing,
+    Completed,
+    Failed
 }
 ```
 
@@ -603,31 +747,75 @@ All email actions (delete, trash, label, unsubscribe, report) are queued and exe
 
 ### Action Queue Management
 
-```ts
-export interface ActionQueueItem {
-  id: string;
-  emailId: string;
-  actionType: 'delete' | 'trash' | 'label' | 'unsubscribe' | 'report_spam' | 'report_phishing';
-  actionParams: ActionParams;
-  bulkGroupId?: string; // For grouping related actions
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'retrying';
-  priority: number; // 1=highest (dangerous emails), 10=lowest (newsletters)
-  retryCount: number;
-  maxRetries: number;
-  lastAttempted?: string;
-  nextRetryAfter?: string; // For exponential backoff
-  errorMessage?: string;
-  createdAt: string;
-  completedAt?: string;
+```csharp
+public class ActionQueueItem
+{
+    public string Id { get; init; } = string.Empty;
+    public string EmailId { get; init; } = string.Empty;
+    public ActionType ActionType { get; init; }
+    public ActionParams ActionParams { get; init; } = new();
+    public string? BulkGroupId { get; init; } // For grouping related actions
+    public ActionStatus Status { get; init; }
+    public int Priority { get; init; } // 1=highest (dangerous emails), 10=lowest (newsletters)
+    public int RetryCount { get; init; }
+    public int MaxRetries { get; init; }
+    public DateTime? LastAttempted { get; init; }
+    public DateTime? NextRetryAfter { get; init; } // For exponential backoff
+    public string? ErrorMessage { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime? CompletedAt { get; init; }
 }
 
-export type ActionParams =
-  | { type: 'trash' }
-  | { type: 'delete'; permanent: boolean }
-  | { type: 'label'; addLabels: string[]; removeLabels: string[] }
-  | { type: 'unsubscribe'; method: 'http' | 'mailto'; url: string }
-  | { type: 'report_spam' }
-  | { type: 'report_phishing' };
+public enum ActionType
+{
+    Delete,
+    Trash,
+    Label,
+    Unsubscribe,
+    ReportSpam,
+    ReportPhishing
+}
+
+public enum ActionStatus
+{
+    Pending,
+    Processing,
+    Completed,
+    Failed,
+    Retrying
+}
+
+public abstract class ActionParams
+{
+    public sealed class Trash : ActionParams { }
+    
+    public sealed class Delete : ActionParams
+    {
+        public bool Permanent { get; init; }
+    }
+    
+    public sealed class Label : ActionParams
+    {
+        public IReadOnlyList<string> AddLabels { get; init; } = Array.Empty<string>();
+        public IReadOnlyList<string> RemoveLabels { get; init; } = Array.Empty<string>();
+    }
+    
+    public sealed class Unsubscribe : ActionParams
+    {
+        public UnsubscribeMethod Method { get; init; }
+        public string Url { get; init; } = string.Empty;
+    }
+    
+    public sealed class ReportSpam : ActionParams { }
+    
+    public sealed class ReportPhishing : ActionParams { }
+}
+
+public enum UnsubscribeMethod
+{
+    Http,
+    Mailto
+}
 ```
 
 ### Gmail Rate Limiting Strategy
@@ -658,15 +846,16 @@ export type ActionParams =
 
 ### Action Priority System
 
-```ts
-const ACTION_PRIORITIES = {
-  report_phishing: 1, // Highest - security critical
-  report_spam: 2, // High - abuse prevention
-  delete: 3, // High - permanent action
-  unsubscribe: 4, // Medium-high - external API call required
-  trash: 5, // Medium - recoverable action
-  label: 6, // Low - metadata only
-} as const;
+```csharp
+public static class ActionPriorities
+{
+    public const int ReportPhishing = 1; // Highest - security critical
+    public const int ReportSpam = 2; // High - abuse prevention
+    public const int Delete = 3; // High - permanent action
+    public const int Unsubscribe = 4; // Medium-high - external API call required
+    public const int Trash = 5; // Medium - recoverable action
+    public const int Label = 6; // Low - metadata only
+}
 ```
 
 ### Retry Logic & Error Handling
@@ -686,25 +875,45 @@ const ACTION_PRIORITIES = {
 
 ### Background Action Processing
 
-```ts
-export interface ActionProcessor {
-  startProcessing(): Promise<void>;
-  stopProcessing(): Promise<void>;
-  processNextBatch(): Promise<ProcessingResult>;
-  retryFailedActions(): Promise<RetryResult>;
-  getQueueStatus(): Promise<QueueStatus>;
+```csharp
+public interface IActionProcessor
+{
+    Task StartProcessingAsync();
+    Task StopProcessingAsync();
+    Task<ProcessingResult> ProcessNextBatchAsync();
+    Task<RetryResult> RetryFailedActionsAsync();
+    Task<QueueStatus> GetQueueStatusAsync();
 }
 
-export interface QueueStatus {
-  totalPending: number;
-  totalProcessing: number;
-  totalCompleted: number;
-  totalFailed: number;
-  estimatedTimeRemaining: number; // minutes
-  currentRateLimit?: {
-    resetTime: string;
-    remainingQuota: number;
-  };
+public class QueueStatus
+{
+    public int TotalPending { get; init; }
+    public int TotalProcessing { get; init; }
+    public int TotalCompleted { get; init; }
+    public int TotalFailed { get; init; }
+    public int EstimatedTimeRemaining { get; init; } // minutes
+    public RateLimit? CurrentRateLimit { get; init; }
+}
+
+public class RateLimit
+{
+    public DateTime ResetTime { get; init; }
+    public int RemainingQuota { get; init; }
+}
+
+public class ProcessingResult
+{
+    public int ProcessedCount { get; init; }
+    public int SuccessCount { get; init; }
+    public int FailureCount { get; init; }
+    public IReadOnlyList<string> Errors { get; init; } = Array.Empty<string>();
+}
+
+public class RetryResult
+{
+    public int RetriedCount { get; init; }
+    public int SuccessCount { get; init; }
+    public int StillFailedCount { get; init; }
 }
 ```
 
@@ -736,12 +945,40 @@ Return **succinct reasons** for user trust.
 - If user **Report Dangerous** for a domain → raise risk for sibling subdomains.
 - Contacts raise keep-likelihood but do **not** suppress phishing checks.
 
-```ts
-export interface UserRules {
-  alwaysKeep: { senders: string[]; domains: string[]; listIds: string[] };
-  autoTrash: { senders: string[]; domains: string[]; listIds: string[]; templates?: string[] };
-  weights?: { contactsBonus?: number; dangerSignals?: string[] };
-  exclusions?: { neverAutoTrashImportant?: boolean; respectStarred?: boolean };
+```csharp
+public class UserRules
+{
+    public AlwaysKeepRules AlwaysKeep { get; init; } = new();
+    public AutoTrashRules AutoTrash { get; init; } = new();
+    public WeightingRules? Weights { get; init; }
+    public ExclusionRules? Exclusions { get; init; }
+}
+
+public class AlwaysKeepRules
+{
+    public IReadOnlyList<string> Senders { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Domains { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> ListIds { get; init; } = Array.Empty<string>();
+}
+
+public class AutoTrashRules
+{
+    public IReadOnlyList<string> Senders { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Domains { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> ListIds { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string>? Templates { get; init; }
+}
+
+public class WeightingRules
+{
+    public double? ContactsBonus { get; init; }
+    public IReadOnlyList<string>? DangerSignals { get; init; }
+}
+
+public class ExclusionRules
+{
+    public bool? NeverAutoTrashImportant { get; init; }
+    public bool? RespectStarred { get; init; }
 }
 ```
 
@@ -810,7 +1047,7 @@ Use GPT-4o-mini for:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│ Smart Inbox Janitor    Progress: 1,250/45,000 processed    [⏸ Pause] [⚙ Settings] [⟳] │
+│ TransMail Panda       Progress: 1,250/45,000 processed    [⏸ Pause] [⚙ Settings] [⟳] │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │ Filters: [All Groups] [Dangerous] [Spam] [Promotions] [Newsletters] [Keep] [Pending]    │
 ├──────────────────────────────────┬──────────────────────────────────────────────────────┤
@@ -896,57 +1133,69 @@ Use GPT-4o-mini for:
 
 ---
 
-## Tech Stack Recommendation (Electron Desktop App)
+## Tech Stack Recommendation (.NET/Avalonia Desktop App)
 
-**Primary Target: Desktop Electron App**
+**Primary Target: Desktop .NET/Avalonia App**
 
-- **Electron + React + TypeScript** for mature ecosystem and Gmail API integration
-- **SQLite** via `better-sqlite3` for local storage with full SQL capabilities
-- **Node.js OAuth libraries** for robust Gmail authentication flow
-- **OS keychain integration** for secure token storage via `keytar`
-- **Native file system access** for data export/import
-- **System notifications** for background processing updates
-- **System tray integration** for background operation
+- **.NET 8.0 + Avalonia UI 11 + C#** for modern cross-platform desktop development
+- **SQLite** via `Microsoft.Data.Sqlite` with `SQLitePCLRaw.bundle_e_sqlcipher` for encrypted local storage
+- **.NET OAuth libraries** for robust Gmail authentication flow (Google.Apis.Auth)
+- **OS keychain integration** for secure token storage via DPAPI (Windows), Keychain (macOS), libsecret (Linux)
+- **Native file system access** for data export/import via System.IO
+- **System notifications** for background processing updates via Avalonia.Notifications
+- **System tray integration** for background operation via Avalonia.Tray
 
-**Future Target: Browser Static Hosting (Architectural Compatibility)**
+**Future Target: Browser Blazor WebAssembly (Architectural Compatibility)**
 
-- Same **React + TypeScript** codebase with storage adapter pattern
-- **IndexedDB** adapter implementing same `StorageProvider` interface
-- **Web Crypto API** for client-side encryption (matching desktop security)
+- Same **C# codebase** with storage adapter pattern using Blazor components
+- **IndexedDB** adapter implementing same `IStorageProvider` interface via Blazor.IndexedDB
+- **Blazor crypto APIs** for client-side encryption (matching desktop security)
 - **OAuth 2.0 PKCE flow** for browser-compatible Gmail authentication
 
 ### Architecture Benefits of Storage Abstraction
 
 1. **Future-Proof Design**: Same interfaces work for both SQLite and IndexedDB
-2. **Testability**: Easy to mock storage layer for unit testing
+2. **Testability**: Easy to mock storage layer for xUnit testing
 3. **Migration Path**: Clear upgrade path from desktop-only to desktop+browser
 4. **Development Flexibility**: Can develop against either storage backend
 
-### Electron Implementation Details
+### .NET/Avalonia Implementation Details
 
 **Core Dependencies:**
 
-- `electron`: Desktop app framework
-- `better-sqlite3`: High-performance SQLite with Node.js
-- `keytar`: Secure credential storage using OS keychain
-- `googleapis`: Official Google API client for Gmail integration
-- `electron-builder`: App packaging and distribution
+- `Avalonia`: Cross-platform .NET UI framework
+- `Microsoft.Data.Sqlite`: High-performance SQLite with .NET
+- `SQLitePCLRaw.bundle_e_sqlcipher`: SQLite encryption support
+- `Google.Apis.Gmail.v1`: Official Google API client for Gmail integration
+- `Google.Apis.Auth`: OAuth 2.0 authentication for Google APIs
+
+**State Management:**
+
+- `CommunityToolkit.Mvvm`: MVVM patterns with ObservableObject, RelayCommand
+- `Microsoft.Extensions.Hosting`: Background services for email processing
+- `Microsoft.Extensions.DependencyInjection`: Dependency injection container
 
 **Development Stack:**
 
-- `vite`: Fast build tool and dev server
-- `electron-vite`: Vite integration for Electron
-- `tailwindcss`: Utility-first CSS framework
-- `zustand`: Lightweight state management with persistence
+- `.NET SDK`: Build tool and project system
+- `EditorConfig + .NET Format`: Code formatting and style
+- `xUnit`: Unit testing framework with `Moq` for mocking
+- `Avalonia.Themes.Fluent`: Modern Fluent design system
 
 **OS Integration Features:**
 
-- **Auto-updater**: Seamless app updates via `electron-updater`
-- **Deep linking**: Handle custom URL schemes for OAuth callbacks
-- **Menu bar integration**: Native menus and keyboard shortcuts
-- **Window management**: Remember window positions and states
+- **Auto-updater**: Application updates via ClickOnce or custom update service
+- **Deep linking**: Handle custom URL schemes for OAuth callbacks via protocol registration
+- **Native menus**: Platform-specific menu integration via Avalonia.NativeMenus
+- **Window management**: Remember window positions and states via Avalonia.Controls
 
-> **Recommendation**: Focus on Electron-first implementation with robust SQLite storage and OS integration. Design storage layer as pluggable interfaces for future browser compatibility without architectural changes.
+**Cross-Platform Features:**
+
+- **Windows**: Full DPAPI integration for credential storage
+- **macOS**: Native keychain access via P/Invoke to Security framework
+- **Linux**: libsecret integration for secure storage
+
+> **Recommendation**: Focus on .NET/Avalonia-first implementation with robust encrypted SQLite storage and OS integration. Design storage layer as pluggable interfaces for future Blazor compatibility without architectural changes.
 
 ---
 

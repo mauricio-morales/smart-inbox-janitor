@@ -19,12 +19,12 @@ A PRP keeps the goal and justification sections of a PRD yet adds three AI-criti
 
 ### Implementation Details and Strategy
 
-- In contrast of a traditional PRD, a PRP explicitly states how the product will be built. This includes the use of API endpoints, test runners, or agent patterns (ReAct, Plan-and-Execute) to use. Usage of typehints, dependencies, architectural patterns and other tools to ensure the code is built correctly.
+- In contrast of a traditional PRD, a PRP explicitly states how the product will be built. This includes the use of API endpoints, test runners, or agent patterns (ReAct, Plan-and-Execute) to use. Usage of type annotations, dependencies, architectural patterns and other tools to ensure the code is built correctly.
 
 ### Validation Gates
 
-- Deterministic checks such as pytest, ruff, or static type passes “Shift-left” quality controls catch defects early and are cheaper than late re-work.
-  Example: Each new funtion should be individaully tested, Validation gate = all tests pass.
+- Deterministic checks such as xUnit, dotnet format, or static type analysis "Shift-left" quality controls catch defects early and are cheaper than late re-work.
+  Example: Each new function should be individually tested, Validation gate = all tests pass.
 
 ### PRP Layer Why It Exists
 

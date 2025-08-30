@@ -1,16 +1,16 @@
 ---
-name: 'OS Keychain Storage Implementation for Credential Encryption'
+name: 'OS Keychain Storage Implementation for Credential Encryption - .NET'
 description: |
-  Complete the TODO implementations in CredentialEncryption.ts for OS keychain storage
-  functionality, enabling secure credential storage on Windows and macOS platforms
-  with proper fallback handling for Linux systems.
+  Complete the OS keychain storage implementation using .NET platform APIs for secure
+  credential storage on Windows (DPAPI), macOS (Keychain Services), and Linux (libsecret)
+  with proper fallback handling and cross-platform compatibility.
 ---
 
 ## Goal
 
-**Feature Goal**: Implement OS-level keychain storage for encrypted credentials in Smart Inbox Janitor, providing secure credential management that leverages native platform security features (Windows DPAPI, macOS Keychain Services) while maintaining zero-password UX.
+**Feature Goal**: Implement OS-level keychain storage for encrypted credentials in TransMail Panda using .NET platform APIs, providing secure credential management that leverages native platform security features (Windows DPAPI, macOS Keychain Services, Linux libsecret) while maintaining zero-password UX.
 
-**Deliverable**: Complete implementation of `storeInOSKeychain()` and `retrieveFromOSKeychain()` methods in `src/main/security/CredentialEncryption.ts` with comprehensive error handling, cross-platform support, and full test coverage.
+**Deliverable**: Complete implementation of `StoreInOSKeychainAsync()` and `RetrieveFromOSKeychainAsync()` methods in `src/TransMailPanda.Security/CredentialEncryption.cs` with comprehensive error handling, cross-platform support, and full test coverage.
 
 **Success Definition**:
 
@@ -22,13 +22,13 @@ description: |
 
 ## User Persona
 
-**Target User**: Smart Inbox Janitor users on Windows and macOS who need secure credential storage
+**Target User**: TransMail Panda users on Windows, macOS, and Linux who need secure credential storage
 
 **Use Case**: Application startup requiring OAuth tokens, API keys, and encrypted credentials to be retrieved from secure OS-level storage without user password prompts
 
 **User Journey**:
 
-1. User launches Smart Inbox Janitor application
+1. User launches TransMail Panda application
 2. Application attempts to retrieve stored credentials from OS keychain
 3. OS keychain provides transparent access (no password prompts)
 4. Application uses retrieved credentials for Gmail/OpenAI authentication
@@ -50,17 +50,17 @@ description: |
 
 ## What
 
-Complete implementation of hybrid OS keychain + file-based credential storage in `CredentialEncryption.ts`.
+Complete implementation of hybrid OS keychain + file-based credential storage in `CredentialEncryption.cs` using .NET platform APIs.
 
 ### Success Criteria
 
-- [ ] `storeInOSKeychain()` method fully implemented with Windows/macOS support
-- [ ] `retrieveFromOSKeychain()` method fully implemented with graceful error handling
-- [ ] Linux platform shows clear "not implemented" message with contribution invitation
+- [ ] `StoreInOSKeychainAsync()` method fully implemented with Windows/macOS/Linux support
+- [ ] `RetrieveFromOSKeychainAsync()` method fully implemented with graceful error handling
+- [ ] Cross-platform compatibility using .NET platform-specific implementations
 - [ ] Atomic file operations with proper permissions (0o600) implemented
 - [ ] Cross-platform error handling covers all documented scenarios
 - [ ] Integration with existing CryptoUtils and SecureStorageManager maintained
-- [ ] All project linting, type-checking, and testing requirements met
+- [ ] All project code analysis, compilation, and testing requirements met
 - [ ] Security audit logging properly captures keychain operations
 - [ ] Performance meets existing application standards (<100ms per operation)
 

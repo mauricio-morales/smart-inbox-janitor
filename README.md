@@ -1,10 +1,10 @@
-# Smart Inbox Janitor
+# TransMail Panda
 
-An AI-powered email triage assistant that helps you clean your mailbox safely and efficiently. Smart Inbox Janitor is focused on Gmail-first support with extensible architecture for other email providers.
+An AI-powered email triage assistant that helps you clean your mailbox safely and efficiently. TransMail Panda is focused on Gmail-first support with extensible architecture for other email providers.
 
 ## 🎯 Mission
 
-Smart Inbox Janitor helps users clean their mailbox through intelligent automation:
+TransMail Panda helps users clean their mailbox through intelligent automation:
 
 1. **Fetch** batches of emails from your Gmail account
 2. **Score & explain** junk/spam/dangerous vs. keep classifications
@@ -202,8 +202,8 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 ## ⚠️ Disclaimer
 
-Smart Inbox Janitor is designed to help manage your email safely. Always review AI suggestions before taking bulk actions. While the app prioritizes safety and reversibility, users are responsible for their email management decisions.
+TransMail Panda is designed to help manage your email safely. Always review AI suggestions before taking bulk actions. While the app prioritizes safety and reversibility, users are responsible for their email management decisions.
 
 ---
 
-**Made with ❤️ for email productivity**
+**Made with ❤️ for email productivity using .NET and Avalonia UI**

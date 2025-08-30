@@ -1,4 +1,4 @@
-# Smart Inbox Janitor - Product Requirements Document
+# TransMail Panda - Product Requirements Document
 
 ## Initial Concept
 
@@ -19,7 +19,7 @@ Personal Gmail users face storage and security challenges:
 
 ### Solution Overview
 
-Smart Inbox Janitor is a **free, open-source desktop application** that:
+TransMail Panda is a **free, open-source desktop application** that:
 
 - Fetches email batches from personal Gmail accounts using official APIs
 - Classifies emails using AI into actionable categories (keep/newsletter/promotion/spam/dangerous)
@@ -52,14 +52,14 @@ Smart Inbox Janitor is a **free, open-source desktop application** that:
 - **"For Dummies" UX**: Must be usable by users with zero technical knowledge
 - **Local-Only Processing**: No cloud services, no data hosting, no user accounts
 - **Free Forever**: Open source with no monetization, premium features, or paid services
-- **Desktop First**: Electron app for Phase 1, browser compatibility for Phase 2
+- **Desktop First**: Avalonia UI cross-platform app for Phase 1, web version for Phase 2
 - **Gmail Personal Focus**: Optimized for personal accounts (not enterprise/workspace)
 
 ### Success Scenarios
 
 ```mermaid
 graph TD
-    A[User with 14GB Gmail] --> B[Runs Smart Inbox Janitor]
+    A[User with 14GB Gmail] --> B[Runs TransMail Panda]
     B --> C[Reviews 10,000 Emails in 2 Hours]
     C --> D[Deletes 8,000 Junk Emails]
     D --> E[Reclaims 4GB Storage]
@@ -147,17 +147,17 @@ graph TD
 ```mermaid
 graph TB
     subgraph "Desktop App (Free & Open Source)"
-        subgraph "React UI (Dead Simple)"
+        subgraph "Avalonia XAML UI (Dead Simple)"
             Welcome[Welcome Wizard]
             Triage[Email Cleanup View]
             Results[Storage Freed View]
         end
 
-        subgraph "Electron Main (Local Only)"
-            Gmail[Gmail API Client]
-            OpenAI[OpenAI Classifier]
-            Store[Local SQLite]
-            Crypto[Token Encryption]
+        subgraph ".NET Core Runtime (Local Only)"
+            Gmail[Google.Apis.Gmail.v1]
+            OpenAI[OpenAI .NET Client]
+            Store[Microsoft.Data.Sqlite]
+            Crypto[.NET Crypto + OS Keychain]
         end
     end
 
@@ -184,7 +184,7 @@ graph TB
 
 ```mermaid
 graph LR
-    A[Complex Email Management] --> B[Smart Inbox Janitor]
+    A[Complex Email Management] --> B[TransMail Panda]
 
     B --> C[Big Obvious Buttons]
     B --> D[Plain English Labels]
@@ -234,33 +234,64 @@ sequenceDiagram
 
 ### Storage-Focused Processing
 
-```typescript
-// Core interfaces focused on storage and simplicity
-interface StorageCalculation {
-  totalEmailsFound: number;
-  estimatedStorageFreed: string; // "3.2 GB"
-  largestCategories: {
-    promotions: { count: number; storage: string };
-    newsletters: { count: number; storage: string };
-    spam: { count: number; storage: string };
-  };
+```csharp
+// Core models focused on storage and simplicity (C# with nullable reference types)
+public record StorageCalculation
+{
+    public int TotalEmailsFound { get; init; }
+    public string EstimatedStorageFreed { get; init; } = string.Empty; // "3.2 GB"
+    public StorageCategories LargestCategories { get; init; } = new();
 }
 
-interface SimpleClassification {
-  category: 'keep' | 'newsletters' | 'promotions' | 'spam' | 'dangerous';
-  confidence: 'very_sure' | 'pretty_sure' | 'not_sure';
-  simpleReason: string; // "Looks like a newsletter from a store"
-  storageImpact: string; // "Will free up 45MB"
-  actionLabel: string; // "Delete & Unsubscribe"
+public record StorageCategories
+{
+    public CategoryInfo Promotions { get; init; } = new();
+    public CategoryInfo Newsletters { get; init; } = new();
+    public CategoryInfo Spam { get; init; } = new();
 }
 
-interface BulkGroup {
-  id: string;
-  simpleLabel: string; // "Daily deal emails from 5 stores"
-  emailCount: number;
-  storageFreed: string; // "850 MB"
-  actionType: 'delete' | 'unsubscribe_and_delete' | 'keep';
-  undoable: boolean;
+public record CategoryInfo(int Count, string Storage);
+
+public record SimpleClassification
+{
+    public EmailCategory Category { get; init; } = EmailCategory.Keep;
+    public ConfidenceLevel Confidence { get; init; } = ConfidenceLevel.NotSure;
+    public string SimpleReason { get; init; } = string.Empty; // "Looks like a newsletter from a store"
+    public string StorageImpact { get; init; } = string.Empty; // "Will free up 45MB"
+    public string ActionLabel { get; init; } = string.Empty; // "Delete & Unsubscribe"
+}
+
+public enum EmailCategory
+{
+    Keep,
+    Newsletters,
+    Promotions, 
+    Spam,
+    Dangerous
+}
+
+public enum ConfidenceLevel
+{
+    VeryUsure,
+    PrettySure,
+    NotSure
+}
+
+public record BulkGroup
+{
+    public string Id { get; init; } = string.Empty;
+    public string SimpleLabel { get; init; } = string.Empty; // "Daily deal emails from 5 stores"
+    public int EmailCount { get; init; }
+    public string StorageFreed { get; init; } = string.Empty; // "850 MB"
+    public BulkActionType ActionType { get; init; } = BulkActionType.Keep;
+    public bool Undoable { get; init; } = true;
+}
+
+public enum BulkActionType
+{
+    Delete,
+    UnsubscribeAndDelete,
+    Keep
 }
 ```
 
@@ -272,12 +303,12 @@ interface BulkGroup {
 
 ```mermaid
 gantt
-    title Smart Inbox Janitor Development (Open Source)
+    title TransMail Panda Development (Open Source)
     dateFormat X
     axisFormat %s
 
     section Foundation
-    Electron Setup + Basic UI          :done, phase1, 0, 3w
+    Avalonia UI Setup + Basic Views    :done, phase1, 0, 3w
     Gmail OAuth Integration            :done, 3w, 2w
     OpenAI Integration & Testing       :done, 5w, 2w
 
@@ -303,10 +334,10 @@ gantt
 
 #### Phase 1: Foundation (3 weeks)
 
-- [ ] Electron app with React UI
+- [ ] Avalonia UI cross-platform desktop app
 - [ ] Gmail OAuth with embedded flow (no browser switching)
 - [ ] OpenAI API integration with cost estimation
-- [ ] SQLite setup with basic email metadata storage
+- [ ] Microsoft.Data.Sqlite setup with basic email metadata storage
 - [ ] Simple welcome wizard that works for beginners
 - **Success Criteria**: Any user can connect Gmail and OpenAI without help
 
@@ -315,7 +346,7 @@ gantt
 - [ ] Batch email processing with clear progress indicators
 - [ ] AI classification optimized for storage cleanup
 - [ ] Storage calculation and visualization
-- [ ] Two-pane triage UI with dead-simple controls
+- [ ] Two-pane triage UI with dead-simple Avalonia controls
 - [ ] Basic bulk grouping for newsletters and promotions
 - **Success Criteria**: Can process 10,000 emails and show storage freed
 
@@ -447,10 +478,10 @@ security_concerns:
 
 ### Technical Dependencies (All Open Source Compatible)
 
-- **Electron**: MIT License - Desktop app framework
-- **React + TypeScript**: MIT License - UI development
-- **better-sqlite3**: MIT License - Local database
-- **googleapis**: Apache 2.0 - Gmail API client
-- **keytar**: MIT License - Secure credential storage
+- **Avalonia UI**: MIT License - Cross-platform .NET desktop framework
+- **C# + .NET 8**: MIT License - Application development
+- **Microsoft.Data.Sqlite**: MIT License - Local database
+- **Google.Apis.Gmail.v1**: Apache 2.0 - Gmail API client
+- **OS Keychain APIs**: Platform-specific - Secure credential storage
 
-This PRD establishes Smart Inbox Janitor as a community-focused, privacy-respecting tool that makes Gmail cleanup accessible to everyone while maintaining complete transparency and user control.
+This PRD establishes TransMail Panda as a community-focused, privacy-respecting tool that makes Gmail cleanup accessible to everyone while maintaining complete transparency and user control.
