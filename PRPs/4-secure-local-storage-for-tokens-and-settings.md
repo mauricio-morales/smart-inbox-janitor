@@ -1,16 +1,16 @@
-# Secure Local Storage for Tokens and Settings
+# Secure Local Storage for Tokens and Settings - .NET Implementation
 
 ## Goal
 
 **Feature Goal**: Implement a comprehensive secure storage system that encrypts Gmail OAuth tokens, OpenAI API keys, and application settings at rest using OS-level credential storage and database encryption, ensuring unauthorized parties cannot access sensitive data even with local file system access.
 
-**Deliverable**: Production-ready SecureStorageManager service integrated into the main Electron process with encrypted SQLite database, OS keychain integration, token rotation capabilities, and comprehensive security audit logging.
+**Deliverable**: Production-ready SecureStorageService integrated into the .NET application with encrypted SQLite database, OS keychain integration (DPAPI, macOS Keychain, libsecret), token rotation capabilities, and comprehensive security audit logging.
 
 **Success Definition**: All sensitive credentials are encrypted at rest, tokens automatically rotate before expiration, security events are logged without exposing secrets, and the system gracefully handles corruption/compromise scenarios with recovery procedures.
 
 ## User Persona
 
-**Target User**: Smart Inbox Janitor application users who need to store Gmail OAuth credentials and OpenAI API keys securely on their local machine
+**Target User**: TransMail Panda application users who need to store Gmail OAuth credentials and OpenAI API keys securely on their local machine
 
 **Use Case**: Users authenticate with Gmail and configure OpenAI API access during onboarding, then the application securely stores and manages these credentials across sessions while processing thousands of emails
 
@@ -27,24 +27,24 @@
 ## Why
 
 - **Business Value**: Enables secure Gmail and OpenAI integration for processing thousands of emails without compromising user credentials or API access
-- **Integration**: Leverages existing StorageProvider interface and Result<T> pattern while adding enterprise-grade security
+- **Integration**: Leverages existing IStorageProvider interface and Result<T> pattern while adding enterprise-grade security
 - **Problems Solved**: Prevents credential theft, ensures uninterrupted email processing, provides audit trail for compliance, enables secure multi-session usage
 
 ## What
 
-A hybrid secure storage system combining OS-level credential storage with encrypted database storage that automatically manages token lifecycles and provides comprehensive security monitoring.
+A hybrid secure storage system combining .NET OS-level credential storage APIs (DPAPI, macOS Keychain, libsecret) with encrypted SQLite database storage that automatically manages token lifecycles and provides comprehensive security monitoring.
 
 **🔑 ZERO-PASSWORD USER EXPERIENCE GUARANTEE**: Users will never be prompted for passwords, passphrases, or secret keys. All encryption is handled automatically using OS-level security features and machine-specific key derivation.
 
 ### Success Criteria
 
-- [ ] Gmail OAuth tokens encrypted and stored in OS keychain using Electron safeStorage API (zero user input required)
-- [ ] OpenAI API keys encrypted with AES-256-GCM and stored securely (automatic encryption without passwords)
-- [ ] Email metadata and user rules stored in encrypted SQLite database using SQLCipher
+- [ ] Gmail OAuth tokens encrypted and stored in OS keychain using .NET ProtectedData/Keychain APIs (zero user input required)
+- [ ] OpenAI API keys encrypted with AES-256-GCM using System.Security.Cryptography and stored securely (automatic encryption without passwords)
+- [ ] Email metadata and user rules stored in encrypted SQLite database using Microsoft.Data.Sqlite with SQLitePCLRaw.bundle_e_sqlcipher
 - [ ] Automatic token rotation with 5-minute expiration buffer
 - [ ] Security audit logging without exposing actual credentials
 - [ ] Recovery procedures for corrupted storage and compromised credentials
-- [ ] Unit tests covering encryption, decryption, and rotation scenarios
+- [ ] xUnit tests covering encryption, decryption, and rotation scenarios
 - [ ] Integration tests validating end-to-end security across app restarts
 
 ## All Needed Context
@@ -57,26 +57,26 @@ _This PRP provides everything needed to implement secure credential storage from
 
 ```yaml
 # MUST READ - Include these in your context window
-- url: https://www.electronjs.org/docs/latest/api/safe-storage
-  why: Electron's safeStorage API for OS-level credential encryption (replaces deprecated keytar)
+- url: https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.protecteddata
+  why: .NET ProtectedData API for OS-level credential encryption on Windows (DPAPI)
   critical: Cross-platform encryption availability detection and secure string encryption methods
 
-- url: https://www.npmjs.com/package/@journeyapps/sqlcipher
-  why: SQLCipher integration for Node.js with pre-built binaries for all platforms
-  critical: Database encryption setup, PRAGMA commands, and performance considerations
+- url: https://www.nuget.org/packages/SQLitePCLRaw.bundle_e_sqlcipher/
+  why: SQLCipher integration for .NET with pre-built binaries for all platforms
+  critical: Database encryption setup, connection strings, and performance considerations
 
-- url: https://nodejs.org/api/crypto.html#crypto-module
-  why: Node.js crypto module for AES-256-GCM encryption and key derivation functions
+- url: https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.aes
+  why: .NET System.Security.Cryptography for AES-256-GCM encryption and key derivation functions
   critical: Cipher creation, authentication tags, and secure random number generation
 
-- file: src/shared/types/storage.types.ts
-  why: Complete StorageProvider interface with encrypted token storage methods already defined
-  pattern: Result<T> pattern for all provider methods, getEncryptedTokens/setEncryptedToken interface
+- file: src/TransMailPanda.Core/Interfaces/IStorageProvider.cs
+  why: Complete IStorageProvider interface with encrypted token storage methods already defined
+  pattern: Result<T> pattern for all provider methods, GetEncryptedTokensAsync/SetEncryptedTokenAsync interface
   gotcha: Must preserve exact interface contracts and error handling patterns
 
-- file: src/providers/storage/sqlite/SQLiteProvider.ts
-  why: Existing stub implementation that needs to be replaced with secure storage
-  pattern: Stub methods return ConfigurationError with "not implemented" messages
+- file: src/TransMailPanda.Providers/Storage/SQLiteProvider.cs
+  why: Existing implementation that needs to be enhanced with secure storage
+  pattern: Methods return Result<T> with proper error handling
   gotcha: Must maintain same public interface while implementing actual functionality
 
 - file: src/shared/types/config.types.ts

@@ -1,35 +1,35 @@
-# Initialize App Scaffold and CI/CD Pipeline
+# Initialize TransMail Panda App Scaffold and CI/CD Pipeline
 
 ## Goal
 
-**Feature Goal**: Create a complete, production-ready Electron + React + TypeScript application scaffold with comprehensive CI/CD pipeline that enables rapid development of the Smart Inbox Janitor desktop application.
+**Feature Goal**: Create a complete, production-ready Avalonia UI + C# + .NET 8 application scaffold with comprehensive CI/CD pipeline that enables rapid development of the TransMail Panda desktop application.
 
-**Deliverable**: Fully functional development environment with main/renderer processes, build pipeline, code quality tools, and automated CI/CD workflows that build cross-platform distributions.
+**Deliverable**: Fully functional development environment with Avalonia UI application, .NET build pipeline, code quality tools, and automated CI/CD workflows that build cross-platform distributions.
 
-**Success Definition**: Developer can run `npm run dev` to launch a working Electron app with React UI, all linting/testing passes, and CI/CD pipeline successfully builds and tests on all target platforms (Windows, macOS, Linux).
+**Success Definition**: Developer can run `dotnet run` to launch a working Avalonia desktop app, all code analysis/testing passes, and CI/CD pipeline successfully builds and tests on all target platforms (Windows, macOS, Linux).
 
 ## User Persona
 
-**Target User**: Full-stack developers building the Smart Inbox Janitor application
+**Target User**: C# developers building the TransMail Panda application
 
-**Use Case**: Setting up a modern desktop application development environment that supports Gmail integration, AI classification, and cross-platform distribution
+**Use Case**: Setting up a modern .NET desktop application development environment that supports Gmail integration, AI classification, and cross-platform distribution
 
 **User Journey**:
 
 1. Clone repository
-2. Run `npm install`
-3. Run `npm run dev` → Electron app launches with React UI
-4. Make code changes → Hot reload works
+2. Run `dotnet restore`
+3. Run `dotnet run` → Avalonia app launches with XAML UI
+4. Make code changes → Hot reload works with design tools
 5. Push to GitHub → CI pipeline runs tests and builds artifacts
 6. Create release tag → Automated distribution to GitHub releases
 
-**Pain Points Addressed**: Eliminates complex Electron + React setup, prevents build configuration issues, ensures code quality consistency, automates testing and distribution
+**Pain Points Addressed**: Eliminates complex desktop UI setup, prevents build configuration issues, ensures code quality consistency, automates testing and distribution
 
 ## Why
 
-- **Business Value**: Enables rapid development of the core Smart Inbox Janitor desktop application with professional development workflow
+- **Business Value**: Enables rapid development of the core TransMail Panda desktop application with professional development workflow
 - **Integration**: Leverages existing provider interfaces and type system while adding the missing application layer
-- **Problems Solved**: Eliminates the complex setup of Electron + React + TypeScript + CI/CD pipeline that often causes weeks of development delays
+- **Problems Solved**: Eliminates the complex setup of desktop UI + build system + CI/CD pipeline that often causes weeks of development delays
 
 ## What
 
@@ -37,14 +37,14 @@ A complete application scaffold that transforms the current backend-focused code
 
 ### Success Criteria
 
-- [ ] Electron main process successfully launches and creates application window
-- [ ] React renderer process loads with Material-UI components and routing
-- [ ] Hot module replacement works for both main and renderer processes
-- [ ] All linting, formatting, and type checking passes without errors
-- [ ] Jest tests run successfully with proper coverage reporting
+- [ ] Avalonia UI application successfully launches and creates main window
+- [ ] XAML views load with proper data binding and navigation
+- [ ] XAML Hot Reload works for design-time development
+- [ ] All code analysis, formatting, and compilation passes without errors
+- [ ] xUnit tests run successfully with proper coverage reporting
 - [ ] GitHub Actions CI/CD pipeline builds successfully for Windows, macOS, and Linux
 - [ ] Code signing configuration is ready for distribution (placeholder certificates)
-- [ ] Auto-update mechanism is configured and testable
+- [ ] Auto-update mechanism is configured using .NET deployment tools
 
 ## All Needed Context
 
@@ -55,40 +55,40 @@ _This PRP provides everything needed to implement a complete Electron app scaffo
 ### Documentation & References
 
 ```yaml
-- url: https://electron-vite.org/guide/
-  why: Modern build tool configuration patterns for Electron + Vite + TypeScript
-  critical: electron.vite.config.ts structure and process separation
+- url: https://docs.avaloniaui.net/docs/getting-started
+  why: Modern desktop UI framework patterns for .NET cross-platform development
+  critical: Application lifecycle, XAML structure, and MVVM patterns
 
-- url: https://www.electronjs.org/docs/latest/tutorial/tutorial-prerequisites
-  why: Official Electron architecture patterns and security best practices
-  critical: Main/renderer/preload process communication patterns
+- url: https://docs.avaloniaui.net/docs/concepts/the-mvvm-pattern/
+  why: Official Avalonia MVVM architecture patterns and data binding
+  critical: ViewModels, Commands, and reactive UI patterns
 
-- url: https://github.com/alex8088/electron-vite/tree/master/packages/create-electron
-  why: Project scaffolding patterns and directory structure
-  critical: Proper src/main, src/preload, src/renderer organization
+- url: https://docs.avaloniaui.net/docs/getting-started/application-lifetimes
+  why: Project structure and application lifecycle management
+  critical: Proper startup, dependency injection, and resource management
 
-- file: /Users/mmorales/Dev/smart-inbox-janitor/package.json
-  why: Existing build scripts and electron-builder configuration to preserve
-  pattern: Build scripts and electron-builder settings are already configured
-  gotcha: Must preserve existing provider dependencies (googleapis, keytar, better-sqlite3)
+- file: /Users/mmorales/Dev/transmail-panda/TransMailPanda.sln
+  why: Solution structure and project references to be created
+  pattern: Multi-project solution with Core, Desktop, and Tests projects
+  gotcha: Must preserve existing provider dependencies (Google.Apis.Gmail.v1, System.Security.Cryptography)
 
-- file: /Users/mmorales/Dev/smart-inbox-janitor/tsconfig.json
-  why: Existing TypeScript configuration with path mapping to extend
-  pattern: Strict typing with path aliases for @shared/* and @providers/*
+- file: /Users/mmorales/Dev/transmail-panda/Directory.Build.props
+  why: Common MSBuild properties for consistent builds across projects
+  pattern: .NET 8 target framework, nullable reference types, code analysis
   gotcha: Must maintain compatibility with existing provider interfaces
 
-- file: /Users/mmorales/Dev/smart-inbox-janitor/src/shared/types/index.ts
-  why: Complete type system that must be imported into Electron processes
+- file: /Users/mmorales/Dev/transmail-panda/src/TransMailPanda.Core/
+  why: Complete interface system that must be referenced by desktop application
   pattern: Result<T> pattern for error handling across all provider operations
-  gotcha: IPC communication must preserve type safety for provider interfaces
+  gotcha: Dependency injection must preserve type safety for provider interfaces
 
-- docfile: PRPs/ai_docs/electron_vite_patterns.md
-  why: Electron-Vite configuration patterns and TypeScript setup
-  section: Configuration structure and security best practices
+- docfile: PRPs/ai_docs/avalonia_mvvm_patterns.md
+  why: Avalonia MVVM configuration patterns and XAML setup
+  section: Configuration structure and dependency injection best practices
 
-- docfile: PRPs/ai_docs/electron_react_architecture.md
-  why: Modern Electron + React architecture patterns and IPC communication
-  section: Process separation and secure API bridge patterns
+- docfile: PRPs/ai_docs/dotnet_desktop_architecture.md
+  why: Modern .NET desktop architecture patterns and service communication
+  section: MVVM patterns and dependency injection service patterns
 ```
 
 ### Current Codebase Tree

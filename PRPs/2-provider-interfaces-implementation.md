@@ -1,18 +1,18 @@
-# Provider-Agnostic TypeScript Interfaces Implementation
+# Provider-Agnostic C# Interfaces Implementation
 
 ## Goal
 
-**Feature Goal**: Create comprehensive TypeScript interfaces that encapsulate the responsibilities of EmailProvider, ContactsProvider, LLMProvider, and RulesEngine to maintain provider-agnostic design and enable future service extensibility beyond Gmail and OpenAI.
+**Feature Goal**: Create comprehensive C# interfaces that encapsulate the responsibilities of EmailProvider, ContactsProvider, LLMProvider, and RulesEngine to maintain provider-agnostic design and enable future service extensibility beyond Gmail and OpenAI.
 
-**Deliverable**: Complete TypeScript interface definitions with supporting types, comprehensive JSDoc documentation, and validation schemas in a well-structured domain-organized file hierarchy.
+**Deliverable**: Complete C# interface definitions with supporting types, comprehensive XML documentation, and validation using data annotations in a well-structured domain-organized file hierarchy.
 
 **Success Definition**: All interfaces compile successfully, follow industry best practices, include comprehensive documentation, and enable seamless provider swapping through runtime registration patterns.
 
 ## User Persona
 
-**Target User**: TypeScript developers implementing provider abstractions for the Smart Inbox Janitor project
+**Target User**: C# developers implementing provider abstractions for the TransMail Panda project
 
-**Use Case**: Creating concrete implementations of email providers (Gmail, IMAP), LLM providers (OpenAI, Claude), storage providers (SQLite, IndexedDB), and rules engines while maintaining type safety and provider-agnostic design.
+**Use Case**: Creating concrete implementations of email providers (Gmail, IMAP), LLM providers (OpenAI, Claude), storage providers (SQLite, Entity Framework), and rules engines while maintaining type safety and provider-agnostic design.
 
 **User Journey**:
 
@@ -20,7 +20,7 @@
 2. Implement concrete provider classes following interface contracts
 3. Register providers with factory pattern for runtime switching
 4. Use Result pattern for consistent error handling
-5. Leverage TypeScript compiler for type safety validation
+5. Leverage C# compiler for type safety validation and nullable reference types
 
 **Pain Points Addressed**:
 
@@ -39,26 +39,26 @@
 
 ## What
 
-TypeScript interface definitions that define clear contracts for:
+C# interface definitions that define clear contracts for:
 
 - **EmailProvider**: Gmail-first design with OAuth authentication, batch operations, rate limiting, and unsubscribe handling
 - **ContactsProvider**: Trust signal evaluation and relationship strength determination
 - **LLMProvider**: AI classification with OpenAI-first design, extensible to Claude/Llama
 - **RulesEngine**: User-defined rule evaluation and learning system
-- **StorageProvider**: Local storage abstraction supporting SQLite (desktop) and IndexedDB (browser)
+- **StorageProvider**: Local storage abstraction supporting SQLite (desktop) and Entity Framework (cross-platform)
 - **Supporting Types**: Configuration objects, result types, error hierarchies, and validation schemas
 
 ### Success Criteria
 
-- [ ] All interfaces compile with TypeScript strict mode enabled
-- [ ] Comprehensive JSDoc documentation with usage examples for all public methods
+- [ ] All interfaces compile with C# nullable reference types enabled
+- [ ] Comprehensive XML documentation with usage examples for all public methods
 - [ ] Result pattern implemented for all async operations (no thrown exceptions)
 - [ ] Provider registration and factory patterns implemented
-- [ ] Runtime validation schemas using Zod for all configuration objects
+- [ ] Runtime validation using DataAnnotations for all configuration objects
 - [ ] Error hierarchy with proper inheritance and retry logic indicators
 - [ ] Generic interfaces with proper constraints for type safety
 - [ ] Builder patterns for complex object construction
-- [ ] Integration with existing Smart Inbox Janitor app architecture
+- [ ] Integration with existing TransMail Panda app architecture
 
 ## All Needed Context
 
@@ -72,8 +72,8 @@ _If someone knew nothing about this codebase, would they have everything needed 
 
 ```yaml
 # MUST READ - Include these in your context window
-- docfile: PRPs/ai_docs/typescript_interface_patterns.md
-  why: Comprehensive TypeScript interface design patterns and best practices
+- docfile: PRPs/ai_docs/csharp_interface_patterns.md
+  why: Comprehensive C# interface design patterns and best practices
   section: All sections - provides foundation for interface design
   critical: Result pattern, generic constraints, validation patterns
 
@@ -82,29 +82,29 @@ _If someone knew nothing about this codebase, would they have everything needed 
   section: All sections - Gmail OAuth, batch operations, error handling
   critical: Error mapping, retry logic, rate limiting strategies
 
-- file: smart-inbox-janitor-app-definition.md
+- file: transmail-panda-app-definition.md
   why: Complete interface specifications already defined in the app architecture
-  pattern: Extract all TypeScript interfaces from lines 182-923
+  pattern: Extract all C# interfaces from relevant sections
   gotcha: Some interfaces are embedded in documentation blocks and need extraction
 
-- url: https://www.typescriptlang.org/docs/handbook/2/objects.html#interface-vs-type-aliases
-  why: TypeScript interface vs type best practices for provider abstractions
-  critical: When to use interfaces vs types, extension patterns
+- url: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/interface
+  why: C# interface best practices for provider abstractions
+  critical: When to use interfaces vs abstract classes, inheritance patterns
 
-- url: https://github.com/microsoft/TypeScript/wiki/Coding-guidelines#names
-  why: Official TypeScript naming conventions and style guidelines
-  critical: Interface naming, property naming, avoid "I" prefix
+- url: https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions
+  why: Official C# coding conventions and style guidelines
+  critical: Interface naming, property naming, use "I" prefix
 
-- url: https://github.com/sindresorhus/type-fest
-  why: Advanced TypeScript utility types for complex provider abstractions
-  critical: Result types, branded types, utility type patterns
+- url: https://learn.microsoft.com/en-us/dotnet/api/system.componentmodel.dataannotations
+  why: .NET DataAnnotations for runtime validation of configuration objects
+  critical: Validation attributes, custom validators, error handling
 
-- url: https://zod.dev/
-  why: Runtime validation schema library for configuration validation
-  critical: Schema definition patterns, type inference, error handling
+- url: https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
+  why: C# nullable reference types for null safety
+  critical: Nullable annotations, null-forgiving operator, nullable contexts
 
-- url: https://github.com/aws/aws-sdk-js-v3
-  why: Excellent provider abstraction patterns from AWS SDK v3 architecture
+- url: https://github.com/aws/aws-sdk-net
+  why: Excellent provider abstraction patterns from AWS SDK .NET architecture
   critical: Modular client design, command pattern, error hierarchies
 
 - url: https://github.com/jaredhanson/passport
@@ -115,19 +115,19 @@ _If someone knew nothing about this codebase, would they have everything needed 
 ### Current Codebase tree
 
 ```bash
-/Users/mmorales/Dev/smart-inbox-janitor/
+/Users/mmorales/Dev/transmail-panda/
 ├── .claude/                     # Claude Code configuration
 ├── .git/                        # Git repository
-├── .gitignore                   # Standard Node.js/TypeScript gitignore
+├── .gitignore                   # Standard .NET gitignore
 ├── PRPs/                        # Project planning documents
 │   ├── ai_docs/                 # AI development documentation
-│   │   ├── typescript_interface_patterns.md
+│   │   ├── csharp_interface_patterns.md
 │   │   └── email_provider_implementations.md
-│   ├── 2-smart-inbox-janitor-prd.md
+│   ├── 2-transmail-panda-prd.md
 │   └── README.md
 ├── LICENSE                      # MIT License
 ├── README.md                    # Project overview
-└── smart-inbox-janitor-app-definition.md  # Technical specification
+└── transmail-panda-app-definition.md  # Technical specification
 
 # NOTE: No actual source code exists yet - this is early planning phase
 # All interface definitions exist in the app-definition.md file
@@ -137,102 +137,100 @@ _If someone knew nothing about this codebase, would they have everything needed 
 
 ```bash
 src/
-├── shared/                      # Shared types and utilities
-│   ├── types/                   # Core interface definitions
-│   │   ├── index.ts            # Re-export all types for easy importing
-│   │   ├── base.types.ts       # Base provider interfaces and common types
-│   │   ├── email.types.ts      # EmailProvider and ContactsProvider interfaces
-│   │   ├── storage.types.ts    # StorageProvider and data model interfaces
-│   │   ├── llm.types.ts        # LLMProvider and classification interfaces
-│   │   ├── rules.types.ts      # RulesEngine and UserRules interfaces
-│   │   ├── errors.types.ts     # Error hierarchies and result types
-│   │   └── config.types.ts     # Configuration and connection state types
-│   ├── schemas/                # Zod validation schemas
-│   │   ├── index.ts            # Re-export all schemas
-│   │   ├── email.schemas.ts    # Email configuration and message validation
-│   │   ├── storage.schemas.ts  # Storage configuration validation
-│   │   ├── llm.schemas.ts      # LLM configuration validation
-│   │   └── config.schemas.ts   # Application configuration validation
-│   ├── factories/              # Provider factory implementations
-│   │   ├── index.ts            # Provider registry implementation
-│   │   ├── base.factory.ts     # Abstract factory base class
-│   │   ├── provider-registry.ts # Provider registration and management
-│   │   └── types.ts            # Factory-specific types
-│   └── utils/                  # Utility functions and helpers
-│       ├── index.ts            # Re-export utilities
-│       ├── result.utils.ts     # Result pattern helper functions
-│       ├── validation.utils.ts # Runtime validation helpers
-│       └── timeout.utils.ts    # Timeout and cancellation utilities
-├── providers/                  # Concrete provider implementations (created later)
-│   ├── email/                  # Email provider implementations
-│   ├── storage/                # Storage provider implementations
-│   └── llm/                    # LLM provider implementations
-├── __tests__/                  # Test files
-│   ├── types/                  # Type-level tests
-│   ├── schemas/                # Schema validation tests
-│   └── factories/              # Factory pattern tests
-├── package.json                # Project dependencies and scripts
-├── tsconfig.json               # TypeScript configuration
-├── jest.config.js              # Jest testing configuration
-└── .eslintrc.js                # ESLint TypeScript rules
+├── TransMailPanda.Core/         # Shared types and utilities
+│   ├── Interfaces/              # Core interface definitions
+│   │   ├── IBaseProvider.cs     # Base provider interfaces and common types
+│   │   ├── IEmailProvider.cs    # EmailProvider and ContactsProvider interfaces
+│   │   ├── IStorageProvider.cs  # StorageProvider and data model interfaces
+│   │   ├── ILLMProvider.cs      # LLMProvider and classification interfaces
+│   │   ├── IRulesEngine.cs      # RulesEngine and UserRules interfaces
+│   │   └── IProviderFactory.cs  # Provider factory interfaces
+│   ├── Models/                  # Data models and DTOs
+│   │   ├── Email/               # Email-related models
+│   │   ├── Classification/      # AI classification models
+│   │   ├── Storage/             # Storage models
+│   │   ├── Configuration/       # Configuration models
+│   │   └── Results/             # Result types and error hierarchies
+│   ├── Factories/              # Provider factory implementations
+│   │   ├── BaseProviderFactory.cs     # Abstract factory base class
+│   │   ├── ProviderRegistry.cs        # Provider registration and management
+│   │   └── ProviderServiceExtensions.cs # DI container extensions
+│   ├── Utilities/              # Utility functions and helpers
+│   │   ├── ResultExtensions.cs        # Result pattern helper functions
+│   │   ├── ValidationExtensions.cs    # Runtime validation helpers
+│   │   └── CancellationHelper.cs      # Timeout and cancellation utilities
+│   └── TransMailPanda.Core.csproj     # Core library project file
+├── TransMailPanda.Providers/   # Concrete provider implementations (created later)
+│   ├── Email/                  # Email provider implementations
+│   ├── Storage/                # Storage provider implementations
+│   ├── LLM/                    # LLM provider implementations
+│   └── TransMailPanda.Providers.csproj # Providers project file
+├── TransMailPanda.Tests/       # Test projects
+│   ├── Core/                   # Core library tests
+│   ├── Providers/              # Provider tests
+│   └── TransMailPanda.Tests.csproj    # Test project file
+├── TransMailPanda.sln          # Solution file
+├── Directory.Build.props       # Common MSBuild properties
+├── .editorconfig              # Code style configuration
+└── global.json                # .NET SDK version specification
 ```
 
 ### Known Gotchas of our codebase & Library Quirks
 
-```typescript
+```csharp
 // CRITICAL: Project is in early planning phase - no existing code patterns to follow yet
-// All interface specifications come from smart-inbox-janitor-app-definition.md
+// All interface specifications come from transmail-panda-app-definition.md
 
-// CRITICAL: TypeScript strict mode required - all interfaces must be fully typed
-// No 'any' types allowed, proper generic constraints required
+// CRITICAL: C# nullable reference types required - all interfaces must have proper null annotations
+// No nullable warnings allowed, proper null checks and annotations required
 
 // CRITICAL: Result pattern required - no thrown exceptions from provider methods
-// All async operations must return Result<T> types for consistent error handling
+// All async operations must return Task<Result<T>> types for consistent error handling
 
 // CRITICAL: Provider abstraction pattern - interfaces must support runtime provider switching
-// Factory pattern and provider registry required for extensibility
+// Factory pattern and DI container registration required for extensibility
 
 // CRITICAL: Local-only storage requirement - no cloud data, encryption required
-// Storage providers must support both SQLite (desktop) and IndexedDB (browser)
+// Storage providers must support both SQLite (desktop) and Entity Framework (cross-platform)
 
 // CRITICAL: Gmail-first email provider design with IMAP extensibility
-// OAuth 2.0 flows, batch operations, rate limiting required
+// OAuth 2.0 flows using Google.Apis.Gmail.v1, batch operations, rate limiting required
 
 // CRITICAL: OpenAI-first LLM provider with Claude/Llama extensibility
-// Classification contracts, cost tracking, retry logic required
+// Classification contracts, cost tracking, retry logic using Polly required
 
 // GOTCHA: Some interfaces in app-definition.md are embedded in prose and need extraction
-// Look for TypeScript code blocks throughout the document
+// Look for C# interface code blocks throughout the document
 
-// GOTCHA: Electron + React architecture - interfaces must work in both main and renderer processes
-// Consider IPC communication requirements for provider access
+// GOTCHA: Avalonia UI + .NET architecture - interfaces must work across UI and business logic layers
+// Consider MVVM patterns and data binding requirements for provider access
 ```
 
 ## Implementation Blueprint
 
 ### Data models and structure
 
-Create comprehensive TypeScript interfaces and supporting types to ensure type safety and consistency across all provider implementations.
+Create comprehensive C# interfaces and supporting types to ensure type safety and consistency across all provider implementations.
 
-```typescript
+```csharp
 Examples:
- - Provider interfaces (EmailProvider, StorageProvider, LLMProvider, etc.)
- - Configuration interfaces with readonly properties
- - Result types with discriminated unions for error handling
- - Generic interfaces with proper constraints
- - Zod schemas for runtime validation
+ - Provider interfaces (IEmailProvider, IStorageProvider, ILLMProvider, etc.)
+ - Configuration classes with init-only properties
+ - Result<T> types with discriminated unions for error handling
+ - Generic interfaces with proper type constraints
+ - DataAnnotations attributes for runtime validation
  - Error hierarchies with inheritance
  - Factory interfaces for provider registration
- - Builder interfaces for complex object construction
+ - Builder patterns for complex object construction
 ```
 
 ### Implementation Tasks (ordered by dependencies)
 
 ```yaml
-Task 1: CREATE src/shared/types/base.types.ts
+Task 1: CREATE src/TransMailPanda.Core/Interfaces/IBaseProvider.cs
   - IMPLEMENT: Base provider interfaces, Result types, error hierarchies
-  - FOLLOW pattern: PRPs/ai_docs/typescript_interface_patterns.md (Result pattern, base interfaces)
-  - NAMING: PascalCase for interfaces, no "I" prefix, readonly for immutable properties
+  - FOLLOW pattern: PRPs/ai_docs/csharp_interface_patterns.md (Result pattern, base interfaces)
+  - NAMING: PascalCase for interfaces, use "I" prefix, init-only properties for immutable data
   - PLACEMENT: Foundation types that all other interfaces extend
   - DEPENDENCIES: None (foundation layer)
 
@@ -334,18 +332,18 @@ Task 15: CREATE src/shared/utils/result.utils.ts
   - DEPENDENCIES: Import base types from Task 1
   - PLACEMENT: Result pattern utility functions
 
-Task 16: CREATE package.json, tsconfig.json, jest.config.js, .eslintrc.js
-  - IMPLEMENT: Project configuration for TypeScript strict mode, testing, linting
-  - FOLLOW pattern: TypeScript strict configuration, Jest for testing, ESLint rules
-  - NAMING: Standard configuration file names
-  - DEPENDENCIES: External dependencies (TypeScript, Jest, ESLint, Zod)
-  - PLACEMENT: Project root configuration files
+Task 16: CREATE TransMailPanda.sln, Directory.Build.props, .editorconfig, global.json
+  - IMPLEMENT: Project configuration for .NET 8, testing, code analysis
+  - FOLLOW pattern: .NET solution structure, MSBuild properties, EditorConfig for formatting
+  - NAMING: Standard .NET configuration file names
+  - DEPENDENCIES: .NET 8 SDK, xUnit, Microsoft.Extensions.DependencyInjection
+  - PLACEMENT: Solution root configuration files
 
-Task 17: CREATE __tests__/types/ comprehensive test suite
-  - IMPLEMENT: Type-level tests and runtime validation tests
-  - FOLLOW pattern: Jest testing patterns, TypeScript test utilities
-  - NAMING: Test files mirror source structure, descriptive test names
-  - DEPENDENCIES: All types and schemas from previous tasks
+Task 17: CREATE TransMailPanda.Tests/Core/ comprehensive test suite
+  - IMPLEMENT: Unit tests and integration tests for all interfaces
+  - FOLLOW pattern: xUnit testing patterns, .NET test utilities
+  - NAMING: Test files mirror source structure, descriptive test method names
+  - DEPENDENCIES: All interfaces and models from previous tasks
   - PLACEMENT: Comprehensive test coverage for all interfaces
 ```
 

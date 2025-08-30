@@ -1,10 +1,10 @@
-# Debug Provider Initialization System - Console Mode Validation & Enhanced Debugging
+# Debug Provider Initialization System - .NET Console Application Validation & Enhanced Debugging
 
 ---
 
 ## Goal
 
-**Feature Goal**: Implement a console-mode provider initialization validator that can run without UI, providing comprehensive debug output for automated testing and AI agent monitoring of provider health, token validation, and initialization sequences.
+**Feature Goal**: Implement a .NET console application provider initialization validator that can run without UI, providing comprehensive debug output for automated testing and AI agent monitoring of provider health, token validation, and initialization sequences.
 
 **Deliverable**:
 
@@ -15,7 +15,7 @@
 
 **Success Definition**:
 
-- AI agents can start app with `npm run debug:providers` and monitor console output to validate provider status
+- AI agents can start app with `dotnet run --project TransMailPanda.Console -- --debug-providers` and monitor console output to validate provider status
 - All provider initialization issues detectable from console output without UI or DevTools
 - Complete provider health validation (tokens, connectivity, configuration) in <30 seconds
 - Structured JSON output suitable for automated analysis and alerting
@@ -35,7 +35,7 @@
 
 **User Journey**:
 
-1. AI agent runs `npm run debug:providers --mode=console --verbose`
+1. AI agent runs `dotnet run --project TransMailPanda.Console -- --debug-providers --verbose`
 2. Console displays structured initialization progress with timing and status
 3. Each provider shows detailed connection status, token validity, and health metrics
 4. Final summary provides complete system status in JSON format
@@ -43,8 +43,8 @@
 
 **Pain Points Addressed**:
 
-- **No automated way** to validate provider initialization without UI interaction
-- **DevTools dependency** makes remote debugging and CI/CD integration difficult
+- **No automated way** to validate provider initialization without Avalonia UI interaction
+- **UI dependency** makes remote debugging and CI/CD integration difficult
 - **Inconsistent logging** makes it hard for AI agents to parse provider status
 - **Manual verification** required to check token renewal and provider connectivity
 
@@ -58,11 +58,11 @@
 
 ## What
 
-Console-mode provider validation system with enhanced debugging capabilities:
+.NET Console application provider validation system with enhanced debugging capabilities:
 
 ### Core Console Features
 
-- **Headless Mode**: Run Electron in console-only mode with `--headless` flag
+- **Console Mode**: Run .NET console application without Avalonia UI
 - **Provider CLI**: Command-line interface for selective provider testing
 - **Structured Output**: JSON-formatted progress and status for AI parsing
 - **Exit Codes**: Meaningful exit codes for automated decision making
@@ -77,7 +77,7 @@ Console-mode provider validation system with enhanced debugging capabilities:
 
 ### Success Criteria
 
-- [ ] `npm run debug:providers` runs without UI and outputs structured provider status
+- [ ] `dotnet run --project TransMailPanda.Console -- --debug-providers` runs without UI and outputs structured provider status
 - [ ] Command-line flags control which providers to test and output verbosity level
 - [ ] All provider status (connected, token valid, health check) visible in console output
 - [ ] JSON output format suitable for AI agent parsing and automated decision making

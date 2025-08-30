@@ -13,12 +13,12 @@ This guide helps you run comprehensive CI/CD validation locally before pushing t
 #### Available Tasks:
 
 - **🔍 Full CI/CD Check** - Complete validation matching GitHub Actions
-- **⚡ Quick Check** - Fast validation (lint, type-check, build)
-- **🧪 Code Quality Check** - Linting, type checking, formatting
-- **🏗️ Build All Targets** - Multi-platform Electron builds
+- **⚡ Quick Check** - Fast validation (build, test, format-check)
+- **🧪 Code Quality Check** - Code analysis, formatting, testing
+- **🏗️ Build All Targets** - Multi-platform .NET builds
 - **🔐 Security Audit** - Dependency and security scanning
-- **📦 Package Check** - Dependency validation
-- **🧽 Clean & Fresh Install** - Reset environment
+- **📦 Package Check** - NuGet package validation
+- **🧽 Clean & Restore** - Reset build environment
 
 #### Keyboard Shortcuts:
 
@@ -33,22 +33,22 @@ This guide helps you run comprehensive CI/CD validation locally before pushing t
 #### Full Validation (Recommended before push):
 
 ```bash
-npm run ci:check
+dotnet build --configuration Release && dotnet test --configuration Release
 ```
 
 #### Quick Validation:
 
 ```bash
-npm run ci:quick
+dotnet build && dotnet test --no-build
 ```
 
 #### Individual Steps:
 
 ```bash
-npm run ci:quality    # Code quality only
-npm run ci:build      # Build validation
-npm run ci:security   # Security audit
-npm run ci:package    # Dependency check
+dotnet format --verify-no-changes  # Code quality only
+dotnet build --configuration Release  # Build validation
+dotnet list package --vulnerable     # Security audit
+dotnet restore --force-evaluate      # Package validation
 ```
 
 #### Shell Script (Advanced):
@@ -68,22 +68,22 @@ npm run ci:package    # Dependency check
 
 ### 1. Code Quality ✅
 
-- **ESLint** - Code style and potential issues
-- **TypeScript** - Type checking and compilation
-- **Prettier** - Code formatting consistency
-- **Dependencies** - Package resolution and conflicts
+- **EditorConfig & .NET Format** - Code style and formatting
+- **C# Compiler** - Type checking and compilation
+- **Roslyn Analyzers** - Code analysis and best practices
+- **Dependencies** - NuGet package resolution and conflicts
 
 ### 2. Build Process ✅
 
-- **Vite Build** - Renderer process bundling
-- **Electron Build** - Main/preload process compilation
-- **Platform Builds** - Multi-OS Electron packaging (optional)
+- **.NET Build** - Application compilation and IL generation
+- **Avalonia Build** - XAML compilation and resource embedding
+- **Platform Builds** - Multi-OS .NET publishing (optional)
 
 ### 3. Testing ✅
 
-- **Jest** - Unit and integration tests
-- **Coverage** - Code coverage reporting (when available)
-- **Type Tests** - TypeScript interface validation
+- **xUnit** - Unit and integration tests
+- **Coverage** - Code coverage reporting with coverlet
+- **Model Tests** - C# type and interface validation
 
 ### 4. Security & Dependencies ✅
 
@@ -97,58 +97,56 @@ The local validation closely matches the GitHub Actions CI pipeline:
 
 | CI Step         | Local Command              | Description              |
 | --------------- | -------------------------- | ------------------------ |
-| Setup Node      | `npm ci`                   | Fresh dependency install |
-| Lint            | `npm run lint`             | ESLint validation        |
-| Type Check      | `npm run type-check`       | TypeScript compilation   |
-| Format Check    | `npm run format:check`     | Prettier validation      |
-| Test            | `npm run test`             | Jest test execution      |
-| Build           | `npm run build`            | Vite/Electron build      |
-| Security Audit  | `npm audit`                | Vulnerability scan       |
-| Platform Builds | `npm run build:electron:*` | Multi-OS packaging       |
+| Setup .NET      | `dotnet restore`           | Fresh dependency install |
+| Format Check    | `dotnet format --verify-no-changes` | Code formatting validation |
+| Build           | `dotnet build`             | C# compilation           |
+| Test            | `dotnet test`              | xUnit test execution     |
+| Security Audit  | `dotnet list package --vulnerable` | Vulnerability scan |
+| Platform Builds | `dotnet publish -r <rid>`  | Multi-OS publishing      |
 
 ## 🚨 Common Issues & Solutions
 
-### ESLint Errors
+### Code Analysis Errors
 
 ```bash
-npm run lint          # See errors
-npm run lint -- --fix # Auto-fix issues
+dotnet build          # See compiler errors and warnings
+dotnet format --verify-no-changes # Check formatting
 ```
 
-### TypeScript Errors
+### Compilation Errors
 
 ```bash
-npm run type-check    # See type errors
-# Fix manually in VS Code with IntelliSense
+dotnet build          # See compilation errors
+# Fix manually in VS Code or Visual Studio with IntelliSense
 ```
 
 ### Formatting Issues
 
 ```bash
-npm run format:check  # Check formatting
-npm run format        # Fix formatting
+dotnet format --verify-no-changes  # Check formatting
+dotnet format         # Fix formatting
 ```
 
 ### Dependency Conflicts
 
 ```bash
-npm run ci:clean      # Fresh install
-npm run ci:deps-check # Validate dependencies
+dotnet clean          # Clean build output
+dotnet restore --force-evaluate # Fresh restore
 ```
 
 ### Build Failures
 
 ```bash
-npm run clean         # Clear build artifacts
-npm run build         # Rebuild
+dotnet clean          # Clear build artifacts  
+dotnet build          # Rebuild
 ```
 
 ### Security Vulnerabilities
 
 ```bash
-npm audit                    # View vulnerabilities
-npm audit fix                # Auto-fix low severity
-npm audit fix --force        # Force fix (review changes)
+dotnet list package --vulnerable      # View vulnerabilities
+dotnet add package <PackageName>      # Update to secure version
+# Review package updates manually
 ```
 
 ## 💡 Development Workflow
@@ -156,26 +154,26 @@ npm audit fix --force        # Force fix (review changes)
 ### Before Each Commit:
 
 ```bash
-npm run ci:quick      # Fast validation
+dotnet build && dotnet test --no-build  # Fast validation
 ```
 
 ### Before Push to Main:
 
 ```bash
-npm run ci:check      # Full validation
+dotnet build --configuration Release && dotnet test --configuration Release  # Full validation
 ```
 
 ### After Dependency Changes:
 
 ```bash
-npm run ci:clean      # Fresh environment test
-npm run ci:security   # Security validation
+dotnet clean && dotnet restore --force-evaluate  # Fresh environment test
+dotnet list package --vulnerable                # Security validation
 ```
 
 ### Before Release:
 
 ```bash
-./scripts/local-ci.sh --full    # Complete validation with builds
+.\scripts\local-ci.ps1 -Full    # Complete validation with builds
 ```
 
 ## 🔍 Debugging Failed Validations
@@ -183,31 +181,31 @@ npm run ci:security   # Security validation
 ### View Detailed Output:
 
 - VS Code: Check Terminal panel for detailed logs
-- Command line: Remove `> /dev/null 2>&1` from failing commands
+- Command line: Add `--verbosity detailed` to dotnet commands for more info
 
 ### Common Debug Steps:
 
-1. **Clean Environment**: `npm run ci:clean`
-2. **Check Dependencies**: `npm run ci:deps-check`
+1. **Clean Environment**: `dotnet clean && dotnet restore`
+2. **Check Dependencies**: `dotnet list package --vulnerable`
 3. **Validate Individual Steps**: Run each CI command separately
 4. **Review Recent Changes**: `git diff` to see what changed
 
 ## ⚡ Performance Tips
 
 - Use **Quick Check** during active development
-- Use **Full CI/CD Check** before important commits
-- Run **Clean Install** weekly or after major dependency changes
+- Use **Full CI/CD Check** before important commits  
+- Run **Clean & Restore** weekly or after major dependency changes
 - Use VS Code tasks for integrated experience
 
 ## 🎊 Success Indicators
 
 When validation passes, you should see:
 
-- ✅ All linting rules passed
-- ✅ TypeScript compilation successful
+- ✅ All code formatting rules passed
+- ✅ C# compilation successful
 - ✅ All builds completed
 - ✅ No security vulnerabilities
-- ✅ All tests passed (when available)
+- ✅ All tests passed
 
 **You're ready to push!** 🚀
 
