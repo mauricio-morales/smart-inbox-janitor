@@ -425,6 +425,27 @@ interface ElectronAPI {
 - Migration system in place - check `migrate()` methods
 - Always use parameterized queries to prevent SQL injection
 
+### Database Schema Management
+
+**CRITICAL**: All database schema changes must be managed through migrations for auto-upgrade on app start.
+
+- **Migration Pattern**: Database schema is automatically upgraded on every app start
+- **Version Control**: Schema changes must include proper migration scripts
+- **Backward Compatibility**: Migrations must handle existing data gracefully
+- **No Manual Schema Changes**: Never manually ALTER tables - always use migration system
+- **Storage Provider Integration**: SQLite provider handles migrations via `migrate()` method
+- **Data Integrity**: All migrations must preserve existing user data and credentials
+
+Example migration pattern:
+
+```typescript
+async migrate(): Promise<Result<void>> {
+  // Check current schema version
+  // Apply incremental migrations
+  // Validate data integrity after migration
+}
+```
+
 ### Data Models
 
 Key tables/entities:

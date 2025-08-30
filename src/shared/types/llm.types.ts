@@ -8,7 +8,7 @@
  * @module LLMTypes
  */
 
-import { BaseProvider, Result } from './base.types.js';
+import { Result, HealthStatus } from './base.types.js';
 import { OpenAIConfig, ClaudeConfig, LocalLLMConfig } from './config.types.js';
 import { EmailClassification, UserRules } from './storage.types.js';
 
@@ -20,7 +20,14 @@ import { EmailClassification, UserRules } from './storage.types.js';
  *
  * @template TConfig - LLM provider configuration type
  */
-export interface LLMProvider<TConfig = LLMProviderConfig> extends BaseProvider<TConfig> {
+export interface LLMProvider<TConfig = LLMProviderConfig> {
+  readonly name: string;
+  readonly version: string;
+  initialize(config: TConfig): Promise<Result<void>>;
+  shutdown(): Promise<Result<void>>;
+  healthCheck(): Promise<Result<HealthStatus>>;
+  getConfig(): Readonly<TConfig>;
+  isInitialized(): boolean;
   /**
    * Initialize LLM provider with authentication and model configuration
    *

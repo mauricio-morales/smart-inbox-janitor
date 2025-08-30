@@ -107,6 +107,7 @@ export class ConsoleApp {
 
       // Initialize provider validator
       this.validator = new ProviderValidator(this.config, this.logger);
+      await this.validator.initialize();
 
       // Log initialization if verbose mode
       if (this.config.verbose) {

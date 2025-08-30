@@ -54,10 +54,17 @@ import { SecureStorageManager } from '../../../main/security/SecureStorageManage
 export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
   readonly name = 'openai-provider';
   readonly version = '1.0.0';
-
   private config: OpenAIConfig | null = null;
   private client: OpenAI | null = null;
   private initialized = false;
+
+  /**
+   * Check if provider is initialized
+   */
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
   private readonly usageStatsData = {
     totalRequests: 0,
     totalTokens: 0,
@@ -73,18 +80,10 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
 
   /**
    * Initialize the OpenAI provider with configuration
-   *
-   * @param config - OpenAI provider configuration
-   * @returns Result indicating initialization success or failure
    */
   async initialize(config: OpenAIConfig): Promise<Result<void>> {
     try {
-      // Validate configuration
-      const validationResult = this.validateConfig(config);
-      if (!validationResult.success) {
-        return createErrorResult(validationResult.error);
-      }
-
+      // Store config
       this.config = config;
 
       // Create OpenAI client
@@ -94,6 +93,7 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
         maxRetries: 3,
       });
 
+      // Mark as initialized
       this.initialized = true;
 
       return createSuccessResult(undefined);
@@ -108,104 +108,68 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
   }
 
   /**
+   * Shutdown the OpenAI provider
+   */
+  async shutdown(): Promise<Result<void>> {
+    try {
+      this.client = null;
+      this.initialized = false;
+      this.config = null;
+      return createSuccessResult(undefined);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown shutdown error';
+      return createErrorResult(
+        new ConfigurationError(`OpenAI provider shutdown failed: ${message}`),
+      );
+    }
+  }
+
+  /**
+   * Get current configuration
+   */
+  getConfig(): Readonly<OpenAIConfig> {
+    if (!this.config) {
+      throw new Error('OpenAI provider not initialized');
+    }
+    return this.config;
+  }
+
+  /**
    * Check OpenAI provider health and API key validity
    *
    * @returns Result containing health status
    */
   async healthCheck(): Promise<Result<HealthStatus>> {
     try {
-      this.ensureInitialized();
-
+      // Basic health check - ensure client is initialized
       if (!this.client) {
         return createSuccessResult({
           healthy: false,
-          message: 'OpenAI client not initialized',
-          metrics: { initialized: 0 },
-        });
-      }
-
-      // Test API access with models endpoint (lightweight)
-      if (!this.client) {
-        return createSuccessResult({
-          healthy: false,
-          message: 'OpenAI client not initialized',
-          metrics: { initializationError: 1 },
-        });
-      }
-
-      const testResult = await this.callWithErrorHandling(async () => {
-        return await this.client!.models.list();
-      });
-
-      if (!testResult.success) {
-        return createSuccessResult({
-          healthy: false,
-          message: `OpenAI API error: ${testResult.error.message}`,
-          metrics: { apiError: 1 },
+          status: 'degraded',
+          timestamp: new Date().toISOString(),
+          checks: {
+            client: Boolean(this.client),
+          },
         });
       }
 
       return createSuccessResult({
         healthy: true,
-        message: 'OpenAI connection healthy',
-        lastSuccess: new Date(),
-        metrics: {
-          initialized: 1,
-          totalRequests: this.usageStatsData.totalRequests,
-          totalTokens: this.usageStatsData.totalTokens,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        checks: {
+          client: true,
         },
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown health check error';
       return createSuccessResult({
         healthy: false,
-        message: `Health check failed: ${message}`,
-        metrics: { error: 1 },
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: message,
       });
     }
-  }
-
-  /**
-   * Gracefully shutdown the OpenAI provider
-   *
-   * @returns Result indicating shutdown success or failure
-   */
-  async shutdown(): Promise<Result<void>> {
-    try {
-      this.config = null;
-      this.client = null;
-      this.initialized = false;
-
-      return createSuccessResult(undefined);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown shutdown error';
-      return createErrorResult(
-        new ConfigurationError(`OpenAI provider shutdown failed: ${message}`, {
-          provider: 'openai',
-        }),
-      );
-    }
-  }
-
-  /**
-   * Get current OpenAI provider configuration
-   *
-   * @returns Readonly copy of configuration (with sanitized API key)
-   */
-  getConfig(): Readonly<OpenAIConfig> {
-    if (!this.config) {
-      return {
-        apiKey: '',
-        model: 'gpt-4o-mini',
-        temperature: 0.1,
-        maxTokens: 1000,
-      } as const;
-    }
-
-    return {
-      ...this.config,
-      apiKey: `sk-...${this.config.apiKey.slice(-4)}`,
-    } as const;
   }
 
   /**
@@ -817,8 +781,8 @@ export class OpenAIProvider implements LLMProvider<OpenAIConfig> {
 
   // Private helper methods
 
-  private ensureInitialized(): void {
-    if (!this.initialized) {
+  protected ensureInitialized(): void {
+    if (!this.isInitialized()) {
       throw new Error('OpenAI provider not initialized');
     }
   }

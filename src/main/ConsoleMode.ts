@@ -72,6 +72,7 @@ export class ConsoleMode {
 
       // Initialize provider validator
       this.validator = new ProviderValidator(this.config, this.logger);
+      await this.validator.initialize();
 
       this.initialized = true;
 
