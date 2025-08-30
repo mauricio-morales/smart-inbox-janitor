@@ -10,7 +10,6 @@
 import type {
   Result,
   GmailTokens,
-  OpenAIConfig,
   HealthStatus,
   StorageProvider,
   EmailProvider,
