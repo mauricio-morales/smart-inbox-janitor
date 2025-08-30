@@ -198,6 +198,12 @@ export class StartupOrchestrator {
    */
   private async checkGmailProvider(): Promise<ProviderStatus> {
     try {
+      console.log('[StartupOrchestrator] checkGmailProvider - electronAPI structure:', {
+        hasOauth: !!this.electronAPI.oauth,
+        hasDirectMethod: !!this.electronAPI.oauth?.checkGmailConnection,
+        directMethod: typeof this.electronAPI.oauth?.checkGmailConnection,
+      });
+
       const result = await this.electronAPI.oauth.checkGmailConnection();
 
       // Check if this is an API not ready error
@@ -341,7 +347,20 @@ export function createStartupOrchestrator(electronAPI: any): StartupOrchestrator
   console.log('[createStartupOrchestrator] electronAPI keys:', keys);
   console.log('[createStartupOrchestrator] oauth available:', !!electronAPI?.oauth);
   console.log('[createStartupOrchestrator] storage available:', !!electronAPI?.storage);
-  console.log('[createStartupOrchestrator] actual keys array:', keys);
+  console.log('[createStartupOrchestrator] electronAPI structure:', {
+    oauth: typeof electronAPI?.oauth,
+    storage: typeof electronAPI?.storage,
+    hasCheckGmail: !!electronAPI?.oauth?.checkGmailConnection,
+    hasCheckOpenAI: !!electronAPI?.oauth?.checkOpenAIConnection,
+    hasHealthCheck: !!electronAPI?.storage?.healthCheck,
+    fullStructure: Object.keys(electronAPI || {}).reduce(
+      (acc, key) => {
+        acc[key] = typeof electronAPI[key];
+        return acc;
+      },
+      {} as Record<string, string>,
+    ),
+  });
 
   // Check if electronAPI is actually available and has the expected structure
   if (!electronAPI || !electronAPI.oauth || !electronAPI.storage) {
@@ -353,15 +372,23 @@ export function createStartupOrchestrator(electronAPI: any): StartupOrchestrator
   }
 
   // Try multiple ways to access the API methods
-  const gmailCheck = electronAPI?.oauth?.checkGmailConnection || electronAPI?.checkGmailConnection;
-  const openaiCheck =
-    electronAPI?.oauth?.checkOpenAIConnection || electronAPI?.checkOpenAIConnection;
-  const storageCheck = electronAPI?.storage?.healthCheck || electronAPI?.healthCheck;
+  const gmailCheck = electronAPI?.oauth?.checkGmailConnection;
+  const openaiCheck = electronAPI?.oauth?.checkOpenAIConnection;
+  const storageCheck = electronAPI?.storage?.healthCheck;
 
   console.log('[createStartupOrchestrator] Method availability:', {
     gmailCheck: typeof gmailCheck,
     openaiCheck: typeof openaiCheck,
     storageCheck: typeof storageCheck,
+  });
+
+  console.log('[createStartupOrchestrator] Testing method calls:', {
+    canCallGmailDirect: typeof electronAPI?.checkGmailConnection,
+    canCallOpenAIDirect: typeof electronAPI?.checkOpenAIConnection,
+    canCallStorageDirect: typeof electronAPI?.healthCheck,
+    hasGmailMethod: !!gmailCheck,
+    hasOpenAIMethod: !!openaiCheck,
+    hasStorageMethod: !!storageCheck,
   });
 
   return new StartupOrchestrator({
