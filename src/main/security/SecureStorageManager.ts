@@ -300,6 +300,10 @@ export class SecureStorageManager {
       const decryptionResult = this.credentialEncryption.decryptCredential(secureCredential);
 
       if (!decryptionResult.success) {
+        console.error(
+          '[SecureStorageManager] Gmail token decryption failed:',
+          decryptionResult.error,
+        );
         await this.securityAuditLogger.logSecurityEvent({
           eventType: 'credential_retrieve',
           provider: 'gmail',
@@ -310,8 +314,19 @@ export class SecureStorageManager {
         return createErrorResult(decryptionResult.error);
       }
 
+      console.log('[SecureStorageManager] Gmail token decryption successful, parsing tokens...');
+
       // Parse tokens
       const tokens = JSON.parse(decryptionResult.data) as GmailTokens;
+
+      console.log('[SecureStorageManager] Gmail tokens parsed successfully:', {
+        hasAccessToken: !!tokens.accessToken,
+        hasRefreshToken: !!tokens.refreshToken,
+        accessTokenLength: tokens.accessToken?.length || 0,
+        expiryDate: new Date(tokens.expiryDate),
+        isExpired: tokens.expiryDate < Date.now(),
+        minutesUntilExpiry: Math.round((tokens.expiryDate - Date.now()) / 1000 / 60),
+      });
 
       // Cache tokens
       this.credentials.gmail = tokens;
@@ -871,11 +886,16 @@ export class SecureStorageManager {
    */
   async getGmailCredentials(): Promise<Result<{ clientId: string; clientSecret: string } | null>> {
     try {
+      console.log('[SecureStorageManager] getGmailCredentials called');
       this.ensureInitialized();
 
       // Retrieve from storage
       const tokenResult = await this.storageProvider.getEncryptedTokens();
       if (!tokenResult.success) {
+        console.error(
+          '[SecureStorageManager] Failed to get encrypted tokens for Gmail credentials:',
+          tokenResult.error,
+        );
         return createErrorResult(tokenResult.error);
       }
 
@@ -885,8 +905,11 @@ export class SecureStorageManager {
         encryptedCredentials === null ||
         encryptedCredentials === ''
       ) {
+        console.log('[SecureStorageManager] No Gmail credentials found in storage');
         return createSuccessResult(null);
       }
+
+      console.log('[SecureStorageManager] Found Gmail credentials, decrypting...');
 
       // Decrypt credential
       const decryptionResult = this.credentialEncryption.decryptCredential(
@@ -894,6 +917,10 @@ export class SecureStorageManager {
       );
 
       if (!decryptionResult.success) {
+        console.error(
+          '[SecureStorageManager] Gmail credentials decryption failed:',
+          decryptionResult.error,
+        );
         await this.securityAuditLogger.logSecurityEvent({
           eventType: 'credential_retrieve',
           provider: 'gmail-credentials',
@@ -908,6 +935,12 @@ export class SecureStorageManager {
         clientId: string;
         clientSecret: string;
       };
+
+      console.log('[SecureStorageManager] Gmail credentials decrypted successfully:', {
+        clientIdPrefix: credentials.clientId.substring(0, 20),
+        hasClientSecret: !!credentials.clientSecret,
+        clientSecretLength: credentials.clientSecret?.length || 0,
+      });
 
       // Log successful retrieval
       await this.securityAuditLogger.logSecurityEvent({

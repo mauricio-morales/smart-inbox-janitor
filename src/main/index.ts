@@ -77,7 +77,16 @@ if (isConsoleMode) {
       }
     });
 
-    // Initialize providers before setting up IPC
+    // CRITICAL: Setup IPC handlers FIRST to ensure UI can communicate even if provider initialization fails
+    console.log('🚀 Setting up IPC handlers early (before provider initialization)...');
+    try {
+      setupIPC(emailProvider, llmProvider, storageProvider, secureStorageManager);
+      console.log('✅ IPC handlers registered successfully (early setup)');
+    } catch (ipcError) {
+      console.error('❌ Failed to setup IPC handlers:', ipcError);
+    }
+
+    // Initialize providers after setting up IPC
     try {
       console.log('Initializing SQLite storage provider...');
       const storageInitResult = await storageProvider.initialize({ databasePath: './data/app.db' });
@@ -114,14 +123,37 @@ if (isConsoleMode) {
       // Initialize startup authentication services (wait for secure storage first)
       console.log('Initializing startup authentication services...');
 
-      // Create OAuth manager for Gmail authentication
-      const gmailOAuthConfig = {
-        clientId: process.env.GMAIL_CLIENT_ID || '',
-        clientSecret: process.env.GMAIL_CLIENT_SECRET || '',
-        redirectUri: 'http://localhost:8080/oauth/callback',
-      };
-      const gmailOAuthManager = new GmailOAuthManager(gmailOAuthConfig);
-      const gmailOAuthInitResult = gmailOAuthManager.initialize();
+      // Try to get stored Gmail credentials for OAuth manager initialization
+      console.log('Checking for stored Gmail OAuth credentials...');
+      const storedCredentialsResult = await secureStorageManager.getGmailCredentials();
+
+      let gmailOAuthManager: GmailOAuthManager;
+      let gmailOAuthInitResult;
+
+      if (storedCredentialsResult.success && storedCredentialsResult.data) {
+        // Use stored credentials
+        console.log('Using stored Gmail credentials for OAuth manager');
+        const gmailOAuthConfig = {
+          clientId: storedCredentialsResult.data.clientId,
+          clientSecret: storedCredentialsResult.data.clientSecret,
+          redirectUri: 'http://localhost:8080/oauth/callback',
+        };
+        gmailOAuthManager = new GmailOAuthManager(gmailOAuthConfig);
+        gmailOAuthInitResult = gmailOAuthManager.initialize();
+      } else {
+        // Use placeholder credentials - will be configured during OAuth flow
+        console.log('No stored Gmail credentials found, using placeholder OAuth manager');
+        const gmailOAuthConfig = {
+          clientId: 'placeholder',
+          clientSecret: 'placeholder',
+          redirectUri: 'http://localhost:8080/oauth/callback',
+        };
+        gmailOAuthManager = new GmailOAuthManager(gmailOAuthConfig);
+        gmailOAuthInitResult = {
+          success: false,
+          error: { message: 'Credentials not configured yet' },
+        };
+      }
 
       if (!gmailOAuthInitResult.success) {
         console.error('Gmail OAuth manager initialization failed:', gmailOAuthInitResult.error);
@@ -159,10 +191,12 @@ if (isConsoleMode) {
       }
 
       // CRITICAL: Perform startup token validation and refresh
-      console.log('Validating and refreshing Gmail tokens...');
+      console.log('🔐 Validating and refreshing Gmail tokens...');
 
       try {
+        console.log('🔐 Calling gmailStartupAuth.handleStartupAuth()...');
         const startupAuthResult = await gmailStartupAuth.handleStartupAuth();
+        console.log('🔐 handleStartupAuth() completed');
 
         if (startupAuthResult.success) {
           const authResult = startupAuthResult.data;
@@ -177,6 +211,7 @@ if (isConsoleMode) {
         } else {
           console.error('Startup authentication failed:', startupAuthResult.error);
         }
+        console.log('🔐 Startup authentication section completed');
       } catch (error) {
         console.error('Exception during startup authentication:', error);
       }
@@ -184,27 +219,31 @@ if (isConsoleMode) {
       // Optionally perform startup token refresh via rotation service
       if (tokenRotationInitResult.success) {
         try {
+          console.log('⏰ Starting token refresh process...');
           const startupRefreshResult = await tokenRotationService.startupTokenRefresh();
           if (startupRefreshResult.success) {
             console.log('✓ Startup token refresh completed successfully');
           } else {
             console.log('⚠ Startup token refresh:', startupRefreshResult.error.message);
           }
+          console.log('⏰ Token refresh process completed');
         } catch (error) {
           console.error('Exception during startup token refresh:', error);
         }
+      } else {
+        console.log('⏰ Skipping token refresh (service not initialized)');
       }
 
-      // Setup IPC handlers AFTER all services are initialized
-      console.log('Setting up IPC handlers...');
-      setupIPC(emailProvider, llmProvider, storageProvider, secureStorageManager);
-      console.log('✓ IPC handlers registered successfully');
-
+      // Note: IPC handlers were already setup early in the initialization process
       // Note: Email and LLM providers will be initialized during OAuth flow
+      console.log('🎯 Provider initialization completed - IPC handlers were setup early');
     } catch (error) {
       // Provider initialization failed - logged for debugging
       // eslint-disable-next-line no-console
       console.error('Provider initialization failed:', error);
+      console.log(
+        '⚠️ Provider initialization failed but IPC handlers were setup early, so UI should still work',
+      );
     }
   });
 } // End of else block for normal UI mode
