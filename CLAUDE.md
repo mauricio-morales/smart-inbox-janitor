@@ -167,6 +167,7 @@ catch (Exception ex)
 - **Global using statements**: Common namespaces in GlobalUsings.cs
 - **No object types** - Use proper typing with generics
 - **Explicit return types** preferred for clarity
+- **One public class per file** - ALWAYS maintain one public class/interface/enum/record per file for better organization and maintainability
 
 ### Error Handling
 
@@ -214,145 +215,97 @@ When creating new view models:
 - All database operations use parameterized queries with Entity Framework
 - Implement proper rate limiting with Polly for external APIs
 
-## Console Mode Provider Validation & Debugging
+## Provider Health Monitoring & Debugging
 
-**IMPORTANT FOR AI AGENTS**: TransMail Panda includes a console-mode provider validation system for debugging and automated testing without UI dependencies.
+**IMPORTANT FOR AI AGENTS**: TransMail Panda includes comprehensive provider health monitoring built into the application startup process for debugging and validation.
 
-### Console Mode Commands
+### Provider Validation Commands
 
-**Primary debugging commands for AI agents:**
-
-```bash
-# Basic console validation (recommended for AI agents)
-dotnet run --project src/TransMailPanda.Console
-
-# JSON output only (ideal for AI parsing)
-dotnet run --project src/TransMailPanda.Console -- --format json
-
-# Test specific providers
-dotnet run --project src/TransMailPanda.Console -- --provider gmail
-dotnet run --project src/TransMailPanda.Console -- --provider openai
-dotnet run --project src/TransMailPanda.Console -- --provider storage
-
-# CI/CD integration
-dotnet run --project src/TransMailPanda.Console -- --format json --timeout 30
-dotnet run --project src/TransMailPanda.Console -- --exit-on-failure --timeout 60
-```
-
-### Console Mode Features
-
-- **Headless Operation**: Runs without UI, only console output
-- **Structured JSON Output**: AI-agent parseable status and results
-- **Exit Codes**: Meaningful exit codes for automation (0=success, 1=auth, 2=network, 3=config, etc.)
-- **Provider Health Checks**: Direct provider validation without IPC
-- **Environment Variable Validation**: Checks required OAuth and API keys
-- **Timeout Handling**: Configurable timeouts with graceful failure
-
-### AI Agent Integration
-
-The console mode is specifically designed for AI agents to validate provider status:
+**Primary debugging commands:**
 
 ```bash
-# AI agent usage pattern
-npm run debug:providers:json | jq '.type == "validation_summary"'
-echo "Exit code: $?"
+# Run application with detailed provider logging
+dotnet run --project src/TransMailPanda --verbosity detailed
+
+# Build and run with configuration validation
+dotnet build --configuration Debug
+dotnet run --project src/TransMailPanda
+
+# Run tests to validate provider implementations
+dotnet test --logger console --verbosity normal
+
+# Test specific provider implementations
+dotnet test --filter "FullyQualifiedName~GmailEmailProvider"
+dotnet test --filter "FullyQualifiedName~OpenAIProvider"
+dotnet test --filter "FullyQualifiedName~SqliteStorageProvider"
 ```
 
-**Expected JSON Output Types:**
+### Provider Health Check Features
 
-- `validation_start` - Validation beginning
-- `provider_result` - Individual provider status
-- `validation_summary` - Final summary with exit code
-- `console_app_summary` - Application-level summary
-
-**Exit Codes for Automation:**
-
-- `0` - All providers healthy
-- `1` - Authentication failures (OAuth tokens invalid)
-- `2` - Network connectivity issues
-- `3` - Configuration errors (missing env vars)
-- `4` - Setup required (initial OAuth setup needed)
-- `5` - Timeout errors
-- `99` - Unknown errors
+- **Startup Orchestration**: All providers are health-checked during application startup
+- **Dependency Injection Validation**: Provider dependencies are validated at container build time
+- **Configuration Validation**: DataAnnotations validation for all provider configurations
+- **Result Pattern**: Consistent error reporting without exceptions
+- **Logging Integration**: Microsoft.Extensions.Logging for comprehensive diagnostics
 
 ### Environment Variables Required
 
-For console mode provider validation:
+For provider validation and operation:
 
 ```bash
-# Gmail Provider (required for gmail validation)
+# Gmail Provider (required for Gmail integration)
 GMAIL_CLIENT_ID=your_gmail_oauth_client_id
 GMAIL_CLIENT_SECRET=your_gmail_oauth_client_secret
 
-# OpenAI Provider (required for openai validation)
+# OpenAI Provider (required for AI classification)
 OPENAI_API_KEY=your_openai_api_key
 
-# Optional
+# Optional overrides
 GMAIL_REDIRECT_URI=http://localhost:8080/oauth/callback
-DATABASE_PATH=./data/console-validation.db
+DATABASE_PATH=./data/app.db
 ```
 
-### Console Mode Usage Examples
+### Provider Debugging Examples
 
 ```bash
-# 1. Basic validation with human-readable output
-npm run debug:providers --verbose --format=table
+# 1. Run with detailed logging to see provider initialization
+dotnet run --project src/TransMailPanda --configuration Debug
 
-# 2. AI agent monitoring
-npm run debug:providers:json > provider_status.json
-EXIT_CODE=$?
-jq '.type, .exitCode, .connectedProviders' provider_status.json
+# 2. Test provider health checks
+dotnet test --filter "Category=Integration" --logger console
 
-# 3. Retry on failure with timeout
-npm run debug:providers --retry --retry-attempts=3 --timeout=90
+# 3. Validate configuration and dependencies
+dotnet build --verbosity diagnostic
 
-# 4. Single provider deep validation
-npm run debug:gmail --verbose
+# 4. Run with specific log levels
+DOTNET_ENVIRONMENT=Development dotnet run --project src/TransMailPanda
 ```
 
-### Troubleshooting Console Mode
+### Troubleshooting Provider Issues
 
-**Issue: App icon appears but no UI** ✅ **This is correct behavior**
+**Issue: Provider initialization failures**
 
-- Console mode successfully prevents UI creation
-- App may appear in dock/taskbar but no windows should open
-- Process will exit automatically after validation
+- Check application logs for detailed error messages
+- Verify environment variables are set correctly
+- Run `dotnet build` to check for compilation issues
 
-**Issue: Exit code 3 (Configuration Error)**
+**Issue: OAuth setup required**
 
-- Missing required environment variables
-- Run `npm run debug:providers --verbose` to see which env vars are missing
+- Launch the application normally: `dotnet run --project src/TransMailPanda`
+- Complete OAuth flows through the UI
+- Credentials are securely stored using OS keychain
 
-**Issue: Exit code 4 (Setup Required)**
+**Issue: Network connectivity problems**
 
-- Providers need initial OAuth setup through UI mode
-- Run normal app first: `npm run dev`
-- Complete OAuth flows, then retry console mode
-
-**Issue: Exit code 5 (Timeout)**
-
-- Network connectivity issues or slow API responses
-- Increase timeout: `npm run debug:providers --timeout=120`
-
-### Console Mode Architecture
-
-**Key Files:**
-
-- `src/console/` - Console-mode implementation
-- `src/shared/cli/CommandParser.ts` - Command-line argument parsing
-- `src/main/ConsoleMode.ts` - Headless Electron configuration
-- `src/console/ProviderValidator.ts` - Direct provider validation without IPC
-
-**Integration Point:**
-
-- `src/main/index.ts` - Console mode detection and routing
-- Detects `--console` or `--headless` flags and prevents UI creation
+- Check internet connection and firewall settings
+- Verify API endpoints are accessible
+- Review provider-specific rate limiting and quotas
 
 ## Advanced Security Architecture
 
 The application implements a comprehensive multi-layer security system:
 
-### SecureStorageManager (`src/main/security/SecureStorageManager.ts`)
+### SecureStorageManager (`src/Shared/TransMailPanda.Shared/Security/SecureStorageManager.cs`)
 
 - **ZERO-PASSWORD Experience**: Uses OS-level security (keychain) for transparent authentication
 - **Hybrid Storage**: Combines OS keychain with encrypted SQLite for optimal security
@@ -360,14 +313,14 @@ The application implements a comprehensive multi-layer security system:
 - **Security Audit Logging**: Comprehensive logging for compliance and monitoring
 - **Recovery Procedures**: Handles corrupted storage scenarios gracefully
 
-### CredentialEncryption (`src/main/security/CredentialEncryption.ts`)
+### CredentialEncryption (`src/Shared/TransMailPanda.Shared/Security/CredentialEncryption.cs`)
 
-- **OS Keychain Integration**: Platform-specific secure storage (keytar)
+- **OS Keychain Integration**: Platform-specific secure storage (DPAPI, macOS Keychain, libsecret)
 - **Encryption at Rest**: SQLCipher encryption for database storage
 - **Master Key Management**: Derived from system entropy
 - **Token Rotation Service**: Automated credential renewal
 
-### SecurityAuditLogger (`src/main/security/SecurityAuditLogger.ts`)
+### SecurityAuditLogger (`src/Shared/TransMailPanda.Shared/Security/SecurityAuditLogger.cs`)
 
 - **Operation Logging**: All credential operations are audited
 - **Security Event Tracking**: Failed authentications, unauthorized access attempts
@@ -375,54 +328,62 @@ The application implements a comprehensive multi-layer security system:
 
 ### OAuth Management
 
-- **GmailOAuthManager**: Handles Gmail OAuth2 flow with refresh tokens
-- **TokenRotationService**: Automatic token renewal before expiration
-- **Secure Token Storage**: Encrypted tokens with automatic cleanup
+- **Gmail OAuth Integration**: Handles Gmail OAuth2 flow with refresh tokens via Google.Apis.Gmail
+- **Secure Token Storage**: OS keychain storage with automatic cleanup
+- **Configuration Validation**: DataAnnotations validation for OAuth settings
 
 ## Provider Initialization System
 
-Sophisticated initialization utilities (`src/shared/utils/provider-initialization.utils.ts`):
+Robust provider initialization with dependency injection:
 
 ### Features
 
-- **Caching System**: Configuration validation caching to improve performance
-- **Lazy Initialization**: Providers initialize only when needed
-- **Performance Monitoring**: Built-in metrics collection and timing
-- **Dependency Management**: Initialization dependency resolution
-- **State Tracking**: Centralized initialization state management
+- **Dependency Injection**: Microsoft.Extensions.DependencyInjection for provider lifecycle
+- **Startup Orchestration**: StartupOrchestrator coordinates provider health checks
+- **Configuration Validation**: DataAnnotations and IValidateOptions<T> for config validation
+- **Health Checks**: IHealthCheck integration for provider monitoring
+- **State Management**: Centralized provider state tracking with MVVM
 
-### Decorators
+### Key Services
 
-- `@CachedInitialization`: Caches method results based on provider state
-- `@LazyInitialization`: Defers initialization until first use
-- `@MonitorInitialization`: Collects performance metrics
+- **StartupOrchestrator**: Coordinates parallel provider initialization
+- **ProviderStatusService**: Real-time provider health monitoring
+- **ApplicationService**: Central access to all application services
 
-### Validation
+### Validation Patterns
 
-- **Startup Validation**: Comprehensive configuration validation at startup
-- **Cached Results**: Validation results cached with configurable TTL
-- **Custom Validators**: Extensible validation system
+- **Configuration Validation**: IValidateOptions<T> with DataAnnotations
+- **Health Checks**: Built-in health check infrastructure
+- **Result Pattern**: Consistent error handling without exceptions
 
-## IPC Bridge Architecture
+## MVVM Architecture
 
-Secure Inter-Process Communication between main and renderer processes:
+Avalonia MVVM pattern with CommunityToolkit.Mvvm:
 
-### Preload Bridge (`src/preload/index.ts`)
+### ViewModels
 
-- **Type-Safe Interfaces**: Full TypeScript coverage for all IPC operations
-- **Context Isolation**: Uses Electron's contextBridge for security
-- **Provider Abstraction**: Direct mapping to provider methods
-- **Result Pattern Integration**: Consistent error handling across IPC boundary
+- **MainWindowViewModel**: Primary application view model
+- **WelcomeWizardViewModel**: Provider setup and onboarding
+- **StartupViewModel**: Application startup orchestration (if implemented)
 
-### API Surface
+### Services Integration
 
-```typescript
-interface ElectronAPI {
-  email: EmailProvider; // Gmail operations
-  storage: StorageProvider; // Database operations
-  llm: LLMProvider; // AI operations
-  app: AppControls; // Window management
-  oauth: OAuthOperations; // Authentication flows
+- **IApplicationService**: Central service access point
+- **IProviderStatusService**: Real-time provider health monitoring
+- **IStartupOrchestrator**: Provider initialization coordination
+
+### MVVM Patterns
+
+```csharp
+// ObservableProperty for data binding
+[ObservableProperty]
+private string status = "Initializing...";
+
+// RelayCommand for user actions
+[RelayCommand]
+private async Task RefreshProvidersAsync()
+{
+    // Implementation with proper error handling
 }
 ```
 
@@ -430,9 +391,9 @@ interface ElectronAPI {
 
 ### SQLite Database
 
-- Uses `better-sqlite3` with SQLCipher encryption
-- Database file: `app-data.db` (encrypted)
-- Migration system in place - check `migrate()` methods
+- Uses `Microsoft.Data.Sqlite` with SQLCipher encryption
+- Database file: `data/app.db` (encrypted)
+- Migration system in place - check provider `InitializeAsync()` methods
 - Always use parameterized queries to prevent SQL injection
 
 ### Database Schema Management
@@ -448,11 +409,13 @@ interface ElectronAPI {
 
 Example migration pattern:
 
-```typescript
-async migrate(): Promise<Result<void>> {
-  // Check current schema version
-  // Apply incremental migrations
-  // Validate data integrity after migration
+```csharp
+public async Task<Result<bool>> InitializeAsync(StorageConfig config)
+{
+    // Check current schema version
+    // Apply incremental migrations
+    // Validate data integrity after migration
+    return Result.Success(true);
 }
 ```
 
@@ -470,25 +433,25 @@ Key tables/entities:
 
 ### Test Structure
 
-- Unit tests: `__tests__/**/*.test.ts`
-- Type tests: `__tests__/types/`
-- Schema tests: `__tests__/schemas/`
-- Factory tests: `__tests__/factories/`
+- Unit tests: `src/Tests/TransMailPanda.Tests/`
+- Provider tests: Individual test classes for each provider
+- Integration tests: End-to-end provider integration testing
+- Fixture tests: Test data and mock setups
 
 ### Coverage Requirements
 
-- Global: 90% coverage required
-- Types: 100% coverage required
-- Schemas: 95% coverage required
-- Use `npm run test:coverage` to check
+- Global: 90% coverage target
+- Provider implementations: 95% coverage required
+- Critical security components: 100% coverage required
+- Use `dotnet test --collect:"XPlat Code Coverage"` to check
 
 ## Security & Encryption
 
 ### Credential Storage
 
-- OAuth tokens encrypted using OS keychain (keytar)
+- OAuth tokens encrypted using OS keychain (DPAPI, macOS Keychain, libsecret)
 - Master key derived from system entropy
-- Token rotation service for automated renewal
+- Secure storage via SecureStorageManager
 - Security audit logging for all credential operations
 
 ### Email Safety
@@ -500,70 +463,65 @@ Key tables/entities:
 
 ## Common Issues & Solutions
 
-### ESLint/TypeScript Errors
+### Build and Compilation Errors
 
-- Run `npm run type-check` to see all TypeScript errors
-- Use `npm run lint:fix` for auto-fixable ESLint issues
-- Check `eslint.config.js` for current rules
-- Strict boolean expressions required - use explicit checks
-
-### XState Issues
-
-- **State Machine Not Updating**: Check that events are properly typed and guards return boolean
-- **Async Operations**: Use `fromPromise` actors for async operations, not direct promises
-- **Context Updates**: Use `assign()` for context updates, not direct mutation
-- **Type Issues**: Ensure event types match machine definition
+- Run `dotnet build` to see all compilation errors
+- Use `dotnet format` to fix code formatting issues
+- Check nullable reference type warnings with strict mode enabled
+- Ensure all project references are correct in .csproj files
 
 ### Provider Issues
 
-- **BaseProvider Errors**: Ensure `performInitialization()` and other abstract methods are implemented
-- **Result Pattern**: All async operations must return `Result<T>` types
-- **Health Checks**: Use enhanced health checks from BaseProvider for debugging
-- **Initialization State**: Check `getInitializationState()` for provider state debugging
-- **Performance**: Use `getInitializationMetrics()` to analyze initialization performance
+- **Provider Initialization Failures**: Check provider constructor dependencies are registered in DI
+- **Result Pattern**: All async operations must return `Result<T>` types - never throw exceptions
+- **Health Checks**: Providers implement health check methods for diagnostics
+- **Configuration Validation**: Use DataAnnotations for configuration validation
+- **Dependency Injection**: Ensure all provider dependencies are registered in ServiceCollection
 
 ### Security Issues
 
 - **Token Storage**: Use `SecureStorageManager` for all credential operations
 - **Audit Logging**: Check `SecurityAuditLogger` for credential operation logs
 - **Encryption**: Verify `CredentialEncryption` setup if storage operations fail
-- **OAuth Flows**: Use `GmailOAuthManager` for Gmail authentication issues
+- **OAuth Flows**: Use Google.Apis.Gmail OAuth flow for Gmail authentication
 
 ### Database Issues
 
-- Check encryption setup if database won't open
-- Use `healthCheck()` methods to diagnose provider issues
-- Check migrations if schema errors occur
-- Use `SecureStorageManager.healthCheck()` for storage diagnostics
+- Check SQLCipher encryption setup if database won't open
+- Use provider `InitializeAsync()` methods to diagnose issues
+- Check database migrations if schema errors occur
+- Verify Microsoft.Data.Sqlite configuration
 
-### IPC Communication Issues
+### MVVM and UI Issues
 
-- **Type Safety**: Ensure renderer types match preload bridge definitions
-- **Result Handling**: All IPC calls return `Result<T>` - check `.success` property
-- **Context Isolation**: Use `window.electronAPI` in renderer, never `ipcRenderer` directly
+- **Data Binding**: Ensure ObservableProperty attributes are used correctly
+- **Commands**: Use RelayCommand and AsyncRelayCommand for user actions
+- **View Models**: Register view models in DI container
+- **Result Handling**: UI should handle Result<T> pattern from services
 
 ## Build & Deployment
 
-### Electron Build Process
+### .NET Build Process
 
-1. `npm run build` - Compiles TypeScript and bundles React
-2. `electron-builder` - Creates platform-specific installers
-3. Uses `electron-vite` for optimized builds
+1. `dotnet restore` - Restore NuGet packages
+2. `dotnet build` - Compile the application
+3. `dotnet publish -c Release -r <rid>` - Create platform-specific builds
 
 ### Platform Support
 
-- macOS: `.dmg` installer
-- Windows: NSIS installer
-- Linux: AppImage
+- Windows: `win-x64` runtime identifier
+- macOS: `osx-x64` and `osx-arm64` runtime identifiers  
+- Linux: `linux-x64` runtime identifier
+- Cross-platform: Avalonia UI provides native look and feel
 
 ## Environment Variables & Config
 
 ### Configuration Files
 
-- TypeScript: `tsconfig.json` (strict mode)
-- ESLint: `eslint.config.js` (comprehensive rules)
-- Jest: `jest.config.js` (with path mapping)
-- Electron: `electron.vite.config.ts`
+- C# Projects: `.csproj` files with .NET 9.0 target framework
+- Application Configuration: `appsettings.json` and environment-specific variants
+- User Secrets: Microsoft.Extensions.Configuration.UserSecrets for development
+- Solution: `TransMailPanda.sln` with all project references
 
 ### Runtime Configuration
 
@@ -587,25 +545,31 @@ Key tables/entities:
 - Token usage tracking
 - Error handling for rate limits/quotas
 
-## MUI Usage Rules
+## Avalonia UI Patterns
 
-**CRITICAL**: This project uses MUI v7+ with new Grid syntax:
+**CRITICAL**: This project uses Avalonia UI 11 with MVVM patterns:
 
-```tsx
-// ✅ Correct - New MUI v7 syntax
-import Grid from '@mui/material/Grid';
-
-<Grid container spacing={2}>
-  <Grid size={{ xs: 12, sm: 6, md: 4 }}>Content here</Grid>
-</Grid>;
-
-// ❌ Never use these (old/deprecated):
-// - Grid2 component
-// - <Grid xs={12} sm={6}> (direct props)
-// - <Grid item> (item prop)
+```xml
+<!-- ✅ Correct - Avalonia XAML syntax -->
+<Grid ColumnDefinitions="*,Auto,*" RowDefinitions="Auto,*,Auto">
+  <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Title}" />
+  <ContentControl Grid.Column="1" Grid.Row="1" Content="{Binding CurrentView}" />
+</Grid>
 ```
 
-Use `Box` with CSS Grid for complex layouts when Grid component is insufficient.
+```csharp
+// ✅ Correct - MVVM with CommunityToolkit.Mvvm
+[ObservableProperty]
+private string title = "TransMail Panda";
+
+[RelayCommand]
+private async Task RefreshAsync()
+{
+    // Implementation
+}
+```
+
+Use proper MVVM patterns with ObservableProperty and RelayCommand attributes.
 
 ## Performance Considerations
 
@@ -627,35 +591,36 @@ Use `Box` with CSS Grid for complex layouts when Grid component is insufficient.
 
 ### Common Debug Commands
 
-- `npm run ci:quick` before committing
-- Check VS Code Problems panel for TypeScript issues
-- Use React DevTools for renderer debugging
-- Electron DevTools for main process debugging
-
-### State Machine Debugging
-
-- **XState Inspector**: Use browser XState inspector for state visualization
-- **Console Logging**: State machines log transitions and context changes
-- **State Matching**: Use `state.matches('stateName')` for debugging current state
-- **Event Debugging**: Log events sent to state machines
+- `dotnet build` to check compilation issues
+- Check VS Code Problems panel for C# and Avalonia issues
+- Use Avalonia DevTools for UI debugging
+- Use Visual Studio debugger for step-through debugging
 
 ### Provider Debugging
 
-- **Initialization State**: Check `provider.getInitializationState()` for detailed state
-- **Performance Metrics**: Use `provider.getInitializationMetrics()` for performance analysis
-- **Health Checks**: Enhanced health checks include initialization metrics and state
-- **Configuration**: Use `provider.getConfig()` to verify current configuration
+- **Health Checks**: Use built-in provider health check methods
+- **Logging**: Microsoft.Extensions.Logging with configurable log levels
+- **Configuration**: Verify appsettings.json and environment variables
+- **Result Pattern**: Check Result<T>.IsSuccess and Result<T>.Error properties
+
+### MVVM Debugging
+
+- **Property Changes**: ObservableProperty attributes automatically notify UI
+- **Command Execution**: RelayCommand and AsyncRelayCommand handle exceptions
+- **View Model State**: Use debugger to inspect view model properties
+- **Data Binding**: Avalonia binding system provides error information
 
 ### Security Debugging
 
-- **Audit Logs**: Check `SecurityAuditLogger` for credential operation history
-- **Storage Status**: Use `SecureStorageManager.getSecureStorageStatus()` for diagnostics
-- **Encryption**: Verify `CredentialEncryption` health check for encryption status
+- **Audit Logs**: Check SecurityAuditLogger for credential operations
+- **Storage Status**: Verify SecureStorageManager initialization
+- **Encryption**: Check CredentialEncryption health status
+- **Database**: Verify SQLCipher encryption is working
 
 ### Log Analysis
 
-- Security audit logs in database with detailed operation tracking
-- Console logging available (warn level in production)
-- Error tracking through Result pattern with detailed error contexts
-- Performance metrics collection with timing and caching statistics
-- State machine transition logging for UI flow analysis
+- Microsoft.Extensions.Logging integration with configurable providers
+- Console logging with structured output
+- Error tracking through Result pattern without exceptions
+- Provider health monitoring with detailed diagnostics
+- Security audit trails in encrypted database

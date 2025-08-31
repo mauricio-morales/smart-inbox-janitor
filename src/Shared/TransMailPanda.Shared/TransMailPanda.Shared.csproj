@@ -10,6 +10,17 @@
     <!-- Cross-platform keychain/credential storage -->
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.8" />
+    <!-- Configuration validation support -->
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="9.0.8" />
+    <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
+    <!-- Dependency injection extensions -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.8" />
+    <!-- Health checks support -->
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.8" />
     <!-- For cross-platform keychain access, we'll implement platform-specific solutions -->
   </ItemGroup>
 
