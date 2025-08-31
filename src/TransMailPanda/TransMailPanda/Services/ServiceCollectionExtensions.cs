@@ -110,36 +110,3 @@ public static class ServiceCollectionExtensions
     }
 }
 
-/// <summary>
-/// Configuration class for Email Provider
-/// </summary>
-public class EmailProviderConfig
-{
-    public string ClientId { get; set; } = string.Empty;
-    public string ClientSecret { get; set; } = string.Empty;
-    public string RedirectUri { get; set; } = "http://localhost:8080/oauth/callback";
-    public int TimeoutSeconds { get; set; } = 30;
-}
-
-/// <summary>
-/// Configuration class for LLM Provider
-/// </summary>
-public class LLMProviderConfig
-{
-    public string ApiKey { get; set; } = string.Empty;
-    public string Model { get; set; } = "gpt-4o-mini";
-    public double Temperature { get; set; } = 0.1;
-    public int MaxTokens { get; set; } = 1000;
-    public decimal DailyCostLimit { get; set; } = 10.0m;
-}
-
-/// <summary>
-/// Configuration class for Storage Provider
-/// </summary>
-public class StorageProviderConfig
-{
-    public string DatabasePath { get; set; } = "./data/transmail.db";
-    public string EncryptionKey { get; set; } = string.Empty;
-    public bool EnableWAL { get; set; } = true;
-    public int CommandTimeoutSeconds { get; set; } = 30;
-}
