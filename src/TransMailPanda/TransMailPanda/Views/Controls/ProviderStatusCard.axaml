@@ -1,0 +1,272 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TransMailPanda.ViewModels"
+             xmlns:conv="using:TransMailPanda.Converters"
+             mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="200"
+             x:Class="TransMailPanda.Views.Controls.ProviderStatusCard"
+             x:DataType="vm:ProviderStatusCardViewModel">
+    
+    <Design.DataContext>
+        <vm:ProviderStatusCardViewModel/>
+    </Design.DataContext>
+
+    <UserControl.Resources>
+        <!-- Converters for data binding -->
+        <conv:ProviderStatusToColorConverter x:Key="StatusToColorConverter"/>
+        <conv:ProviderStatusToIconConverter x:Key="StatusToIconConverter"/>
+        <conv:ProviderStatusToButtonTextConverter x:Key="StatusToButtonTextConverter"/>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <conv:SetupComplexityToTextConverter x:Key="ComplexityToTextConverter"/>
+        <conv:SetupTimeToTextConverter x:Key="SetupTimeToTextConverter"/>
+    </UserControl.Resources>
+
+    <!-- Main Card Container -->
+    <Border Background="#FAFAFA" 
+            BorderBrush="#E0E0E0" 
+            BorderThickness="1" 
+            CornerRadius="8"
+            Padding="16"
+            Margin="4">
+        
+        <!-- Hover effect -->
+        <Border.Styles>
+            <Style Selector="Border:pointerover">
+                <Setter Property="BorderBrush" Value="#BDBDBD"/>
+                <Setter Property="Background" Value="#F8F8F8"/>
+            </Style>
+        </Border.Styles>
+
+        <Grid RowDefinitions="Auto,*,Auto">
+            
+            <!-- Header Section -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
+                
+                <!-- Provider Icon -->
+                <Border Grid.Column="0" 
+                        Width="36" Height="36" 
+                        CornerRadius="18"
+                        Background="#E8F5E8"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ProviderIcon}"
+                              FontSize="18"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"/>
+                </Border>
+
+                <!-- Provider Info -->
+                <StackPanel Grid.Column="1" 
+                           Margin="12,0,0,0" 
+                           VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ProviderDisplayName}"
+                              FontSize="16"
+                              FontWeight="SemiBold"
+                              Foreground="#212121"/>
+                    <TextBlock Text="{Binding ProviderDescription}"
+                              FontSize="11"
+                              Foreground="#757575"
+                              TextWrapping="Wrap"
+                              MaxLines="2"/>
+                </StackPanel>
+
+                <!-- Status Icon -->
+                <Border Grid.Column="2"
+                        Width="24" Height="24"
+                        CornerRadius="12"
+                        Background="{Binding Status, Converter={StaticResource StatusToColorConverter}}"
+                        VerticalAlignment="Top">
+                    <TextBlock Text="{Binding Status, Converter={StaticResource StatusToIconConverter}}"
+                              FontSize="12"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Foreground="White"/>
+                </Border>
+            </Grid>
+
+            <!-- Status Content Section -->
+            <StackPanel Grid.Row="1" Spacing="8">
+                
+                <!-- Current Status Display -->
+                <Border Background="#F5F5F5" 
+                        Padding="10" 
+                        CornerRadius="4">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{Binding StatusDisplayText}"
+                                  FontSize="13"
+                                  FontWeight="Medium"
+                                  TextWrapping="Wrap"/>
+                        
+                        <!-- Error Message (if any) -->
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                  FontSize="11"
+                                  Foreground="#D32F2F"
+                                  TextWrapping="Wrap"
+                                  IsVisible="{Binding !!ErrorMessage}"/>
+                        
+                        <!-- Last Refresh Time -->
+                        <TextBlock Text="{Binding LastRefreshTime, StringFormat='Last checked: {0}'}"
+                                  FontSize="10"
+                                  Foreground="#9E9E9E"
+                                  IsVisible="{Binding !IsLoading}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Setup Information (when setup required) -->
+                <Border IsVisible="{Binding RequiresSetup}"
+                        Background="#FFF3E0"
+                        Padding="10"
+                        CornerRadius="4"
+                        BorderBrush="#FFB74D"
+                        BorderThickness="1">
+                    <StackPanel Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="⚙️" FontSize="12"/>
+                            <TextBlock Text="{Binding SetupComplexity}"
+                                      FontSize="12"
+                                      FontWeight="Medium"/>
+                            <TextBlock Text="•" FontSize="12" Foreground="#9E9E9E"/>
+                            <TextBlock Text="{Binding EstimatedTime}"
+                                      FontSize="12"
+                                      Foreground="#9E9E9E"/>
+                        </StackPanel>
+                        
+                        <TextBlock Text="{Binding DisplayInfo.Prerequisites}"
+                                  FontSize="11"
+                                  Foreground="#F57C00"
+                                  TextWrapping="Wrap"
+                                  IsVisible="{Binding !!DisplayInfo.Prerequisites}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Loading Indicator -->
+                <Border IsVisible="{Binding IsLoading}"
+                        Background="#E3F2FD"
+                        Padding="10"
+                        CornerRadius="4">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <!-- Loading Animation -->
+                        <Border Width="16" Height="16" 
+                                CornerRadius="8"
+                                Background="#2196F3"
+                                Classes="loading-pulse"/>
+                        <TextBlock Text="Please wait..."
+                                  FontSize="12"
+                                  Foreground="#1976D2"
+                                  VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Action Section -->
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+                
+                <!-- Main Action Button -->
+                <Button Grid.Column="0"
+                        Command="{Binding HandleActionCommand}"
+                        IsEnabled="{Binding CanConfigureProvider}"
+                        IsVisible="{Binding ShowSetupButton}"
+                        Classes="provider-action"
+                        HorizontalAlignment="Stretch"
+                        Padding="12,8">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="{Binding ActionButtonText}"
+                                  FontSize="13"
+                                  FontWeight="Medium"/>
+                        <TextBlock Text="→" 
+                                  FontSize="13"
+                                  Opacity="0.7"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Status Button (for healthy providers) -->
+                <Button Grid.Column="0"
+                        IsVisible="{Binding ShowSetupButton, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}"
+                        Classes="provider-status"
+                        HorizontalAlignment="Stretch"
+                        Padding="12,8"
+                        IsEnabled="False">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="✅" FontSize="13"/>
+                        <TextBlock Text="Working properly" 
+                                  FontSize="13"
+                                  FontWeight="Medium"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Refresh Button -->
+                <Button Grid.Column="1"
+                        Command="{Binding RefreshStatusCommand}"
+                        IsEnabled="{Binding !IsLoading}"
+                        Classes="provider-refresh"
+                        Width="36" Height="36"
+                        Margin="8,0,0,0"
+                        ToolTip.Tip="Refresh status">
+                    <TextBlock Text="🔄" FontSize="14"/>
+                </Button>
+            </Grid>
+        </Grid>
+    </Border>
+
+    <!-- Styles -->
+    <UserControl.Styles>
+        <!-- Provider Action Button -->
+        <Style Selector="Button.provider-action">
+            <Setter Property="Background" Value="#4CAF50"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        
+        <Style Selector="Button.provider-action:pointerover">
+            <Setter Property="Background" Value="#45A049"/>
+        </Style>
+        
+        <Style Selector="Button.provider-action:disabled">
+            <Setter Property="Background" Value="#BDBDBD"/>
+            <Setter Property="Foreground" Value="#757575"/>
+        </Style>
+
+        <!-- Provider Status Button (for healthy providers) -->
+        <Style Selector="Button.provider-status">
+            <Setter Property="Background" Value="#E8F5E8"/>
+            <Setter Property="Foreground" Value="#2E7D32"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#C8E6C9"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+
+        <!-- Refresh Button -->
+        <Style Selector="Button.provider-refresh">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        
+        <Style Selector="Button.provider-refresh:pointerover">
+            <Setter Property="Background" Value="#F5F5F5"/>
+        </Style>
+        
+        <Style Selector="Button.provider-refresh:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+
+        <!-- Loading Animation -->
+        <Style Selector="Border.loading-pulse">
+            <Style.Animations>
+                <Animation Duration="0:0:1.5" IterationCount="Infinite">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="1.0"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="50%">
+                        <Setter Property="Opacity" Value="0.3"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1.0"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </UserControl.Styles>
+</UserControl>

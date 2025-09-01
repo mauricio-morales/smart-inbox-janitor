@@ -30,7 +30,7 @@ public class StartupHostedService : BackgroundService
 
             // Initialize the application
             var success = await _applicationService.InitializeAsync();
-            
+
             if (success)
             {
                 _logger.LogInformation("Application initialization completed successfully");

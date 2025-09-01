@@ -68,7 +68,7 @@ public partial class WelcomeWizardViewModel : ViewModelBase
             // TODO: Implement Gmail connection through provider
             // This is a placeholder - actual implementation will use the Gmail provider
             await Task.Delay(2000); // Simulate OAuth flow
-            
+
             IsGmailConnected = true;
             GmailAccountEmail = "user@example.com"; // This will come from actual OAuth response
             StatusMessage = "✅ Connected successfully!";
@@ -101,7 +101,7 @@ public partial class WelcomeWizardViewModel : ViewModelBase
             // TODO: Implement OpenAI connection test through provider
             // This is a placeholder - actual implementation will use the OpenAI provider
             await Task.Delay(1500); // Simulate API test
-            
+
             IsOpenAiConfigured = true;
             OpenAiKeyLastFour = OpenAiApiKey.Length >= 4 ? OpenAiApiKey[^4..] : "****";
             StatusMessage = "✅ OpenAI connection successful!";

@@ -16,7 +16,7 @@ public class ProviderStatusService : IProviderStatusService
     private readonly IEmailProvider _emailProvider;
     private readonly ILLMProvider _llmProvider;
     private readonly IStorageProvider _storageProvider;
-    
+
     private readonly Dictionary<string, ProviderStatus> _providerStatus = new();
     private readonly object _statusLock = new();
 
@@ -37,7 +37,7 @@ public class ProviderStatusService : IProviderStatusService
     public async Task<Dictionary<string, ProviderStatus>> GetAllProviderStatusAsync()
     {
         await RefreshProviderStatusAsync();
-        
+
         lock (_statusLock)
         {
             return new Dictionary<string, ProviderStatus>(_providerStatus);
@@ -77,7 +77,7 @@ public class ProviderStatusService : IProviderStatusService
         };
 
         await Task.WhenAll(refreshTasks);
-        
+
         _logger.LogDebug("Provider status refresh completed");
     }
 
@@ -102,7 +102,7 @@ public class ProviderStatusService : IProviderStatusService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Exception refreshing status for {Provider} provider", providerName);
-            
+
             var errorStatus = new ProviderStatus
             {
                 Name = providerName,
@@ -127,7 +127,7 @@ public class ProviderStatusService : IProviderStatusService
     {
         // Since we don't have a common health check interface yet, we'll simulate this
         // In a real implementation, this would call provider-specific health check methods
-        
+
         var status = new ProviderStatus
         {
             Name = providerName,
@@ -139,14 +139,14 @@ public class ProviderStatusService : IProviderStatusService
         {
             case IEmailProvider emailProvider:
                 // For now, assume it's initialized and healthy
-                status = status with 
-                { 
+                status = status with
+                {
                     IsHealthy = true,
                     IsInitialized = true,
                     RequiresSetup = false,
                     Status = "Connected",
-                    Details = new Dictionary<string, object> 
-                    { 
+                    Details = new Dictionary<string, object>
+                    {
                         { "type", "Gmail" },
                         { "last_check", DateTime.UtcNow }
                     }
@@ -154,14 +154,14 @@ public class ProviderStatusService : IProviderStatusService
                 break;
 
             case ILLMProvider llmProvider:
-                status = status with 
-                { 
+                status = status with
+                {
                     IsHealthy = true,
                     IsInitialized = true,
                     RequiresSetup = false,
                     Status = "Ready",
-                    Details = new Dictionary<string, object> 
-                    { 
+                    Details = new Dictionary<string, object>
+                    {
                         { "type", "OpenAI" },
                         { "model", "gpt-4o-mini" },
                         { "last_check", DateTime.UtcNow }
@@ -170,14 +170,14 @@ public class ProviderStatusService : IProviderStatusService
                 break;
 
             case IStorageProvider storageProvider:
-                status = status with 
-                { 
+                status = status with
+                {
                     IsHealthy = true,
                     IsInitialized = true,
                     RequiresSetup = false,
                     Status = "Connected",
-                    Details = new Dictionary<string, object> 
-                    { 
+                    Details = new Dictionary<string, object>
+                    {
                         { "type", "SQLite" },
                         { "encrypted", true },
                         { "last_check", DateTime.UtcNow }
@@ -186,8 +186,8 @@ public class ProviderStatusService : IProviderStatusService
                 break;
 
             default:
-                status = status with 
-                { 
+                status = status with
+                {
                     IsHealthy = false,
                     IsInitialized = false,
                     RequiresSetup = true,
@@ -229,8 +229,8 @@ public class ProviderStatusService : IProviderStatusService
             };
 
             ProviderStatusChanged?.Invoke(this, args);
-            
-            _logger.LogInformation("Provider {Provider} status changed: {Status} (Healthy: {IsHealthy})", 
+
+            _logger.LogInformation("Provider {Provider} status changed: {Status} (Healthy: {IsHealthy})",
                 providerName, newStatus.Status, newStatus.IsHealthy);
         }
         catch (Exception ex)

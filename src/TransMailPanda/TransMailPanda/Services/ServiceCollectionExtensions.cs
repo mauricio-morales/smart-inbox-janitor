@@ -84,6 +84,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IProviderStatusService, ProviderStatusService>();
         services.AddSingleton<IApplicationService, ApplicationService>();
 
+        // Add provider bridge service for connecting legacy providers to new architecture
+        services.AddSingleton<IProviderBridgeService, ProviderBridgeService>();
+
+        // Add background health monitoring service
+        services.AddHostedService<ProviderHealthMonitorService>();
+
         return services;
     }
 
@@ -95,7 +101,11 @@ public static class ServiceCollectionExtensions
         // Register view models as transients (new instance per request)
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<WelcomeWizardViewModel>();
-        // TODO: Add StartupViewModel when it's created
+
+        // Add provider status dashboard ViewModels
+        services.AddTransient<ProviderStatusDashboardViewModel>();
+        // Note: ProviderStatusCardViewModel is created directly by the dashboard ViewModel
+        // so it doesn't need DI registration
 
         return services;
     }
