@@ -43,7 +43,7 @@ public partial class App : Application
             // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
-            
+
             // Create main window with dependency injection
             var mainWindowViewModel = _serviceProvider.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = new MainWindow
@@ -76,10 +76,10 @@ public partial class App : Application
             {
                 // Add configuration
                 services.AddSingleton(configuration);
-                
+
                 // Add TransMail Panda services
                 services.AddTransMailPandaServices(configuration);
-                
+
                 // Add startup orchestration
                 services.AddStartupOrchestration();
             })
@@ -89,7 +89,7 @@ public partial class App : Application
                 logging.AddConfiguration(configuration.GetSection("Logging"));
                 logging.AddConsole();
                 logging.AddDebug();
-                
+
                 // Set default log level
                 logging.SetMinimumLevel(LogLevel.Information);
             });

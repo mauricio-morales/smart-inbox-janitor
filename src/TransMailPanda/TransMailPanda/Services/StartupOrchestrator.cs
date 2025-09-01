@@ -21,6 +21,7 @@ public class StartupOrchestrator : IStartupOrchestrator
     private readonly IEmailProvider _emailProvider;
     private readonly ILLMProvider _llmProvider;
     private readonly IProviderStatusService _providerStatusService;
+    private readonly IProviderBridgeService _providerBridgeService;
 
     private StartupProgress _currentProgress = new() { CurrentStep = StartupStep.Initializing };
     private readonly object _progressLock = new();
@@ -36,7 +37,8 @@ public class StartupOrchestrator : IStartupOrchestrator
         ISecureStorageManager secureStorageManager,
         IEmailProvider emailProvider,
         ILLMProvider llmProvider,
-        IProviderStatusService providerStatusService)
+        IProviderStatusService providerStatusService,
+        IProviderBridgeService providerBridgeService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _storageProvider = storageProvider ?? throw new ArgumentNullException(nameof(storageProvider));
@@ -44,6 +46,7 @@ public class StartupOrchestrator : IStartupOrchestrator
         _emailProvider = emailProvider ?? throw new ArgumentNullException(nameof(emailProvider));
         _llmProvider = llmProvider ?? throw new ArgumentNullException(nameof(llmProvider));
         _providerStatusService = providerStatusService ?? throw new ArgumentNullException(nameof(providerStatusService));
+        _providerBridgeService = providerBridgeService ?? throw new ArgumentNullException(nameof(providerBridgeService));
     }
 
     public async Task<StartupResult> ExecuteStartupAsync(CancellationToken cancellationToken = default)
@@ -61,7 +64,7 @@ public class StartupOrchestrator : IStartupOrchestrator
             await ExecuteStartupSequenceAsync(combinedCts.Token);
 
             stopwatch.Stop();
-            
+
             var successResult = new StartupResult
             {
                 IsSuccess = true,
@@ -149,12 +152,12 @@ public class StartupOrchestrator : IStartupOrchestrator
         {
             _logger.LogDebug("Initializing security services");
             var result = await _secureStorageManager.InitializeAsync();
-            
+
             if (!result.IsSuccess)
             {
                 throw new InvalidOperationException($"Security initialization failed: {result.ErrorMessage}");
             }
-            
+
             _logger.LogDebug("Security services initialized successfully");
         }
         catch (Exception ex)
@@ -170,10 +173,26 @@ public class StartupOrchestrator : IStartupOrchestrator
         try
         {
             _logger.LogDebug("Initializing email provider");
-            // TODO: Call provider initialization when interface is updated
-            // For now, we'll assume it initializes successfully
-            await Task.Delay(100, cancellationToken); // Simulate initialization
-            _logger.LogDebug("Email provider initialized successfully");
+
+            // Check email provider status through bridge service
+            var emailStatusResult = await _providerBridgeService.GetEmailProviderStatusAsync();
+
+            if (emailStatusResult.IsSuccess)
+            {
+                var status = emailStatusResult.Value!;
+                _logger.LogDebug("Email provider status: {Status} (Healthy: {IsHealthy})",
+                    status.Status, status.IsHealthy);
+
+                // Email provider initialization is considered successful if status can be retrieved
+                // The actual health status will be handled by the provider status service
+                _logger.LogDebug("Email provider initialized successfully");
+            }
+            else
+            {
+                _logger.LogWarning("Email provider status check failed: {Error}", emailStatusResult.Error?.Message);
+                // Don't throw - let the provider status service handle unhealthy providers
+                _logger.LogDebug("Email provider initialization completed with warnings");
+            }
         }
         catch (Exception ex)
         {
@@ -188,10 +207,26 @@ public class StartupOrchestrator : IStartupOrchestrator
         try
         {
             _logger.LogDebug("Initializing LLM provider");
-            // TODO: Call provider initialization when interface is updated
-            // For now, we'll assume it initializes successfully
-            await Task.Delay(100, cancellationToken); // Simulate initialization
-            _logger.LogDebug("LLM provider initialized successfully");
+
+            // Check LLM provider status through bridge service
+            var llmStatusResult = await _providerBridgeService.GetLLMProviderStatusAsync();
+
+            if (llmStatusResult.IsSuccess)
+            {
+                var status = llmStatusResult.Value!;
+                _logger.LogDebug("LLM provider status: {Status} (Healthy: {IsHealthy})",
+                    status.Status, status.IsHealthy);
+
+                // LLM provider initialization is considered successful if status can be retrieved
+                // The actual health status will be handled by the provider status service
+                _logger.LogDebug("LLM provider initialized successfully");
+            }
+            else
+            {
+                _logger.LogWarning("LLM provider status check failed: {Error}", llmStatusResult.Error?.Message);
+                // Don't throw - let the provider status service handle unhealthy providers
+                _logger.LogDebug("LLM provider initialization completed with warnings");
+            }
         }
         catch (Exception ex)
         {
@@ -206,20 +241,35 @@ public class StartupOrchestrator : IStartupOrchestrator
         try
         {
             _logger.LogDebug("Performing provider health checks");
-            
-            // Refresh provider status to get current health
-            await _providerStatusService.RefreshProviderStatusAsync();
-            
-            // Check if all providers are healthy
-            var allHealthy = await _providerStatusService.AreAllProvidersHealthyAsync();
-            if (!allHealthy)
+
+            // Get comprehensive provider status from bridge service
+            var allProviderStatuses = await _providerBridgeService.GetAllProviderStatusAsync();
+
+            // Log status of each provider
+            foreach (var statusPair in allProviderStatuses)
             {
-                var allStatus = await _providerStatusService.GetAllProviderStatusAsync();
-                var unhealthyProviders = allStatus.Where(kvp => !kvp.Value.IsHealthy).Select(kvp => kvp.Key).ToArray();
-                throw new InvalidOperationException($"Unhealthy providers: {string.Join(", ", unhealthyProviders)}");
+                var providerName = statusPair.Key;
+                var status = statusPair.Value;
+
+                _logger.LogInformation("Provider {Provider}: {Status} (Healthy: {IsHealthy}, Setup Required: {RequiresSetup})",
+                    providerName, status.Status, status.IsHealthy, status.RequiresSetup);
             }
-            
-            _logger.LogDebug("All provider health checks passed");
+
+            // Update provider status service with fresh data
+            await _providerStatusService.RefreshProviderStatusAsync();
+
+            // Note: We don't fail startup if providers are unhealthy or require setup
+            // The provider status dashboard will handle guiding users through setup
+            var healthyCount = allProviderStatuses.Count(kvp => kvp.Value.IsHealthy);
+            var totalCount = allProviderStatuses.Count;
+
+            _logger.LogInformation("Provider health check completed: {HealthyCount}/{TotalCount} providers healthy",
+                healthyCount, totalCount);
+
+            if (healthyCount == 0)
+            {
+                _logger.LogWarning("No providers are currently healthy - user setup will be required");
+            }
         }
         catch (Exception ex)
         {
@@ -249,7 +299,7 @@ public class StartupOrchestrator : IStartupOrchestrator
         }
 
         OnProgressChanged(progress);
-        _logger.LogDebug("Startup progress: {Step} - {Description} ({Completed}/{Total})", 
+        _logger.LogDebug("Startup progress: {Step} - {Description} ({Completed}/{Total})",
             step, description, completedSteps, TotalSteps);
     }
 

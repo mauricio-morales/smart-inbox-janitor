@@ -56,14 +56,14 @@ public class ApplicationService : IApplicationService
         {
             // Execute startup orchestration
             var startupResult = await _startupOrchestrator.ExecuteStartupAsync();
-            
+
             if (startupResult.IsSuccess)
             {
                 _isInitialized = true;
                 _isReady = true;
                 _lastStatusUpdate = DateTime.UtcNow;
-                
-                _logger.LogInformation("Application initialization completed successfully in {Duration}", 
+
+                _logger.LogInformation("Application initialization completed successfully in {Duration}",
                     startupResult.Duration);
                 return true;
             }
@@ -72,8 +72,8 @@ public class ApplicationService : IApplicationService
                 _isInitialized = true;
                 _isReady = false;
                 _lastStatusUpdate = DateTime.UtcNow;
-                
-                _logger.LogError("Application initialization failed: {Status} - {Error}", 
+
+                _logger.LogError("Application initialization failed: {Status} - {Error}",
                     startupResult.Status, startupResult.ErrorMessage);
                 return false;
             }
@@ -83,7 +83,7 @@ public class ApplicationService : IApplicationService
             _isInitialized = true;
             _isReady = false;
             _lastStatusUpdate = DateTime.UtcNow;
-            
+
             _logger.LogError(ex, "Exception during application initialization");
             return false;
         }
