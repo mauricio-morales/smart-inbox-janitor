@@ -169,7 +169,7 @@ jobs:
 
     - name: Publish application
       run: |
-        dotnet publish src/TransMailPanda/TransMailPanda/TransMailPanda.csproj \
+        dotnet publish src/TrashMailPanda/TrashMailPanda/TrashMailPanda.csproj \
           --configuration Release \
           --runtime ${{ matrix.runtime }} \
           --self-contained true \
@@ -182,20 +182,20 @@ jobs:
       if: matrix.os == 'macos-latest'
       run: |
         # Create macOS .app bundle structure
-        mkdir -p ./publish/TransMailPanda.app/Contents/MacOS
-        mkdir -p ./publish/TransMailPanda.app/Contents/Resources
+        mkdir -p ./publish/TrashMailPanda.app/Contents/MacOS
+        mkdir -p ./publish/TrashMailPanda.app/Contents/Resources
         
         # Move executable
-        mv ./publish/${{ matrix.runtime }}/TransMailPanda ./publish/TransMailPanda.app/Contents/MacOS/
+        mv ./publish/${{ matrix.runtime }}/TrashMailPanda ./publish/TrashMailPanda.app/Contents/MacOS/
         
         # Create Info.plist
-        cat > ./publish/TransMailPanda.app/Contents/Info.plist << 'EOF'
+        cat > ./publish/TrashMailPanda.app/Contents/Info.plist << 'EOF'
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
             <key>CFBundleExecutable</key>
-            <string>TransMailPanda</string>
+            <string>TrashMailPanda</string>
             <key>CFBundleIconFile</key>
             <string>icon.icns</string>
             <key>CFBundleIdentifier</key>
@@ -203,7 +203,7 @@ jobs:
             <key>CFBundleInfoDictionaryVersion</key>
             <string>6.0</string>
             <key>CFBundleName</key>
-            <string>TransMail Panda</string>
+            <string>TrashMail Panda</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>CFBundleShortVersionString</key>
@@ -215,7 +215,7 @@ jobs:
             <key>NSHighResolutionCapable</key>
             <true/>
             <key>NSHumanReadableCopyright</key>
-            <string>© 2024 TransMail Panda</string>
+            <string>© 2024 TrashMail Panda</string>
         </dict>
         </plist>
         EOF
@@ -226,7 +226,7 @@ jobs:
         name: ${{ matrix.artifact-name }}
         path: |
           ./publish/${{ matrix.runtime }}/**/*
-          ./publish/TransMailPanda.app/**/*
+          ./publish/TrashMailPanda.app/**/*
         retention-days: 30
 
   # Job 5: Integration Tests (if we had them)
@@ -271,7 +271,7 @@ jobs:
         path: ./artifacts
 
     - name: List downloaded artifacts
-      run: find ./artifacts -type f -name "*.exe" -o -name "TransMailPanda" -o -name "*.app"
+      run: find ./artifacts -type f -name "*.exe" -o -name "TrashMailPanda" -o -name "*.app"
 
     - name: Deploy to production
       run: |

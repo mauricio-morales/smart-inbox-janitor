@@ -18,16 +18,16 @@
 
 ## User Persona
 
-**Target User**: TransMail Panda end users setting up the application for first use or troubleshooting provider connection issues
+**Target User**: TrashMail Panda end users setting up the application for first use or troubleshooting provider connection issues
 
-**Use Case**: User launches TransMail Panda and needs to:
+**Use Case**: User launches TrashMail Panda and needs to:
 1. View the status of all required providers (Storage, Email, AI)
 2. Complete setup for unconfigured providers
 3. Troubleshoot and reconnect failed providers
 4. Access the main dashboard only when all systems are operational
 
 **User Journey**: 
-1. Launch TransMail Panda application
+1. Launch TrashMail Panda application
 2. Provider status dashboard appears showing current status of all providers
 3. Complete setup for any providers requiring configuration (Gmail OAuth, OpenAI API key, etc.)
 4. Monitor provider health checks and see real-time status updates
@@ -42,7 +42,7 @@
 
 ## Why
 
-- **Foundation for Reliability**: Provider health is critical for all TransMail Panda functionality - email processing, AI classification, and data storage all depend on healthy provider connections
+- **Foundation for Reliability**: Provider health is critical for all TrashMail Panda functionality - email processing, AI classification, and data storage all depend on healthy provider connections
 - **User Experience**: Users need clear visibility into system status and guided setup flows for complex integrations like Gmail OAuth and OpenAI API configuration
 - **Enterprise Requirements**: Real-time monitoring and graceful failure handling are essential for production use
 - **Scalability**: Establishes patterns for adding future providers (IMAP email, Claude LLM, etc.)
@@ -95,32 +95,32 @@ _This PRP provides comprehensive context including existing provider architectur
   critical: Multi-layer health checks and failure recovery patterns
 
 # EXISTING CODEBASE PATTERNS TO FOLLOW
-- file: src/TransMailPanda/TransMailPanda/ViewModels/WelcomeWizardViewModel.cs
+- file: src/TrashMailPanda/TrashMailPanda/ViewModels/WelcomeWizardViewModel.cs
   why: Existing MVVM patterns with ObservableProperty, RelayCommand, and provider status management
   pattern: IsLoading boolean pattern, StatusMessage string pattern, async command handling
   gotcha: Uses CommunityToolkit.Mvvm with source generators - follow exact attribute patterns
 
-- file: src/TransMailPanda/TransMailPanda/Views/WelcomeWizardWindow.axaml
+- file: src/TrashMailPanda/TrashMailPanda/Views/WelcomeWizardWindow.axaml
   why: Existing card-based layout patterns and Border/StackPanel structure
   pattern: Card styling, status indicators, progress indicators, button layouts
   gotcha: Uses Avalonia 11 syntax - maintain existing XAML patterns and styling
 
-- file: src/Shared/TransMailPanda.Shared/Base/IProvider.cs
+- file: src/Shared/TrashMailPanda.Shared/Base/IProvider.cs
   why: Comprehensive provider interface with state management, health checks, and event system
   pattern: State management, health check methods, event-driven updates, Result<T> pattern
   gotcha: Current providers don't implement this interface - need bridge implementation
 
-- file: src/TransMailPanda/TransMailPanda/Services/ProviderStatusService.cs
+- file: src/TrashMailPanda/TrashMailPanda/Services/ProviderStatusService.cs
   why: Existing provider status service with real-time event system
   pattern: Event subscription, status aggregation, provider health monitoring
   gotcha: Currently returns hardcoded status - needs integration with actual provider health checks
 
-- file: src/TransMailPanda/TransMailPanda/Services/StartupOrchestrator.cs
+- file: src/TrashMailPanda/TrashMailPanda/Services/StartupOrchestrator.cs
   why: Provider initialization orchestration and startup flow coordination
   pattern: Sequential startup process, timeout handling, progress reporting
   gotcha: Has placeholder TODO comments - needs actual provider initialization calls
 
-- file: src/Shared/TransMailPanda.Shared/Extensions/ProviderServiceExtensions.cs
+- file: src/Shared/TrashMailPanda.Shared/Extensions/ProviderServiceExtensions.cs
   why: Provider registration patterns with dependency injection and health check integration
   pattern: Service registration, factory patterns, health check registration
   gotcha: Sophisticated DI patterns that need to be leveraged properly
@@ -138,7 +138,7 @@ _This PRP provides comprehensive context including existing provider architectur
 
 ```bash
 src/
-├── TransMailPanda/TransMailPanda/         # Main Avalonia application
+├── TrashMailPanda/TrashMailPanda/         # Main Avalonia application
 │   ├── Views/                             # Existing XAML views
 │   │   ├── MainWindow.axaml               # Main window container
 │   │   └── WelcomeWizardWindow.axaml      # Provider setup UI (pattern to follow)
@@ -151,7 +151,7 @@ src/
 │   │   ├── IProviderStatusService.cs      # Service interface (use this)
 │   │   └── StartupOrchestrator.cs         # Provider initialization (integrate with this)
 │   └── App.axaml.cs                       # DI container setup (register new services here)
-├── Shared/TransMailPanda.Shared/          # Provider architecture foundation
+├── Shared/TrashMailPanda.Shared/          # Provider architecture foundation
 │   ├── Base/                              # Provider interfaces and base classes
 │   │   ├── IProvider.cs                   # Core provider interface (target architecture)
 │   │   ├── BaseProvider.cs                # Provider base implementation
@@ -170,7 +170,7 @@ src/
 ### Desired Codebase Tree with Files to be Added
 
 ```bash
-src/TransMailPanda/TransMailPanda/
+src/TrashMailPanda/TrashMailPanda/
 ├── Views/
 │   ├── Controls/
 │   │   └── ProviderStatusCard.axaml       # Individual provider status card UI
@@ -265,79 +265,79 @@ public enum SetupStep { NotStarted, Authenticating, Configuring, Testing, Comple
 ### Implementation Tasks (ordered by dependencies)
 
 ```yaml
-Task 1: CREATE src/TransMailPanda/TransMailPanda/Models/ProviderDisplayInfo.cs
+Task 1: CREATE src/TrashMailPanda/TrashMailPanda/Models/ProviderDisplayInfo.cs
   - IMPLEMENT: ProviderDisplayInfo, ProviderSetupState records with validation
-  - FOLLOW pattern: src/Shared/TransMailPanda.Shared/Models/ (record syntax, validation attributes)
+  - FOLLOW pattern: src/Shared/TrashMailPanda.Shared/Models/ (record syntax, validation attributes)
   - NAMING: PascalCase for properties, descriptive enum values
   - PLACEMENT: Models folder for UI-specific data structures
 
-Task 2: CREATE src/TransMailPanda/TransMailPanda/Services/ProviderBridgeService.cs
+Task 2: CREATE src/TrashMailPanda/TrashMailPanda/Services/ProviderBridgeService.cs
   - IMPLEMENT: Bridge service connecting legacy providers to IProvider<TConfig> interface
-  - FOLLOW pattern: src/TransMailPanda/TransMailPanda/Services/ProviderStatusService.cs (service structure)
+  - FOLLOW pattern: src/TrashMailPanda/TrashMailPanda/Services/ProviderStatusService.cs (service structure)
   - DEPENDENCIES: IEmailProvider, ILLMProvider, IStorageProvider from existing providers
   - NAMING: ProviderBridgeService class with Get*ProviderStatus methods
   - CRITICAL: Implement health check methods that call actual provider validation
 
-Task 3: CREATE src/TransMailPanda/TransMailPanda/Services/ProviderHealthMonitorService.cs
+Task 3: CREATE src/TrashMailPanda/TrashMailPanda/Services/ProviderHealthMonitorService.cs
   - IMPLEMENT: Background service for continuous provider health monitoring
   - FOLLOW pattern: Microsoft.Extensions.Hosting.IHostedService for background processing
   - DEPENDENCIES: ProviderBridgeService from Task 2, IProviderStatusService
   - NAMING: ProviderHealthMonitorService with StartAsync, StopAsync, MonitorProvidersAsync methods
   - INTEGRATION: Timer-based health checks with configurable intervals
 
-Task 4: CREATE src/TransMailPanda/TransMailPanda/Converters/StatusConverters.cs
+Task 4: CREATE src/TrashMailPanda/TrashMailPanda/Converters/StatusConverters.cs
   - IMPLEMENT: BoolToHealthConverter, BoolToColorConverter, BoolToIconConverter
   - FOLLOW pattern: Avalonia IValueConverter interface with Convert/ConvertBack methods
   - NAMING: Descriptive converter class names ending in "Converter"
   - PLACEMENT: Converters folder for UI data binding converters
 
-Task 5: CREATE src/TransMailPanda/TransMailPanda/ViewModels/ProviderStatusCardViewModel.cs
+Task 5: CREATE src/TrashMailPanda/TrashMailPanda/ViewModels/ProviderStatusCardViewModel.cs
   - IMPLEMENT: ViewModel for individual provider status cards with ObservableProperty attributes
-  - FOLLOW pattern: src/TransMailPanda/TransMailPanda/ViewModels/WelcomeWizardViewModel.cs (MVVM patterns)
+  - FOLLOW pattern: src/TrashMailPanda/TrashMailPanda/ViewModels/WelcomeWizardViewModel.cs (MVVM patterns)
   - DEPENDENCIES: ProviderDisplayInfo from Task 1, IProviderStatusService
   - NAMING: ProviderStatusCardViewModel with async RelayCommand methods
   - CRITICAL: Implement UpdateFromProviderStatus method and computed properties with OnPropertyChanged
 
-Task 6: CREATE src/TransMailPanda/TransMailPanda/ViewModels/ProviderStatusDashboardViewModel.cs
+Task 6: CREATE src/TrashMailPanda/TrashMailPanda/ViewModels/ProviderStatusDashboardViewModel.cs
   - IMPLEMENT: Main dashboard ViewModel with ObservableCollection<ProviderStatusCardViewModel>
-  - FOLLOW pattern: src/TransMailPanda/TransMailPanda/ViewModels/ViewModelBase.cs (ObservableObject inheritance)
+  - FOLLOW pattern: src/TrashMailPanda/TrashMailPanda/ViewModels/ViewModelBase.cs (ObservableObject inheritance)
   - DEPENDENCIES: ProviderStatusCardViewModel from Task 5, IProviderStatusService
   - NAMING: ProviderStatusDashboardViewModel with RefreshAllAsync, NavigateToDashboard methods
   - INTEGRATION: Event subscription to ProviderStatusChanged with real-time UI updates
 
-Task 7: CREATE src/TransMailPanda/TransMailPanda/Views/Controls/ProviderStatusCard.axaml
+Task 7: CREATE src/TrashMailPanda/TrashMailPanda/Views/Controls/ProviderStatusCard.axaml
   - IMPLEMENT: Individual provider status card UserControl with modern card design
-  - FOLLOW pattern: src/TransMailPanda/TransMailPanda/Views/WelcomeWizardWindow.axaml (card styling, Border layout)
+  - FOLLOW pattern: src/TrashMailPanda/TrashMailPanda/Views/WelcomeWizardWindow.axaml (card styling, Border layout)
   - DEPENDENCIES: ProviderStatusCardViewModel from Task 5, StatusConverters from Task 4
   - NAMING: ProviderStatusCard.axaml with corresponding .axaml.cs code-behind
   - CRITICAL: Use data binding with converters, progress indicators, conditional visibility
 
-Task 8: CREATE src/TransMailPanda/TransMailPanda/Views/ProviderStatusDashboard.axaml
+Task 8: CREATE src/TrashMailPanda/TrashMailPanda/Views/ProviderStatusDashboard.axaml
   - IMPLEMENT: Main provider status dashboard with ItemsControl and UniformGrid layout
-  - FOLLOW pattern: src/TransMailPanda/TransMailPanda/Views/MainWindow.axaml (main window structure)
+  - FOLLOW pattern: src/TrashMailPanda/TrashMailPanda/Views/MainWindow.axaml (main window structure)
   - DEPENDENCIES: ProviderStatusCard from Task 7, ProviderStatusDashboardViewModel from Task 6
   - NAMING: ProviderStatusDashboard.axaml with grid layout and loading overlays
   - INTEGRATION: Real-time data binding with status updates and refresh capabilities
 
-Task 9: MODIFY src/TransMailPanda/TransMailPanda/Services/StartupOrchestrator.cs
+Task 9: MODIFY src/TrashMailPanda/TrashMailPanda/Services/StartupOrchestrator.cs
   - INTEGRATE: Replace TODO placeholder code with actual provider initialization
   - DEPENDENCIES: ProviderBridgeService from Task 2, existing provider interfaces
   - PATTERN: Follow existing progress reporting and timeout handling patterns
   - CRITICAL: Implement actual health checks and provider status validation
 
-Task 10: MODIFY src/TransMailPanda/TransMailPanda/App.axaml.cs
+Task 10: MODIFY src/TrashMailPanda/TrashMailPanda/App.axaml.cs
   - INTEGRATE: Register new services in DI container following existing patterns
   - DEPENDENCIES: All services from previous tasks
-  - PATTERN: Follow existing AddTransMailPandaServices extension method pattern
+  - PATTERN: Follow existing AddTrashMailPandaServices extension method pattern
   - PRESERVATION: Maintain existing service registrations and configuration
 
-Task 11: CREATE src/Tests/TransMailPanda.Tests/ViewModels/TestProviderStatusCardViewModel.cs
+Task 11: CREATE src/Tests/TrashMailPanda.Tests/ViewModels/TestProviderStatusCardViewModel.cs
   - IMPLEMENT: Unit tests for provider status card ViewModel with mock provider status
   - FOLLOW pattern: Existing test patterns in Tests project (xUnit, mocking)
   - COVERAGE: UpdateFromProviderStatus method, computed properties, command execution
   - NAMING: Test_{Method}_{Scenario} naming convention
 
-Task 12: CREATE src/Tests/TransMailPanda.Tests/Services/TestProviderBridgeService.cs
+Task 12: CREATE src/Tests/TrashMailPanda.Tests/Services/TestProviderBridgeService.cs
   - IMPLEMENT: Unit tests for provider bridge service with mock provider dependencies
   - FOLLOW pattern: Service testing patterns with dependency injection
   - COVERAGE: Health check methods, provider status mapping, error handling
@@ -509,9 +509,9 @@ UI_NAVIGATION:
 
 ```bash
 # Run after each file creation - fix before proceeding
-dotnet format src/TransMailPanda/TransMailPanda --verify-no-changes
-dotnet build src/TransMailPanda/TransMailPanda                    # Check compilation
-dotnet test src/Tests/TransMailPanda.Tests --logger console       # Run unit tests
+dotnet format src/TrashMailPanda/TrashMailPanda --verify-no-changes
+dotnet build src/TrashMailPanda/TrashMailPanda                    # Check compilation
+dotnet test src/Tests/TrashMailPanda.Tests --logger console       # Run unit tests
 
 # Expected: Zero compilation errors, all tests pass, no formatting issues
 ```
@@ -520,8 +520,8 @@ dotnet test src/Tests/TransMailPanda.Tests --logger console       # Run unit tes
 
 ```bash
 # Test ViewModels and Services individually
-dotnet test src/Tests/TransMailPanda.Tests/ViewModels/ -v
-dotnet test src/Tests/TransMailPanda.Tests/Services/ -v
+dotnet test src/Tests/TrashMailPanda.Tests/ViewModels/ -v
+dotnet test src/Tests/TrashMailPanda.Tests/Services/ -v
 
 # Test provider bridge service integration
 dotnet test --filter "FullyQualifiedName~ProviderBridgeService" --logger console
@@ -533,7 +533,7 @@ dotnet test --filter "FullyQualifiedName~ProviderBridgeService" --logger console
 
 ```bash
 # Application startup validation
-dotnet run --project src/TransMailPanda/TransMailPanda &
+dotnet run --project src/TrashMailPanda/TrashMailPanda &
 sleep 5  # Allow startup time
 
 # Provider status dashboard accessibility
@@ -579,8 +579,8 @@ sleep 5  # Allow startup time
 
 ### Technical Validation
 
-- [ ] All compilation successful: `dotnet build src/TransMailPanda/TransMailPanda`
-- [ ] All tests pass: `dotnet test src/Tests/TransMailPanda.Tests/ -v`
+- [ ] All compilation successful: `dotnet build src/TrashMailPanda/TrashMailPanda`
+- [ ] All tests pass: `dotnet test src/Tests/TrashMailPanda.Tests/ -v`
 - [ ] No formatting issues: `dotnet format --verify-no-changes`
 - [ ] Provider bridge service connects legacy providers to new architecture
 - [ ] Background health monitoring service runs continuously
@@ -618,7 +618,7 @@ sleep 5  # Allow startup time
 - [ ] Intuitive setup flows with progress indicators and error messages
 - [ ] Responsive UI with loading states during health checks and setup
 - [ ] Graceful error handling with user-friendly error messages
-- [ ] Consistent styling with existing TransMail Panda UI patterns
+- [ ] Consistent styling with existing TrashMail Panda UI patterns
 
 ---
 

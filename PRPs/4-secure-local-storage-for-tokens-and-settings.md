@@ -10,7 +10,7 @@
 
 ## User Persona
 
-**Target User**: TransMail Panda application users who need to store Gmail OAuth credentials and OpenAI API keys securely on their local machine
+**Target User**: TrashMail Panda application users who need to store Gmail OAuth credentials and OpenAI API keys securely on their local machine
 
 **Use Case**: Users authenticate with Gmail and configure OpenAI API access during onboarding, then the application securely stores and manages these credentials across sessions while processing thousands of emails
 
@@ -69,12 +69,12 @@ _This PRP provides everything needed to implement secure credential storage from
   why: .NET System.Security.Cryptography for AES-256-GCM encryption and key derivation functions
   critical: Cipher creation, authentication tags, and secure random number generation
 
-- file: src/TransMailPanda.Core/Interfaces/IStorageProvider.cs
+- file: src/TrashMailPanda.Core/Interfaces/IStorageProvider.cs
   why: Complete IStorageProvider interface with encrypted token storage methods already defined
   pattern: Result<T> pattern for all provider methods, GetEncryptedTokensAsync/SetEncryptedTokenAsync interface
   gotcha: Must preserve exact interface contracts and error handling patterns
 
-- file: src/TransMailPanda.Providers/Storage/SQLiteProvider.cs
+- file: src/TrashMailPanda.Providers/Storage/SQLiteProvider.cs
   why: Existing implementation that needs to be enhanced with secure storage
   pattern: Methods return Result<T> with proper error handling
   gotcha: Must maintain same public interface while implementing actual functionality

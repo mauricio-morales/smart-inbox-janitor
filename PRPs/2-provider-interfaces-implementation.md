@@ -2,7 +2,7 @@
 
 ## Goal
 
-**Feature Goal**: Implement a unified base provider architecture with Result pattern and enhanced lifecycle management to complement the existing rich provider interfaces and enable consistent error handling across all providers in TransMail Panda.
+**Feature Goal**: Implement a unified base provider architecture with Result pattern and enhanced lifecycle management to complement the existing rich provider interfaces and enable consistent error handling across all providers in TrashMail Panda.
 
 **Deliverable**: Complete C# base provider architecture including IProvider<TConfig> interface, Result<T> pattern, enhanced provider lifecycle management, and refactored existing providers to use the unified architecture.
 
@@ -10,7 +10,7 @@
 
 ## User Persona
 
-**Target User**: C# developers extending TransMail Panda with new providers or maintaining existing provider implementations
+**Target User**: C# developers extending TrashMail Panda with new providers or maintaining existing provider implementations
 
 **Use Case**: Creating new providers (IMAP email, Claude LLM, PostgreSQL storage) or enhancing existing providers with consistent error handling, health monitoring, and lifecycle management
 
@@ -73,27 +73,27 @@ _If someone knew nothing about this codebase, would they have everything needed 
 
 ```yaml
 # MUST READ - Current codebase interfaces
-- file: src/Shared/TransMailPanda.Shared/IEmailProvider.cs
+- file: src/Shared/TrashMailPanda.Shared/IEmailProvider.cs
   why: Rich email provider interface to be enhanced with base provider architecture
   pattern: Comprehensive DTOs and methods - maintain all existing functionality
   gotcha: Must preserve existing method signatures while adding Result<T> wrapper
 
-- file: src/Shared/TransMailPanda.Shared/ILLMProvider.cs
+- file: src/Shared/TrashMailPanda.Shared/ILLMProvider.cs
   why: Complex LLM provider interface with extensive type system
   pattern: Advanced type system with discriminated unions - preserve complexity
   gotcha: LLMAuth hierarchy and classification types must remain unchanged
 
-- file: src/Shared/TransMailPanda.Shared/IStorageProvider.cs
+- file: src/Shared/TrashMailPanda.Shared/IStorageProvider.cs
   why: Storage provider interface with comprehensive data operations
   pattern: Full CRUD operations with specialized storage types
   gotcha: Existing storage operations must maintain transaction semantics
 
-- file: src/Shared/TransMailPanda.Shared/Security/
+- file: src/Shared/TrashMailPanda.Shared/Security/
   why: Security interfaces already use custom result types (EncryptionResult<T>, SecureStorageResult<T>)
   pattern: Custom result types with specific error hierarchies
   gotcha: Need to unify with new Result<T> pattern or maintain compatibility
 
-- file: src/TransMailPanda/TransMailPanda/Services/ServiceCollectionExtensions.cs
+- file: src/TrashMailPanda/TrashMailPanda/Services/ServiceCollectionExtensions.cs
   why: Current DI registration patterns and service configuration
   pattern: Microsoft.Extensions.DependencyInjection registration approach
   gotcha: Must maintain existing service lifetimes and configurations
@@ -116,7 +116,7 @@ _If someone knew nothing about this codebase, would they have everything needed 
 
 ```bash
 src/
-├── TransMailPanda/                 # Main Avalonia application
+├── TrashMailPanda/                 # Main Avalonia application
 │   ├── Views/                      # Avalonia XAML views  
 │   ├── ViewModels/                 # MVVM view models
 │   └── Services/                   # Application services
@@ -124,7 +124,7 @@ src/
 │       ├── StartupOrchestrator.cs          # Provider coordination
 │       └── ProviderStatusService.cs        # Provider monitoring
 ├── Shared/                         # Shared interfaces and types
-│   └── TransMailPanda.Shared/
+│   └── TrashMailPanda.Shared/
 │       ├── IEmailProvider.cs       # ✅ Rich email interface (111 lines)
 │       ├── ILLMProvider.cs         # ✅ Complex LLM interface (223 lines)  
 │       ├── IStorageProvider.cs     # ✅ Storage interface (152 lines)
@@ -132,16 +132,16 @@ src/
 │       └── Security/               # ✅ Security interfaces with custom Result types
 ├── Providers/                      # Provider implementations
 │   ├── Email/                      
-│   │   └── TransMailPanda.Providers.Email/
+│   │   └── TrashMailPanda.Providers.Email/
 │   │       └── GmailEmailProvider.cs       # ✅ Complete Gmail implementation
 │   ├── LLM/
-│   │   └── TransMailPanda.Providers.LLM/  
+│   │   └── TrashMailPanda.Providers.LLM/  
 │   │       └── OpenAIProvider.cs           # ✅ Complete OpenAI implementation
 │   └── Storage/
-│       └── TransMailPanda.Providers.Storage/
+│       └── TrashMailPanda.Providers.Storage/
 │           └── SqliteStorageProvider.cs    # ✅ Complete SQLite implementation
 └── Tests/                          # xUnit test projects
-    └── TransMailPanda.Tests/       # ✅ Existing test structure
+    └── TrashMailPanda.Tests/       # ✅ Existing test structure
 ```
 
 ### Desired Codebase tree with files to be added
@@ -149,7 +149,7 @@ src/
 ```bash
 src/
 ├── Shared/
-│   └── TransMailPanda.Shared/
+│   └── TrashMailPanda.Shared/
 │       ├── Base/                   # NEW: Base provider architecture
 │       │   ├── IProvider.cs        # Generic base provider interface
 │       │   ├── BaseProvider.cs     # Abstract base provider implementation
@@ -225,91 +225,91 @@ Examples:
 ### Implementation Tasks (ordered by dependencies)
 
 ```yaml
-Task 1: CREATE src/Shared/TransMailPanda.Shared/Base/Result.cs
+Task 1: CREATE src/Shared/TrashMailPanda.Shared/Base/Result.cs
   - IMPLEMENT: Result<T> discriminated union with Success/Failure states
   - FOLLOW pattern: C# discriminated unions, readonly record types
   - NAMING: Result<T>, Result<T, TError>, Success/Failure static factory methods
   - PLACEMENT: Foundation type used by all other base architecture components
   - DEPENDENCIES: None (foundation layer)
 
-Task 2: CREATE src/Shared/TransMailPanda.Shared/Base/ProviderError.cs
+Task 2: CREATE src/Shared/TrashMailPanda.Shared/Base/ProviderError.cs
   - IMPLEMENT: Base error hierarchy with specific provider error types
   - FOLLOW pattern: Exception inheritance hierarchy, but for Result pattern
   - NAMING: ProviderError base, ConfigurationError, AuthenticationError, NetworkError
   - DEPENDENCIES: None (foundation layer)
   - PLACEMENT: Error types for Result<T> pattern
 
-Task 3: CREATE src/Shared/TransMailPanda.Shared/Base/ProviderState.cs
+Task 3: CREATE src/Shared/TrashMailPanda.Shared/Base/ProviderState.cs
   - IMPLEMENT: Provider state enumeration and state tracking types
   - FOLLOW pattern: Enum for state, record types for state data
   - NAMING: ProviderState enum (Uninitialized, Initializing, Ready, Error, Shutdown)
   - DEPENDENCIES: Import ProviderError from Task 2
   - PLACEMENT: State management for provider lifecycle
 
-Task 4: CREATE src/Shared/TransMailPanda.Shared/Models/ProviderConfig.cs
+Task 4: CREATE src/Shared/TrashMailPanda.Shared/Models/ProviderConfig.cs
   - IMPLEMENT: Base configuration types and common configuration patterns
-  - FOLLOW pattern: src/Shared/TransMailPanda.Shared/Security/ (existing config patterns)
+  - FOLLOW pattern: src/Shared/TrashMailPanda.Shared/Security/ (existing config patterns)
   - NAMING: BaseProviderConfig, generic constraints for configuration validation
   - DEPENDENCIES: Import Result and ProviderError types from Tasks 1-2
   - PLACEMENT: Base configuration types for all providers
 
-Task 5: CREATE src/Shared/TransMailPanda.Shared/Models/HealthStatus.cs
+Task 5: CREATE src/Shared/TrashMailPanda.Shared/Models/HealthStatus.cs
   - IMPLEMENT: Health check models with detailed diagnostic information
   - FOLLOW pattern: Microsoft.Extensions.Diagnostics.HealthChecks types
   - NAMING: HealthStatus enum, HealthCheckResult record type
   - DEPENDENCIES: Import Result and ProviderError types
   - PLACEMENT: Health monitoring types for provider diagnostics
 
-Task 6: CREATE src/Shared/TransMailPanda.Shared/Base/IProvider.cs
+Task 6: CREATE src/Shared/TrashMailPanda.Shared/Base/IProvider.cs
   - IMPLEMENT: Generic base provider interface with lifecycle methods
   - FOLLOW pattern: Generic constraints, async patterns, Result<T> return types
   - NAMING: IProvider<TConfig> interface, async lifecycle methods
   - DEPENDENCIES: Import Result, ProviderError, ProviderState, HealthStatus from previous tasks
   - PLACEMENT: Core interface that all providers will inherit from
 
-Task 7: CREATE src/Shared/TransMailPanda.Shared/Validation/IConfigurationValidator.cs
+Task 7: CREATE src/Shared/TrashMailPanda.Shared/Validation/IConfigurationValidator.cs
   - IMPLEMENT: Configuration validation interface using IValidateOptions<T> pattern
   - FOLLOW pattern: Microsoft.Extensions.Options.IValidateOptions<T>
   - NAMING: IConfigurationValidator<TConfig>, ValidateOptions result types
   - DEPENDENCIES: Import base types and ProviderConfig from previous tasks
   - PLACEMENT: Validation infrastructure for provider configurations
 
-Task 8: CREATE src/Shared/TransMailPanda.Shared/Validation/ValidationExtensions.cs
+Task 8: CREATE src/Shared/TrashMailPanda.Shared/Validation/ValidationExtensions.cs
   - IMPLEMENT: Extension methods for configuration validation and Result<T> helpers
   - FOLLOW pattern: C# extension methods, fluent validation patterns
   - NAMING: ValidationExtensions static class, ValidateAsync extension methods
   - DEPENDENCIES: Import Result, ProviderError, and validation interfaces
   - PLACEMENT: Helper methods for validation operations
 
-Task 9: CREATE src/Shared/TransMailPanda.Shared/Base/BaseProvider.cs
+Task 9: CREATE src/Shared/TrashMailPanda.Shared/Base/BaseProvider.cs
   - IMPLEMENT: Abstract base provider class with common functionality
   - FOLLOW pattern: Abstract base class with protected virtual methods
   - NAMING: BaseProvider<TConfig> abstract class, template method pattern
   - DEPENDENCIES: Import all base interfaces and types from previous tasks
   - PLACEMENT: Base implementation that concrete providers will inherit from
 
-Task 10: CREATE src/Shared/TransMailPanda.Shared/Factories/IProviderFactory.cs
+Task 10: CREATE src/Shared/TrashMailPanda.Shared/Factories/IProviderFactory.cs
   - IMPLEMENT: Provider factory interface for type-safe provider creation
   - FOLLOW pattern: Generic factory pattern with constraints
   - NAMING: IProviderFactory<TProvider, TConfig> interface
   - DEPENDENCIES: Import IProvider interface and configuration types
   - PLACEMENT: Factory abstraction for provider creation and registration
 
-Task 11: CREATE src/Shared/TransMailPanda.Shared/Factories/ProviderRegistry.cs
+Task 11: CREATE src/Shared/TrashMailPanda.Shared/Factories/ProviderRegistry.cs
   - IMPLEMENT: Provider registry for runtime provider management
   - FOLLOW pattern: Registry pattern with type-safe provider lookup
   - NAMING: ProviderRegistry class, RegisterProvider/GetProvider methods
   - DEPENDENCIES: Import factory interfaces and provider types
   - PLACEMENT: Runtime provider management system
 
-Task 12: CREATE src/Shared/TransMailPanda.Shared/Factories/ProviderServiceExtensions.cs
+Task 12: CREATE src/Shared/TrashMailPanda.Shared/Factories/ProviderServiceExtensions.cs
   - IMPLEMENT: Enhanced DI extension methods for provider registration
-  - FOLLOW pattern: src/TransMailPanda/TransMailPanda/Services/ServiceCollectionExtensions.cs
+  - FOLLOW pattern: src/TrashMailPanda/TrashMailPanda/Services/ServiceCollectionExtensions.cs
   - NAMING: AddProviders, AddProvider<T> extension methods
   - DEPENDENCIES: Import factory types and existing service extensions
   - PLACEMENT: Enhanced dependency injection configuration
 
-Task 13: REFACTOR src/Providers/Email/TransMailPanda.Providers.Email/GmailEmailProvider.cs
+Task 13: REFACTOR src/Providers/Email/TrashMailPanda.Providers.Email/GmailEmailProvider.cs
   - IMPLEMENT: Refactor to inherit from BaseProvider<EmailProviderConfig>
   - FOLLOW pattern: Preserve all existing IEmailProvider functionality
   - NAMING: Maintain existing class and method names
@@ -317,7 +317,7 @@ Task 13: REFACTOR src/Providers/Email/TransMailPanda.Providers.Email/GmailEmailP
   - PLACEMENT: Enhanced Gmail provider with base architecture
   - CRITICAL: Use adapter pattern to maintain interface compatibility
 
-Task 14: REFACTOR src/Providers/LLM/TransMailPanda.Providers.LLM/OpenAIProvider.cs
+Task 14: REFACTOR src/Providers/LLM/TrashMailPanda.Providers.LLM/OpenAIProvider.cs
   - IMPLEMENT: Refactor to inherit from BaseProvider<LLMProviderConfig>
   - FOLLOW pattern: Preserve complex type system and classification logic
   - NAMING: Maintain existing class and method names
@@ -325,7 +325,7 @@ Task 14: REFACTOR src/Providers/LLM/TransMailPanda.Providers.LLM/OpenAIProvider.
   - PLACEMENT: Enhanced OpenAI provider with base architecture
   - CRITICAL: Preserve LLMAuth hierarchy and all classification types
 
-Task 15: REFACTOR src/Providers/Storage/TransMailPanda.Providers.Storage/SqliteStorageProvider.cs
+Task 15: REFACTOR src/Providers/Storage/TrashMailPanda.Providers.Storage/SqliteStorageProvider.cs
   - IMPLEMENT: Refactor to inherit from BaseProvider<StorageProviderConfig>
   - FOLLOW pattern: Preserve all CRUD operations and transaction semantics
   - NAMING: Maintain existing class and method names
@@ -333,15 +333,15 @@ Task 15: REFACTOR src/Providers/Storage/TransMailPanda.Providers.Storage/SqliteS
   - PLACEMENT: Enhanced SQLite provider with base architecture
   - CRITICAL: Maintain SQLCipher encryption and data integrity
 
-Task 16: ENHANCE src/TransMailPanda/TransMailPanda/Services/ServiceCollectionExtensions.cs
+Task 16: ENHANCE src/TrashMailPanda/TrashMailPanda/Services/ServiceCollectionExtensions.cs
   - IMPLEMENT: Update service registration to use enhanced provider factory pattern
   - FOLLOW pattern: Existing registration approach, maintain singleton lifetimes
-  - NAMING: Enhance existing AddTransMailPandaServices method
+  - NAMING: Enhance existing AddTrashMailPandaServices method
   - DEPENDENCIES: Import enhanced factory services
   - PLACEMENT: Update existing DI configuration
   - CRITICAL: Maintain backward compatibility with existing service registrations
 
-Task 17: CREATE src/Tests/TransMailPanda.Tests/Base/ comprehensive test suite
+Task 17: CREATE src/Tests/TrashMailPanda.Tests/Base/ comprehensive test suite
   - IMPLEMENT: Unit tests for all base provider architecture components
   - FOLLOW pattern: xUnit testing patterns, test organization in src/Tests/
   - NAMING: Test classes mirror source structure, descriptive test method names
@@ -468,7 +468,7 @@ public static IServiceCollection AddEnhancedProviders(this IServiceCollection se
 
 ```yaml
 DEPENDENCY_INJECTION:
-  - enhance: src/TransMailPanda/TransMailPanda/Services/ServiceCollectionExtensions.cs
+  - enhance: src/TrashMailPanda/TrashMailPanda/Services/ServiceCollectionExtensions.cs
   - pattern: "Add base provider registration while maintaining existing services"
 
 CONFIGURATION:
@@ -476,7 +476,7 @@ CONFIGURATION:
   - add: IValidateOptions<T> registration for each provider configuration
 
 STARTUP_ORCHESTRATION:
-  - enhance: src/TransMailPanda/TransMailPanda/Services/StartupOrchestrator.cs
+  - enhance: src/TrashMailPanda/TrashMailPanda/Services/StartupOrchestrator.cs
   - pattern: "Use enhanced health checks from base provider architecture"
 
 MVVM_INTEGRATION:
@@ -494,8 +494,8 @@ SECURITY_AUDIT:
 
 ```bash
 # Run after each file creation - fix before proceeding
-dotnet format src/Shared/TransMailPanda.Shared/Base/ --verify-no-changes
-dotnet build src/Shared/TransMailPanda.Shared/ --configuration Debug
+dotnet format src/Shared/TrashMailPanda.Shared/Base/ --verify-no-changes
+dotnet build src/Shared/TrashMailPanda.Shared/ --configuration Debug
 dotnet build --verbosity normal
 
 # Project-wide validation
@@ -510,11 +510,11 @@ dotnet test --no-build --logger console --verbosity normal
 
 ```bash
 # Test each component as it's created
-dotnet test src/Tests/TransMailPanda.Tests/Base/ --logger console --verbosity detailed
+dotnet test src/Tests/TrashMailPanda.Tests/Base/ --logger console --verbosity detailed
 dotnet test --filter "Category=BaseProvider" --logger console
 
 # Full test suite for affected areas  
-dotnet test src/Tests/TransMailPanda.Tests/ --configuration Debug
+dotnet test src/Tests/TrashMailPanda.Tests/ --configuration Debug
 dotnet test --collect:"XPlat Code Coverage" --results-directory TestResults/
 
 # Coverage validation - require high coverage for base architecture
@@ -528,21 +528,21 @@ dotnet test --collect:"XPlat Code Coverage" --logger console
 
 ```bash
 # Application startup validation
-dotnet run --project src/TransMailPanda/TransMailPanda --configuration Debug &
+dotnet run --project src/TrashMailPanda/TrashMailPanda --configuration Debug &
 sleep 5  # Allow startup time
 
 # Provider health check validation through application logs
 # Verify all providers initialize successfully with base architecture
 
 # Service registration validation
-dotnet run --project src/TransMailPanda/TransMailPanda -- --validate-services
+dotnet run --project src/TrashMailPanda/TrashMailPanda -- --validate-services
 # Custom startup mode to validate DI container registration
 
 # Database connectivity (SQLite provider)
 sqlite3 data/app.db "SELECT name FROM sqlite_master WHERE type='table';" || echo "Database validation failed"
 
 # Configuration validation
-dotnet run --project src/TransMailPanda/TransMailPanda -- --validate-config
+dotnet run --project src/TrashMailPanda/TrashMailPanda -- --validate-config
 # Verify all provider configurations validate successfully
 
 # Expected: All integrations working, providers initialize successfully, no DI errors
@@ -557,26 +557,26 @@ dotnet run --project src/TransMailPanda/TransMailPanda -- --validate-config
 dotnet build --verbosity diagnostic | grep -E "(constraint|generic)" || echo "Generic constraints validated"
 
 # Result pattern validation - verify no exceptions thrown
-dotnet run --project src/Tests/TransMailPanda.Tests -- --filter "Category=ResultPattern" --logger console
+dotnet run --project src/Tests/TrashMailPanda.Tests -- --filter "Category=ResultPattern" --logger console
 
 # Provider lifecycle validation
-dotnet run --project src/TransMailPanda/TransMailPanda -- --test-provider-lifecycle
+dotnet run --project src/TrashMailPanda/TrashMailPanda -- --test-provider-lifecycle
 # Custom validation mode to test Initialize -> HealthCheck -> Shutdown cycle
 
 # Configuration validation testing
-dotnet run --project src/TransMailPanda/TransMailPanda -- --test-invalid-config
+dotnet run --project src/TrashMailPanda/TrashMailPanda -- --test-invalid-config
 # Verify providers handle invalid configurations gracefully with Result pattern
 
 # Avalonia UI integration validation
-dotnet run --project src/TransMailPanda/TransMailPanda --configuration Debug
+dotnet run --project src/TrashMailPanda/TrashMailPanda --configuration Debug
 # Manual UI testing to verify MVVM integration still works with enhanced providers
 
 # Security audit integration validation
-dotnet run --project src/TransMailPanda/TransMailPanda -- --test-audit-logging
+dotnet run --project src/TrashMailPanda/TrashMailPanda -- --test-audit-logging
 # Verify SecurityAuditLogger integration with provider lifecycle events
 
 # Memory and performance validation
-dotnet run --project src/TransMailPanda/TransMailPanda --configuration Release &
+dotnet run --project src/TrashMailPanda/TrashMailPanda --configuration Release &
 # Monitor memory usage and ensure no performance regression
 
 # Expected: All provider patterns work correctly, UI remains responsive, audit logging functional
@@ -590,7 +590,7 @@ dotnet run --project src/TransMailPanda/TransMailPanda --configuration Release &
 - [ ] All tests pass: `dotnet test`
 - [ ] No build errors: `dotnet build --configuration Release`
 - [ ] No formatting issues: `dotnet format --verify-no-changes`
-- [ ] Clean startup: `dotnet run --project src/TransMailPanda/TransMailPanda`
+- [ ] Clean startup: `dotnet run --project src/TrashMailPanda/TrashMailPanda`
 
 ### Feature Validation
 

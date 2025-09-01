@@ -1,10 +1,10 @@
-# TransMail Panda
+# TrashMail Panda
 
-An AI-powered email triage assistant that helps you clean your mailbox safely and efficiently. TransMail Panda is focused on Gmail-first support with extensible architecture for other email providers.
+An AI-powered email triage assistant that helps you clean your mailbox safely and efficiently. TrashMail Panda is focused on Gmail-first support with extensible architecture for other email providers.
 
 ## 🎯 Mission
 
-TransMail Panda helps users clean their mailbox through intelligent automation:
+TrashMail Panda helps users clean their mailbox through intelligent automation:
 
 1. **Fetch** batches of emails from your Gmail account
 2. **Score & explain** junk/spam/dangerous vs. keep classifications
@@ -155,7 +155,7 @@ Smart Inbox Janitor adapts to your preferences:
 ```
 trashmail-panda/
 ├── src/
-│   ├── TransMailPanda/     # Main Avalonia application
+│   ├── TrashMailPanda/     # Main Avalonia application
 │   │   ├── Views/          # Avalonia XAML views
 │   │   ├── ViewModels/     # MVVM view models
 │   │   ├── Models/         # Domain models
@@ -217,7 +217,7 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 ## ⚠️ Disclaimer
 
-TransMail Panda is designed to help manage your email safely. Always review AI suggestions before taking bulk actions. While the app prioritizes safety and reversibility, users are responsible for their email management decisions.
+TrashMail Panda is designed to help manage your email safely. Always review AI suggestions before taking bulk actions. While the app prioritizes safety and reversibility, users are responsible for their email management decisions.
 
 ---
 

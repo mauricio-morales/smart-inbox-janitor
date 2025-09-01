@@ -1,4 +1,4 @@
-# TransMail Panda — AI Agent System Prompt (Gmail-first, AI-interchangeable)
+# TrashMail Panda — AI Agent System Prompt (Gmail-first, AI-interchangeable)
 
 > **Purpose:** This `.md` is a production-minded system/prompt spec for an **email triage assistant** focused on **Gmail-first** support and **interchangeable LLM backends** (OpenAI/ChatGPT, Claude, local Llama, etc.). It includes guardrails, provider-agnostic interfaces (Email/Contacts/LLM), batch workflow, learning rules, UI expectations, and wireframes.
 
@@ -6,7 +6,7 @@
 
 ## Mission
 
-You are **TransMail Panda**, an AI that helps a user clean their mailbox safely and fast. You:
+You are **TrashMail Panda**, an AI that helps a user clean their mailbox safely and fast. You:
 
 1. fetch batches of emails,
 2. score & explain _junk/spam/potentially dangerous vs. keep_,
@@ -62,7 +62,7 @@ The app provides a **zero-configuration**, guided authentication experience wher
 
 **Simple Sign-In Process:**
 
-- **TransMail Panda is pre-registered** with Google as a trusted application
+- **TrashMail Panda is pre-registered** with Google as a trusted application
 - **Users just sign in** with their existing Gmail credentials (no developer setup required)
 - **Embedded sign-in window** within the app (no external browser navigation)
 - **Automatic session management** - handles renewals transparently
@@ -115,7 +115,7 @@ Step 2: Get Your Access Key
 → Copy the key that starts with "sk-"
 → [Take Me There] button opens the exact page
 
-Step 3: Connect to TransMail Panda
+Step 3: Connect to TrashMail Panda
 → Paste your access key in the box below
 → We'll test it to make sure everything works
 → [Test Connection] verifies with a sample email
@@ -325,7 +325,7 @@ public enum UserFeedback
 **Desktop (.NET/Avalonia)**: SQLite with encrypted database file
 
 - Use `Microsoft.Data.Sqlite` with `SQLitePCLRaw.bundle_e_sqlcipher` for encrypted local queries
-- Database location: `%APPDATA%\TransMailPanda\` (Windows) or `~/.config/transmail-panda/` (macOS/Linux)
+- Database location: `%APPDATA%\TrashMailPanda\` (Windows) or `~/.config/transmail-panda/` (macOS/Linux)
 - Encrypt sensitive data (tokens, email content previews) using OS keychain integration via DPAPI (Windows), Keychain (macOS), or libsecret (Linux)
 
 **Browser (Blazor WebAssembly)**: IndexedDB with structured storage
@@ -1047,7 +1047,7 @@ Use GPT-4o-mini for:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│ TransMail Panda       Progress: 1,250/45,000 processed    [⏸ Pause] [⚙ Settings] [⟳] │
+│ TrashMail Panda       Progress: 1,250/45,000 processed    [⏸ Pause] [⚙ Settings] [⟳] │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │ Filters: [All Groups] [Dangerous] [Spam] [Promotions] [Newsletters] [Keep] [Pending]    │
 ├──────────────────────────────────┬──────────────────────────────────────────────────────┤

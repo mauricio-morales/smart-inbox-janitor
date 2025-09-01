@@ -1,4 +1,4 @@
-# TransMail Panda - Product Requirements Document
+# TrashMail Panda - Product Requirements Document
 
 ## Initial Concept
 
@@ -19,7 +19,7 @@ Personal Gmail users face storage and security challenges:
 
 ### Solution Overview
 
-TransMail Panda is a **free, open-source desktop application** that:
+TrashMail Panda is a **free, open-source desktop application** that:
 
 - Fetches email batches from personal Gmail accounts using official APIs
 - Classifies emails using AI into actionable categories (keep/newsletter/promotion/spam/dangerous)
@@ -59,7 +59,7 @@ TransMail Panda is a **free, open-source desktop application** that:
 
 ```mermaid
 graph TD
-    A[User with 14GB Gmail] --> B[Runs TransMail Panda]
+    A[User with 14GB Gmail] --> B[Runs TrashMail Panda]
     B --> C[Reviews 10,000 Emails in 2 Hours]
     C --> D[Deletes 8,000 Junk Emails]
     D --> E[Reclaims 4GB Storage]
@@ -184,7 +184,7 @@ graph TB
 
 ```mermaid
 graph LR
-    A[Complex Email Management] --> B[TransMail Panda]
+    A[Complex Email Management] --> B[TrashMail Panda]
 
     B --> C[Big Obvious Buttons]
     B --> D[Plain English Labels]
@@ -303,7 +303,7 @@ public enum BulkActionType
 
 ```mermaid
 gantt
-    title TransMail Panda Development (Open Source)
+    title TrashMail Panda Development (Open Source)
     dateFormat X
     axisFormat %s
 
@@ -477,4 +477,4 @@ security_concerns:
 - **Google.Apis.Gmail.v1**: Apache 2.0 - Gmail API client
 - **OS Keychain APIs**: Platform-specific - Secure credential storage
 
-This PRD establishes TransMail Panda as a community-focused, privacy-respecting tool that makes Gmail cleanup accessible to everyone while maintaining complete transparency and user control.
+This PRD establishes TrashMail Panda as a community-focused, privacy-respecting tool that makes Gmail cleanup accessible to everyone while maintaining complete transparency and user control.

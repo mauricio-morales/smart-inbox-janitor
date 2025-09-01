@@ -1,13 +1,13 @@
 # Avalonia MVVM Provider Dashboard Patterns
 
 ## Overview
-This document provides comprehensive patterns for building provider status dashboards in TransMail Panda using Avalonia UI 11 and CommunityToolkit.Mvvm.
+This document provides comprehensive patterns for building provider status dashboards in TrashMail Panda using Avalonia UI 11 and CommunityToolkit.Mvvm.
 
 ## Core MVVM Architecture Patterns
 
 ### ViewModelBase Pattern
 ```csharp
-// Based on existing TransMail Panda pattern
+// Based on existing TrashMail Panda pattern
 public class ViewModelBase : ObservableObject
 {
     // Uses CommunityToolkit.Mvvm's ObservableObject for INotifyPropertyChanged
@@ -297,7 +297,7 @@ private async Task InitializeProviders()
 5. **Error Handling**: Use the existing Result<T> pattern for consistent error handling
 6. **Thread Safety**: UI updates from service events must be dispatched to UI thread if needed
 
-## Existing TransMail Panda Patterns to Follow
+## Existing TrashMail Panda Patterns to Follow
 
 - Use `ViewModelBase` as the base class for all ViewModels
 - Follow the `IsLoading` boolean pattern for progress states
