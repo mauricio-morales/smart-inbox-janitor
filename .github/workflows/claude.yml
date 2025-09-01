@@ -58,7 +58,7 @@ jobs:
             Follow Microsoft C# coding standards and use strongly typed return types.
             Ensure all new code has proper error handling using Result<T> pattern.
             Use dependency injection and the provider pattern for services.
-            All providers should implement appropriate interfaces from TransMailPanda.Shared.
+            All providers should implement appropriate interfaces from TrashMailPanda.Shared.
 
           # Optional: Custom environment variables for Claude
           # claude_env: |

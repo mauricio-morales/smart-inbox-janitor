@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TransMail Panda is an AI-powered email triage assistant built as a cross-platform .NET desktop application. It helps users clean their Gmail inbox safely through intelligent classification and bulk operations. The project uses a provider-agnostic architecture with C# throughout.
+TrashMail Panda is an AI-powered email triage assistant built as a cross-platform .NET desktop application. It helps users clean their Gmail inbox safely through intelligent classification and bulk operations. The project uses a provider-agnostic architecture with C# throughout.
 
 **Key Technologies**: Avalonia UI 11, CommunityToolkit.Mvvm, Microsoft.Extensions.Hosting/DI/Logging, Microsoft.Data.Sqlite + SQLitePCLRaw.bundle_e_sqlcipher, Google.Apis.Gmail.v1, System.Text.Json, Polly
 
@@ -12,7 +12,7 @@ TransMail Panda is an AI-powered email triage assistant built as a cross-platfor
 
 ### Essential Daily Commands
 
-- `dotnet run --project src/TransMailPanda` - Start development server with hot reload
+- `dotnet run --project src/TrashMailPanda` - Start development server with hot reload
 - `dotnet build` - Build the application for production
 - `dotnet format --verify-no-changes` - Verify code formatting
 - `dotnet format` - Format code with .NET formatter
@@ -91,7 +91,7 @@ Coordinates provider health checks and app readiness:
 
 ```
 src/
-├── TransMailPanda/         # Main Avalonia application
+├── TrashMailPanda/         # Main Avalonia application
 │   ├── Views/              # Avalonia XAML views
 │   ├── ViewModels/         # MVVM view models
 │   ├── Models/             # Domain models
@@ -217,7 +217,7 @@ When creating new view models:
 
 ## Provider Health Monitoring & Debugging
 
-**IMPORTANT FOR AI AGENTS**: TransMail Panda includes comprehensive provider health monitoring built into the application startup process for debugging and validation.
+**IMPORTANT FOR AI AGENTS**: TrashMail Panda includes comprehensive provider health monitoring built into the application startup process for debugging and validation.
 
 ### Provider Validation Commands
 
@@ -225,11 +225,11 @@ When creating new view models:
 
 ```bash
 # Run application with detailed provider logging
-dotnet run --project src/TransMailPanda --verbosity detailed
+dotnet run --project src/TrashMailPanda --verbosity detailed
 
 # Build and run with configuration validation
 dotnet build --configuration Debug
-dotnet run --project src/TransMailPanda
+dotnet run --project src/TrashMailPanda
 
 # Run tests to validate provider implementations
 dotnet test --logger console --verbosity normal
@@ -269,7 +269,7 @@ DATABASE_PATH=./data/app.db
 
 ```bash
 # 1. Run with detailed logging to see provider initialization
-dotnet run --project src/TransMailPanda --configuration Debug
+dotnet run --project src/TrashMailPanda --configuration Debug
 
 # 2. Test provider health checks
 dotnet test --filter "Category=Integration" --logger console
@@ -278,7 +278,7 @@ dotnet test --filter "Category=Integration" --logger console
 dotnet build --verbosity diagnostic
 
 # 4. Run with specific log levels
-DOTNET_ENVIRONMENT=Development dotnet run --project src/TransMailPanda
+DOTNET_ENVIRONMENT=Development dotnet run --project src/TrashMailPanda
 ```
 
 ### Troubleshooting Provider Issues
@@ -291,7 +291,7 @@ DOTNET_ENVIRONMENT=Development dotnet run --project src/TransMailPanda
 
 **Issue: OAuth setup required**
 
-- Launch the application normally: `dotnet run --project src/TransMailPanda`
+- Launch the application normally: `dotnet run --project src/TrashMailPanda`
 - Complete OAuth flows through the UI
 - Credentials are securely stored using OS keychain
 
@@ -305,7 +305,7 @@ DOTNET_ENVIRONMENT=Development dotnet run --project src/TransMailPanda
 
 The application implements a comprehensive multi-layer security system:
 
-### SecureStorageManager (`src/Shared/TransMailPanda.Shared/Security/SecureStorageManager.cs`)
+### SecureStorageManager (`src/Shared/TrashMailPanda.Shared/Security/SecureStorageManager.cs`)
 
 - **ZERO-PASSWORD Experience**: Uses OS-level security (keychain) for transparent authentication
 - **Hybrid Storage**: Combines OS keychain with encrypted SQLite for optimal security
@@ -313,14 +313,14 @@ The application implements a comprehensive multi-layer security system:
 - **Security Audit Logging**: Comprehensive logging for compliance and monitoring
 - **Recovery Procedures**: Handles corrupted storage scenarios gracefully
 
-### CredentialEncryption (`src/Shared/TransMailPanda.Shared/Security/CredentialEncryption.cs`)
+### CredentialEncryption (`src/Shared/TrashMailPanda.Shared/Security/CredentialEncryption.cs`)
 
 - **OS Keychain Integration**: Platform-specific secure storage (DPAPI, macOS Keychain, libsecret)
 - **Encryption at Rest**: SQLCipher encryption for database storage
 - **Master Key Management**: Derived from system entropy
 - **Token Rotation Service**: Automated credential renewal
 
-### SecurityAuditLogger (`src/Shared/TransMailPanda.Shared/Security/SecurityAuditLogger.cs`)
+### SecurityAuditLogger (`src/Shared/TrashMailPanda.Shared/Security/SecurityAuditLogger.cs`)
 
 - **Operation Logging**: All credential operations are audited
 - **Security Event Tracking**: Failed authentications, unauthorized access attempts
@@ -433,7 +433,7 @@ Key tables/entities:
 
 ### Test Structure
 
-- Unit tests: `src/Tests/TransMailPanda.Tests/`
+- Unit tests: `src/Tests/TrashMailPanda.Tests/`
 - Provider tests: Individual test classes for each provider
 - Integration tests: End-to-end provider integration testing
 - Fixture tests: Test data and mock setups
@@ -521,7 +521,7 @@ Key tables/entities:
 - C# Projects: `.csproj` files with .NET 9.0 target framework
 - Application Configuration: `appsettings.json` and environment-specific variants
 - User Secrets: Microsoft.Extensions.Configuration.UserSecrets for development
-- Solution: `TransMailPanda.sln` with all project references
+- Solution: `TrashMailPanda.sln` with all project references
 
 ### Runtime Configuration
 
@@ -560,7 +560,7 @@ Key tables/entities:
 ```csharp
 // ✅ Correct - MVVM with CommunityToolkit.Mvvm
 [ObservableProperty]
-private string title = "TransMail Panda";
+private string title = "TrashMail Panda";
 
 [RelayCommand]
 private async Task RefreshAsync()

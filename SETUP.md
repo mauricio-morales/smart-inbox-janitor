@@ -1,4 +1,4 @@
-# TransMail Panda - Setup Guide
+# TrashMail Panda - Setup Guide
 
 ## 🚀 Quick Start
 
@@ -29,7 +29,7 @@ dotnet restore
 1. Go to "APIs & Services" > "Credentials"
 2. Click "Create Credentials" > "OAuth 2.0 Client IDs"
 3. Choose "Desktop application"
-4. Set name to "TransMail Panda"
+4. Set name to "TrashMail Panda"
 5. **IMPORTANT**: Add redirect URI: `http://localhost:8080`
 6. Download the credentials JSON or copy the Client ID and Secret
 
@@ -38,7 +38,7 @@ dotnet restore
 1. Copy the example settings file:
 
    ```bash
-   cp src/TransMailPanda/appsettings.example.json src/TransMailPanda/appsettings.json
+   cp src/TrashMailPanda/appsettings.example.json src/TrashMailPanda/appsettings.json
    ```
 
 2. Edit `appsettings.json` and add your Google credentials:
@@ -57,14 +57,14 @@ dotnet restore
 #### Development Mode
 
 ```bash
-dotnet run --project src/TransMailPanda
+dotnet run --project src/TrashMailPanda
 ```
 
 #### Build and Run Production
 
 ```bash
 dotnet build --configuration Release
-dotnet run --project src/TransMailPanda --configuration Release
+dotnet run --project src/TrashMailPanda --configuration Release
 ```
 
 ## 🔧 Configuration Options
@@ -88,7 +88,7 @@ dotnet run --project src/TransMailPanda --configuration Release
 
 ### Available Commands
 
-- `dotnet run --project src/TransMailPanda` - Start development server with hot reload
+- `dotnet run --project src/TrashMailPanda` - Start development server with hot reload
 - `dotnet build` - Build the application
 - `dotnet format --verify-no-changes` - Verify code formatting
 - `dotnet format` - Format code
@@ -99,7 +99,7 @@ dotnet run --project src/TransMailPanda --configuration Release
 
 ```
 src/
-├── TransMailPanda/     # Main Avalonia application
+├── TrashMailPanda/     # Main Avalonia application
 │   ├── Views/          # Avalonia XAML views
 │   ├── ViewModels/     # MVVM view models
 │   └── Services/       # Application services

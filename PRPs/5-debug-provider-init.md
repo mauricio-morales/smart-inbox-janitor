@@ -15,7 +15,7 @@
 
 **Success Definition**:
 
-- AI agents can start app with `dotnet run --project TransMailPanda.Console -- --debug-providers` and monitor console output to validate provider status
+- AI agents can start app with `dotnet run --project TrashMailPanda.Console -- --debug-providers` and monitor console output to validate provider status
 - All provider initialization issues detectable from console output without UI or DevTools
 - Complete provider health validation (tokens, connectivity, configuration) in <30 seconds
 - Structured JSON output suitable for automated analysis and alerting
@@ -35,7 +35,7 @@
 
 **User Journey**:
 
-1. AI agent runs `dotnet run --project TransMailPanda.Console -- --debug-providers --verbose`
+1. AI agent runs `dotnet run --project TrashMailPanda.Console -- --debug-providers --verbose`
 2. Console displays structured initialization progress with timing and status
 3. Each provider shows detailed connection status, token validity, and health metrics
 4. Final summary provides complete system status in JSON format
@@ -77,7 +77,7 @@
 
 ### Success Criteria
 
-- [ ] `dotnet run --project TransMailPanda.Console -- --debug-providers` runs without UI and outputs structured provider status
+- [ ] `dotnet run --project TrashMailPanda.Console -- --debug-providers` runs without UI and outputs structured provider status
 - [ ] Command-line flags control which providers to test and output verbosity level
 - [ ] All provider status (connected, token valid, health check) visible in console output
 - [ ] JSON output format suitable for AI agent parsing and automated decision making

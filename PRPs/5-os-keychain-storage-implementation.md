@@ -8,9 +8,9 @@ description: |
 
 ## Goal
 
-**Feature Goal**: Implement OS-level keychain storage for encrypted credentials in TransMail Panda using .NET platform APIs, providing secure credential management that leverages native platform security features (Windows DPAPI, macOS Keychain Services, Linux libsecret) while maintaining zero-password UX.
+**Feature Goal**: Implement OS-level keychain storage for encrypted credentials in TrashMail Panda using .NET platform APIs, providing secure credential management that leverages native platform security features (Windows DPAPI, macOS Keychain Services, Linux libsecret) while maintaining zero-password UX.
 
-**Deliverable**: Complete implementation of `StoreInOSKeychainAsync()` and `RetrieveFromOSKeychainAsync()` methods in `src/TransMailPanda.Security/CredentialEncryption.cs` with comprehensive error handling, cross-platform support, and full test coverage.
+**Deliverable**: Complete implementation of `StoreInOSKeychainAsync()` and `RetrieveFromOSKeychainAsync()` methods in `src/TrashMailPanda.Security/CredentialEncryption.cs` with comprehensive error handling, cross-platform support, and full test coverage.
 
 **Success Definition**:
 
@@ -22,13 +22,13 @@ description: |
 
 ## User Persona
 
-**Target User**: TransMail Panda users on Windows, macOS, and Linux who need secure credential storage
+**Target User**: TrashMail Panda users on Windows, macOS, and Linux who need secure credential storage
 
 **Use Case**: Application startup requiring OAuth tokens, API keys, and encrypted credentials to be retrieved from secure OS-level storage without user password prompts
 
 **User Journey**:
 
-1. User launches TransMail Panda application
+1. User launches TrashMail Panda application
 2. Application attempts to retrieve stored credentials from OS keychain
 3. OS keychain provides transparent access (no password prompts)
 4. Application uses retrieved credentials for Gmail/OpenAI authentication

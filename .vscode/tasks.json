@@ -124,7 +124,7 @@
       "detail": "Build macOS application bundle",
       "type": "shell",
       "command": "dotnet",
-      "args": ["publish", "src/TransMailPanda/TransMailPanda/TransMailPanda.csproj", "-c", "Release", "-r", "osx-x64", "--self-contained"],
+      "args": ["publish", "src/TrashMailPanda/TrashMailPanda/TrashMailPanda.csproj", "-c", "Release", "-r", "osx-x64", "--self-contained"],
       "group": "build",
       "presentation": {
         "echo": true,
@@ -135,10 +135,10 @@
     },
     {
       "label": "🚀 Run Application",
-      "detail": "Run the TransMail Panda application",
+      "detail": "Run the TrashMail Panda application",
       "type": "shell",
       "command": "dotnet",
-      "args": ["run", "--project", "src/TransMailPanda/TransMailPanda/TransMailPanda.csproj"],
+      "args": ["run", "--project", "src/TrashMailPanda/TrashMailPanda/TrashMailPanda.csproj"],
       "group": "build",
       "presentation": {
         "echo": true,
@@ -155,7 +155,7 @@
       "detail": "Start development with hot reload (watch mode)",
       "type": "shell", 
       "command": "dotnet",
-      "args": ["watch", "run", "--project", "src/TransMailPanda/TransMailPanda/TransMailPanda.csproj"],
+      "args": ["watch", "run", "--project", "src/TrashMailPanda/TrashMailPanda/TrashMailPanda.csproj"],
       "group": {
         "kind": "build",
         "isDefault": false
