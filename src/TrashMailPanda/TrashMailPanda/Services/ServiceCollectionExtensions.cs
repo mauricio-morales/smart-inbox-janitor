@@ -63,14 +63,22 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Add provider services
+    /// Add provider services with deferred initialization
     /// </summary>
     private static IServiceCollection AddProviders(this IServiceCollection services)
     {
-        // Register providers as singletons for the application lifetime
-        services.AddSingleton<IEmailProvider, GmailEmailProvider>();
-        services.AddSingleton<ILLMProvider, OpenAIProvider>();
-        services.AddSingleton<IStorageProvider, SqliteStorageProvider>();
+        // Storage provider can be constructed immediately with default path
+        // but initialization will be deferred until security services are ready
+        services.AddSingleton<IStorageProvider>(serviceProvider =>
+        {
+            var config = serviceProvider.GetRequiredService<IConfiguration>();
+            var databasePath = config.GetSection("StorageProvider:DatabasePath").Value ?? "./data/app.db";
+            var password = config.GetSection("StorageProvider:Password").Value ?? "TrashMailPanda-DefaultKey";
+            return new SqliteStorageProvider(databasePath, password);
+        });
+
+        // Email and LLM providers are NOT registered here
+        // They will be created by application services after secrets are captured through UI
 
         return services;
     }

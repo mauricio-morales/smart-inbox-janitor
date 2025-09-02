@@ -232,12 +232,12 @@
         </ScrollViewer>
 
         <!-- Footer Status Bar -->
-        <Grid Grid.Row="2" 
-              ColumnDefinitions="*,Auto" 
-              Background="#F5F5F5" 
-              Padding="16,8"
-              Margin="0,16,0,0"
-              CornerRadius="4">
+        <Border Grid.Row="2" 
+                Background="#F5F5F5" 
+                Padding="16,8"
+                Margin="0,16,0,0"
+                CornerRadius="4">
+            <Grid ColumnDefinitions="*,Auto">
             
             <!-- Status Message -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
@@ -266,7 +266,8 @@
                               FontSize="10"/>
                 </StackPanel>
             </Button>
-        </Grid>
+            </Grid>
+        </Border>
     </Grid>
 
     <!-- Styles -->
@@ -346,15 +347,6 @@
         <!-- Responsive Grid for smaller screens -->
         <Style Selector="UniformGrid">
             <Setter Property="Columns" Value="3"/>
-        </Style>
-        
-        <!-- Adjust grid columns based on available width -->
-        <Style Selector="UserControl[Width^='6'] UniformGrid">
-            <Setter Property="Columns" Value="2"/>
-        </Style>
-        
-        <Style Selector="UserControl[Width^='4'] UniformGrid">
-            <Setter Property="Columns" Value="1"/>
         </Style>
 
         <!-- Expander styling -->
