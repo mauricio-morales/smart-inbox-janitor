@@ -13,8 +13,8 @@ namespace TrashMailPanda.Services;
 public class ApplicationService : IApplicationService
 {
     private readonly ILogger<ApplicationService> _logger;
-    private readonly IEmailProvider _emailProvider;
-    private readonly ILLMProvider _llmProvider;
+    private readonly IEmailProvider? _emailProvider;
+    private readonly ILLMProvider? _llmProvider;
     private readonly IStorageProvider _storageProvider;
     private readonly ISecureStorageManager _secureStorageManager;
     private readonly IStartupOrchestrator _startupOrchestrator;
@@ -25,15 +25,15 @@ public class ApplicationService : IApplicationService
 
     public ApplicationService(
         ILogger<ApplicationService> logger,
-        IEmailProvider emailProvider,
-        ILLMProvider llmProvider,
         IStorageProvider storageProvider,
         ISecureStorageManager secureStorageManager,
-        IStartupOrchestrator startupOrchestrator)
+        IStartupOrchestrator startupOrchestrator,
+        IEmailProvider? emailProvider = null,
+        ILLMProvider? llmProvider = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _emailProvider = emailProvider ?? throw new ArgumentNullException(nameof(emailProvider));
-        _llmProvider = llmProvider ?? throw new ArgumentNullException(nameof(llmProvider));
+        _emailProvider = emailProvider; // Can be null - will be set after secrets are available
+        _llmProvider = llmProvider; // Can be null - will be set after secrets are available
         _storageProvider = storageProvider ?? throw new ArgumentNullException(nameof(storageProvider));
         _secureStorageManager = secureStorageManager ?? throw new ArgumentNullException(nameof(secureStorageManager));
         _startupOrchestrator = startupOrchestrator ?? throw new ArgumentNullException(nameof(startupOrchestrator));

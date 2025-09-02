@@ -13,8 +13,8 @@ namespace TrashMailPanda.Services;
 public class ProviderStatusService : IProviderStatusService
 {
     private readonly ILogger<ProviderStatusService> _logger;
-    private readonly IEmailProvider _emailProvider;
-    private readonly ILLMProvider _llmProvider;
+    private readonly IEmailProvider? _emailProvider;
+    private readonly ILLMProvider? _llmProvider;
     private readonly IStorageProvider _storageProvider;
 
     private readonly Dictionary<string, ProviderStatus> _providerStatus = new();
@@ -24,13 +24,13 @@ public class ProviderStatusService : IProviderStatusService
 
     public ProviderStatusService(
         ILogger<ProviderStatusService> logger,
-        IEmailProvider emailProvider,
-        ILLMProvider llmProvider,
-        IStorageProvider storageProvider)
+        IStorageProvider storageProvider,
+        IEmailProvider? emailProvider = null,
+        ILLMProvider? llmProvider = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _emailProvider = emailProvider ?? throw new ArgumentNullException(nameof(emailProvider));
-        _llmProvider = llmProvider ?? throw new ArgumentNullException(nameof(llmProvider));
+        _emailProvider = emailProvider; // Can be null - will be set after secrets are available
+        _llmProvider = llmProvider; // Can be null - will be set after secrets are available
         _storageProvider = storageProvider ?? throw new ArgumentNullException(nameof(storageProvider));
     }
 
@@ -69,12 +69,14 @@ public class ProviderStatusService : IProviderStatusService
     {
         _logger.LogDebug("Refreshing provider status for all providers");
 
-        var refreshTasks = new[]
-        {
-            RefreshProviderStatusAsync("Email", _emailProvider),
-            RefreshProviderStatusAsync("LLM", _llmProvider),
-            RefreshProviderStatusAsync("Storage", _storageProvider)
-        };
+        var refreshTasks = new List<Task>();
+        
+        if (_emailProvider != null)
+            refreshTasks.Add(RefreshProviderStatusAsync("Email", _emailProvider));
+        if (_llmProvider != null)
+            refreshTasks.Add(RefreshProviderStatusAsync("LLM", _llmProvider));
+        
+        refreshTasks.Add(RefreshProviderStatusAsync("Storage", _storageProvider));
 
         await Task.WhenAll(refreshTasks);
 
