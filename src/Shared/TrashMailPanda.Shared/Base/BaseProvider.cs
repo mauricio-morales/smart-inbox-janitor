@@ -24,7 +24,7 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
     private readonly List<ProviderError> _recentErrors = new();
     private readonly List<PerformanceDataPoint> _performanceHistory = new();
     private readonly SemaphoreSlim _operationSemaphore;
-    
+
     private ProviderStateInfo _stateInfo = new();
     private TConfig? _configuration;
     private DateTime _startTime = DateTime.UtcNow;
@@ -41,7 +41,7 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _operationSemaphore = new SemaphoreSlim(maxConcurrentOperations, maxConcurrentOperations);
-        
+
         // Initialize metadata
         _metadata[nameof(Version)] = Version;
         _metadata["StartTime"] = _startTime;
@@ -198,7 +198,7 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
             RecordSuccessfulOperation("Provider initialized successfully");
             RecordOperationCompleted(operationName, true, stopwatch.Elapsed);
 
-            _logger.LogInformation("Provider {ProviderName} initialized successfully in {Duration}ms", 
+            _logger.LogInformation("Provider {ProviderName} initialized successfully in {Duration}ms",
                 Name, stopwatch.ElapsedMilliseconds);
 
             return Result<bool>.Success(true);
@@ -262,7 +262,7 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
             UpdateState(ProviderState.Shutdown, "Provider shutdown completed");
             RecordOperationCompleted(operationName, true, stopwatch.Elapsed);
 
-            _logger.LogInformation("Provider {ProviderName} shut down successfully in {Duration}ms", 
+            _logger.LogInformation("Provider {ProviderName} shut down successfully in {Duration}ms",
                 Name, stopwatch.ElapsedMilliseconds);
 
             return Result<bool>.Success(true);
@@ -456,7 +456,7 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
                 _suspensionCancellation?.Cancel();
                 _suspensionCancellation = new CancellationTokenSource();
 
-                _logger.LogInformation("Provider {ProviderName} suspended for {Duration}: {Reason}", 
+                _logger.LogInformation("Provider {ProviderName} suspended for {Duration}: {Reason}",
                     Name, duration.Value, suspensionReason);
 
                 // Auto-resume after the specified duration
@@ -703,7 +703,7 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
 
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var previousState = State;
-        
+
         await _operationSemaphore.WaitAsync(cancellationToken);
 
         try
@@ -711,7 +711,7 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
             UpdateState(ProviderState.Busy, $"Executing operation: {operationName}");
 
             var result = await operation(cancellationToken);
-            
+
             stopwatch.Stop();
 
             if (result.IsSuccess)
@@ -742,9 +742,9 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
             RecordError(error);
             RecordOperationCompleted(operationName, false, stopwatch.Elapsed, error);
             UpdateStatistics(false, stopwatch.Elapsed);
-            
+
             UpdateState(ProviderState.Error, $"Unexpected error in operation {operationName}: {ex.Message}");
-            
+
             return Result<TResult>.Failure(error);
         }
         finally
@@ -831,7 +831,7 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
         lock (_stateLock)
         {
             _recentErrors.Add(error);
-            
+
             // Keep only the last 50 errors
             while (_recentErrors.Count > 50)
             {

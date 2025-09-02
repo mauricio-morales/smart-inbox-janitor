@@ -45,7 +45,7 @@ public class GmailEmailProvider : IEmailProvider
             };
 
             // Use file-based token storage for now (will be enhanced with OS keychain later)
-            var credentialPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
+            var credentialPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "TrashMailPanda", "tokens");
             Directory.CreateDirectory(credentialPath);
 
@@ -76,13 +76,13 @@ public class GmailEmailProvider : IEmailProvider
             throw new InvalidOperationException("Gmail service not initialized. Call ConnectAsync first.");
 
         var request = _service.Users.Messages.List("me");
-        
+
         if (!string.IsNullOrEmpty(options.Query))
             request.Q = options.Query;
-        
+
         if (options.MaxResults.HasValue)
             request.MaxResults = options.MaxResults.Value;
-        
+
         if (!string.IsNullOrEmpty(options.PageToken))
             request.PageToken = options.PageToken;
 
@@ -176,7 +176,7 @@ public class GmailEmailProvider : IEmailProvider
     private static EmailSummary MapToEmailSummary(Message message)
     {
         var headers = message.Payload?.Headers?.ToDictionary(h => h.Name, h => h.Value) ?? new Dictionary<string, string>();
-        
+
         return new EmailSummary
         {
             Id = message.Id,
@@ -197,7 +197,7 @@ public class GmailEmailProvider : IEmailProvider
     private static EmailFull MapToEmailFull(Message message)
     {
         var headers = message.Payload?.Headers?.ToDictionary(h => h.Name, h => h.Value) ?? new Dictionary<string, string>();
-        
+
         var bodyText = GetBodyText(message.Payload);
         var bodyHtml = GetBodyHtml(message.Payload);
         var attachments = GetAttachments(message.Payload);
@@ -224,7 +224,7 @@ public class GmailEmailProvider : IEmailProvider
 
         if (payload.Parts != null)
         {
-            return payload.Parts.Any(part => 
+            return payload.Parts.Any(part =>
                 !string.IsNullOrEmpty(part.Filename) ||
                 (part.Body?.AttachmentId != null));
         }
@@ -317,7 +317,7 @@ public class GmailEmailProvider : IEmailProvider
         {
             // Gmail uses URL-safe base64 encoding
             base64String = base64String.Replace('-', '+').Replace('_', '/');
-            
+
             // Add padding if necessary
             switch (base64String.Length % 4)
             {

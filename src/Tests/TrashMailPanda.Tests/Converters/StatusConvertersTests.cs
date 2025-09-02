@@ -2,6 +2,7 @@ using Avalonia.Media;
 using System.Globalization;
 using TrashMailPanda.Converters;
 using TrashMailPanda.Models;
+using TrashMailPanda.Services;
 using TrashMailPanda.Shared;
 using Xunit;
 
@@ -76,7 +77,7 @@ public class ProviderStatusToColorConverterTests
         // Assert
         Assert.IsType<SolidColorBrush>(result);
         var brush = (SolidColorBrush)result!;
-        
+
         if (isHealthy)
             Assert.Equal(Colors.Green, brush.Color);
         else
@@ -150,9 +151,30 @@ public class ProviderStatusToColorConverterTests
     public void Convert_WithProviderStatus_ShouldReturnCorrectBrush()
     {
         // Arrange
-        var healthyStatus = new ProviderStatus { IsHealthy = true };
-        var setupRequiredStatus = new ProviderStatus { IsHealthy = false, RequiresSetup = true };
-        var errorStatus = new ProviderStatus { IsHealthy = false, RequiresSetup = false };
+        var healthyStatus = new ProviderStatus 
+        { 
+            Name = "Test", 
+            IsHealthy = true, 
+            Status = "Connected", 
+            RequiresSetup = false,
+            IsInitialized = true
+        };
+        var setupRequiredStatus = new ProviderStatus 
+        { 
+            Name = "Test", 
+            IsHealthy = false, 
+            Status = "Setup Required", 
+            RequiresSetup = true,
+            IsInitialized = false
+        };
+        var errorStatus = new ProviderStatus 
+        { 
+            Name = "Test", 
+            IsHealthy = false, 
+            Status = "Error", 
+            RequiresSetup = false,
+            IsInitialized = true
+        };
 
         // Act
         var healthyResult = _converter.Convert(healthyStatus, typeof(IBrush), null, _culture);
@@ -219,14 +241,30 @@ public class ProviderStatusToIconConverterTests
     public void Convert_WithProviderStatus_ShouldReturnCorrectIcon()
     {
         // Arrange
-        var healthyStatus = new ProviderStatus { IsHealthy = true };
-        var setupRequiredStatus = new ProviderStatus 
+        var healthyStatus = new ProviderStatus 
         { 
-            IsHealthy = false, 
+            Name = "Test", 
+            IsHealthy = true, 
+            Status = "Connected", 
+            RequiresSetup = false,
+            IsInitialized = true
+        };
+        var setupRequiredStatus = new ProviderStatus
+        {
+            Name = "Test",
+            IsHealthy = false,
             RequiresSetup = true,
+            IsInitialized = false,
             Status = "OAuth Setup Required"
         };
-        var errorStatus = new ProviderStatus { IsHealthy = false, RequiresSetup = false };
+        var errorStatus = new ProviderStatus 
+        { 
+            Name = "Test", 
+            IsHealthy = false, 
+            Status = "Error", 
+            RequiresSetup = false,
+            IsInitialized = true
+        };
 
         // Act
         var healthyResult = _converter.Convert(healthyStatus, typeof(string), null, _culture);
@@ -277,22 +315,28 @@ public class ProviderStatusToButtonTextConverterTests
     public void Convert_WithProviderStatus_ShouldReturnCorrectButtonText()
     {
         // Arrange
-        var healthyStatus = new ProviderStatus 
-        { 
-            IsHealthy = true, 
-            IsInitialized = true 
+        var healthyStatus = new ProviderStatus
+        {
+            Name = "Test",
+            IsHealthy = true,
+            IsInitialized = true,
+            RequiresSetup = false,
+            Status = "Connected"
         };
-        
-        var setupRequiredStatus = new ProviderStatus 
-        { 
-            IsHealthy = false, 
+
+        var setupRequiredStatus = new ProviderStatus
+        {
+            Name = "Test",
+            IsHealthy = false,
             RequiresSetup = true,
+            IsInitialized = false,
             Status = "OAuth Setup Required"
         };
-        
-        var errorStatus = new ProviderStatus 
-        { 
-            IsHealthy = false, 
+
+        var errorStatus = new ProviderStatus
+        {
+            Name = "Test",
+            IsHealthy = false,
             IsInitialized = true,
             RequiresSetup = false,
             Status = "Connection Failed"

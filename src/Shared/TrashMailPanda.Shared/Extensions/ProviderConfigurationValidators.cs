@@ -59,8 +59,8 @@ public sealed class ProviderSystemConfigurationValidator : IValidateOptions<Prov
             }
         }
 
-        return failures.Count == 0 
-            ? ValidateOptionsResult.Success 
+        return failures.Count == 0
+            ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);
     }
 }
@@ -114,7 +114,7 @@ public sealed class DataAnnotationValidateOptions<TOptions> : IValidateOptions<T
 /// Provides enhanced validation for provider-specific configuration
 /// </summary>
 /// <typeparam name="TProviderConfig">The provider configuration type</typeparam>
-public sealed class ProviderConfigurationValidator<TProviderConfig> : IValidateOptions<TProviderConfig> 
+public sealed class ProviderConfigurationValidator<TProviderConfig> : IValidateOptions<TProviderConfig>
     where TProviderConfig : BaseProviderConfig
 {
     /// <summary>
@@ -144,7 +144,7 @@ public sealed class ProviderConfigurationValidator<TProviderConfig> : IValidateO
             // Perform DataAnnotations validation
             var dataAnnotationValidator = new DataAnnotationValidateOptions<TProviderConfig>();
             var dataAnnotationResult = dataAnnotationValidator.Validate(name, options);
-            
+
             if (!dataAnnotationResult.Succeeded && dataAnnotationResult.Failures != null)
             {
                 failures.AddRange(dataAnnotationResult.Failures);
@@ -158,8 +158,8 @@ public sealed class ProviderConfigurationValidator<TProviderConfig> : IValidateO
             failures.Add($"Configuration validation failed with exception: {ex.Message}");
         }
 
-        return failures.Count == 0 
-            ? ValidateOptionsResult.Success 
+        return failures.Count == 0
+            ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);
     }
 
@@ -198,7 +198,7 @@ public sealed class ProviderConfigurationValidator<TProviderConfig> : IValidateO
 
         // Validate connection strings or URLs if present
         var urlProperties = options.GetType().GetProperties()
-            .Where(p => p.Name.Contains("Url", StringComparison.OrdinalIgnoreCase) || 
+            .Where(p => p.Name.Contains("Url", StringComparison.OrdinalIgnoreCase) ||
                        p.Name.Contains("Endpoint", StringComparison.OrdinalIgnoreCase))
             .Where(p => p.PropertyType == typeof(string));
 

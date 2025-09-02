@@ -16,7 +16,7 @@ public class OpenAIProvider : ILLMProvider
 {
     private ChatClient? _client;
     private readonly string _model = "gpt-4o-mini";
-    
+
     public string Name => "OpenAI";
 
     public async Task InitAsync(LLMAuth auth)
@@ -27,7 +27,7 @@ public class OpenAIProvider : ILLMProvider
         try
         {
             _client = new ChatClient(_model, apiKeyAuth.Key);
-            
+
             // Test the connection with a simple request
             var testMessages = new List<ChatMessage>
             {
@@ -63,7 +63,7 @@ public class OpenAIProvider : ILLMProvider
         {
             var response = await _client.CompleteChatAsync(messages);
             var content = response.Value?.Content?[0]?.Text;
-            
+
             if (string.IsNullOrEmpty(content))
                 throw new InvalidOperationException("OpenAI API returned empty response");
 
@@ -95,7 +95,7 @@ Return only the search query strings, one per line, without explanations.";
         {
             var response = await _client.CompleteChatAsync(messages);
             var content = response.Value?.Content?[0]?.Text;
-            
+
             if (string.IsNullOrEmpty(content))
                 return Array.Empty<string>();
 
@@ -134,7 +134,7 @@ Return JSON with bulk groups containing: id, simpleLabel, emailCount, actionType
         {
             var response = await _client.CompleteChatAsync(messages);
             var content = response.Value?.Content?[0]?.Text;
-            
+
             if (string.IsNullOrEmpty(content))
                 return new GroupOutput { BulkGroups = Array.Empty<BulkGroup>() };
 
@@ -200,7 +200,7 @@ Confidence: 0.0-1.0 numeric score";
     private static string BuildQuerySuggestionPrompt(QueryContext context)
     {
         var prompt = "Suggest Gmail search queries for: ";
-        
+
         if (!string.IsNullOrEmpty(context.Intent))
             prompt += context.Intent;
         else if (context.Keywords?.Any() == true)
@@ -230,7 +230,7 @@ Confidence: 0.0-1.0 numeric score";
         {
             // Extract JSON from response (remove any markdown formatting)
             var json = ExtractJsonFromResponse(jsonResponse);
-            
+
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
 
@@ -245,7 +245,7 @@ Confidence: 0.0-1.0 numeric score";
                 var classificationStr = classification.GetProperty("classification").GetString() ?? "unknown";
                 var likelihoodStr = classification.GetProperty("likelihood").GetString() ?? "unsure";
                 var confidence = classification.TryGetProperty("confidence", out var confidenceElement) ? confidenceElement.GetDouble() : 0.5;
-                
+
                 var reasons = new List<string>();
                 if (classification.TryGetProperty("reasons", out var reasonsElement))
                 {
@@ -259,7 +259,7 @@ Confidence: 0.0-1.0 numeric score";
                 {
                     var typeStr = unsubscribeElement.TryGetProperty("type", out var typeElement) ? typeElement.GetString() : null;
                     var value = unsubscribeElement.TryGetProperty("value", out var valueElement) ? valueElement.GetString() : null;
-                    
+
                     if (Enum.TryParse<UnsubscribeType>(typeStr, true, out var unsubscribeType))
                     {
                         unsubscribeMethod = new UnsubscribeMethod { Type = unsubscribeType, Value = value };
@@ -310,7 +310,7 @@ Confidence: 0.0-1.0 numeric score";
             var root = document.RootElement;
 
             var groups = new List<BulkGroup>();
-            
+
             if (root.TryGetProperty("bulkGroups", out var groupsElement))
             {
                 foreach (var group in groupsElement.EnumerateArray())
@@ -319,7 +319,7 @@ Confidence: 0.0-1.0 numeric score";
                     var label = group.TryGetProperty("simpleLabel", out var labelElement) ? labelElement.GetString() ?? "Unknown group" : "Unknown group";
                     var count = group.TryGetProperty("emailCount", out var countElement) ? countElement.GetInt32() : 0;
                     var actionTypeStr = group.TryGetProperty("actionType", out var actionElement) ? actionElement.GetString() : "Keep";
-                    
+
                     if (Enum.TryParse<BulkActionType>(actionTypeStr, true, out var actionType))
                     {
                         groups.Add(new BulkGroup

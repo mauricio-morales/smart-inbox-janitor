@@ -55,7 +55,7 @@ public partial class WelcomeWizardViewModel : ViewModelBase
     public bool IsGmailStep => CurrentStep == OnboardingStep.GmailSignin;
     public bool IsOpenAiStep => CurrentStep == OnboardingStep.OpenaiSetup;
     public bool IsReadyStep => CurrentStep == OnboardingStep.Ready;
-    
+
     // Button text for proceed button
     public string ProceedButtonText => CurrentStep switch
     {

@@ -69,7 +69,7 @@ public abstract class BaseProviderConfig
     {
         var validationResults = new List<ValidationResult>();
         var validationContext = new ValidationContext(this);
-        
+
         if (!Validator.TryValidateObject(this, validationContext, validationResults, true))
         {
             var errors = string.Join("; ", validationResults.Select(r => r.ErrorMessage));

@@ -70,12 +70,12 @@ public class ProviderStatusService : IProviderStatusService
         _logger.LogDebug("Refreshing provider status for all providers");
 
         var refreshTasks = new List<Task>();
-        
+
         if (_emailProvider != null)
             refreshTasks.Add(RefreshProviderStatusAsync("Email", _emailProvider));
         if (_llmProvider != null)
             refreshTasks.Add(RefreshProviderStatusAsync("LLM", _llmProvider));
-        
+
         refreshTasks.Add(RefreshProviderStatusAsync("Storage", _storageProvider));
 
         await Task.WhenAll(refreshTasks);

@@ -45,17 +45,17 @@ public sealed class ProviderSystemHostedService : IHostedService, IDisposable
         {
             // Get the provider registry
             _providerRegistry = _serviceProvider.GetRequiredService<IProviderRegistry>();
-            
+
             // Register all configured factories
             await RegisterFactoriesAsync(cancellationToken);
-            
+
             // Perform system health check if enabled
             if (_systemConfiguration.EnableHealthChecks)
             {
                 await PerformInitialHealthCheckAsync(cancellationToken);
             }
 
-            _logger.LogInformation("Provider system hosted service started successfully with {FactoryCount} factories", 
+            _logger.LogInformation("Provider system hosted service started successfully with {FactoryCount} factories",
                 _registrationOptions.FactoryRegistrations.Count);
         }
         catch (Exception ex)
@@ -78,7 +78,7 @@ public sealed class ProviderSystemHostedService : IHostedService, IDisposable
             {
                 // Get statistics before shutdown
                 var stats = _providerRegistry.GetStatistics();
-                _logger.LogInformation("Shutting down provider system with {ActiveInstances} active instances", 
+                _logger.LogInformation("Shutting down provider system with {ActiveInstances} active instances",
                     stats.ActiveInstances);
 
                 // Dispose the registry (this will dispose all active providers)
@@ -117,7 +117,7 @@ public sealed class ProviderSystemHostedService : IHostedService, IDisposable
                 var factory = _serviceProvider.GetService(registration.FactoryType) as IProviderFactory;
                 if (factory == null)
                 {
-                    _logger.LogWarning("Factory {FactoryType} is registered for DI but could not be resolved", 
+                    _logger.LogWarning("Factory {FactoryType} is registered for DI but could not be resolved",
                         registration.FactoryType.Name);
                     failedCount++;
                     continue;

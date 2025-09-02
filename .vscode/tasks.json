@@ -106,18 +106,20 @@
       "problemMatcher": []
     },
     {
-      "label": "⚡ Quick Check",
-      "detail": "Fast validation - format check and build",
+      "label": "⚡ Quick CI Check",
+      "detail": "Fast validation - format check, build, and test",
       "type": "shell",
-      "command": "dotnet", 
-      "args": ["build"],
+      "command": "dotnet",
+      "args": ["test", "--configuration", "Release"],
       "group": "build",
       "presentation": {
         "echo": true,
-        "reveal": "silent",
+        "reveal": "always",
         "panel": "shared"
       },
-      "problemMatcher": "$msCompile"
+      "problemMatcher": "$msCompile",
+      "dependsOrder": "sequence",
+      "dependsOn": ["🧪 Code Quality Check"]
     },
     {
       "label": "📱 Build macOS App",

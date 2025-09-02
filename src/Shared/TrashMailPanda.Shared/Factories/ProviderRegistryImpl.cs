@@ -112,7 +112,7 @@ public class ProviderRegistryImpl : IProviderRegistry
                 _factories[factoryName] = factory;
                 _typeToFactoryMap[providerType] = factoryName;
 
-                _logger.LogInformation("Registered factory '{FactoryName}' for provider type '{ProviderType}'", 
+                _logger.LogInformation("Registered factory '{FactoryName}' for provider type '{ProviderType}'",
                     factoryName, providerType.Name);
 
                 OnFactoryRegistered(factoryName, factory);
@@ -164,7 +164,7 @@ public class ProviderRegistryImpl : IProviderRegistry
                     DisposeProviderInstance(entry);
                 }
 
-                _logger.LogInformation("Unregistered factory '{FactoryName}' and disposed {InstanceCount} active instances", 
+                _logger.LogInformation("Unregistered factory '{FactoryName}' and disposed {InstanceCount} active instances",
                     factoryName, instancesToDispose.Count);
 
                 OnFactoryUnregistered(factoryName, factory);
@@ -209,7 +209,7 @@ public class ProviderRegistryImpl : IProviderRegistry
                 return Result<TProvider>.Failure(factoryResult.Error);
 
             var factory = factoryResult.Value;
-            
+
             _logger.LogDebug("Creating provider instance '{InstanceName}' of type '{ProviderType}' using factory '{FactoryName}'",
                 instanceName, providerType.Name, factory.FactoryName);
 
@@ -239,7 +239,7 @@ public class ProviderRegistryImpl : IProviderRegistry
 
             _providerInstances[instanceName] = registryEntry;
 
-            _logger.LogInformation("Successfully created provider instance '{InstanceName}' of type '{ProviderType}'", 
+            _logger.LogInformation("Successfully created provider instance '{InstanceName}' of type '{ProviderType}'",
                 instanceName, providerType.Name);
 
             OnProviderInstanceCreated(instanceName, registryEntry);
@@ -248,7 +248,7 @@ public class ProviderRegistryImpl : IProviderRegistry
         catch (Exception ex)
         {
             var error = ex.ToProviderError($"Failed to create provider instance '{instanceName}' of type '{providerType.Name}'");
-            _logger.LogError(ex, "Error creating provider instance '{InstanceName}' of type '{ProviderType}'", 
+            _logger.LogError(ex, "Error creating provider instance '{InstanceName}' of type '{ProviderType}'",
                 instanceName, providerType.Name);
             return Result<TProvider>.Failure(error);
         }
@@ -288,7 +288,7 @@ public class ProviderRegistryImpl : IProviderRegistry
         if (providerType == null)
             return Result<IProviderFactory>.Failure(new ValidationError("Provider type cannot be null"));
 
-        if (_typeToFactoryMap.TryGetValue(providerType, out var factoryName) && 
+        if (_typeToFactoryMap.TryGetValue(providerType, out var factoryName) &&
             _factories.TryGetValue(factoryName, out var factory))
         {
             return Result<IProviderFactory>.Success(factory);
@@ -448,7 +448,7 @@ public class ProviderRegistryImpl : IProviderRegistry
         try
         {
             entry.IsActive = false;
-            
+
             if (entry.Provider is IDisposable disposable)
             {
                 disposable.Dispose();

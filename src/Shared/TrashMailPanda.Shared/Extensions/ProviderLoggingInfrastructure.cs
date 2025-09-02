@@ -118,16 +118,16 @@ public sealed class ProviderOperationLogger
     public IDisposable LogOperationStart(Type providerType, string operation, Dictionary<string, object>? additionalData = null)
     {
         var data = _enricher.EnrichLogData(providerType, operation, additionalData);
-        
+
         if (_options.EnableStructuredLogging)
         {
             _logger.Log(_options.LogLevel, "Starting provider operation {ProviderType}.{Operation}", providerType.Name, operation);
-            
+
             // Log detailed data at debug level
             _logger.LogDebug("Provider operation start data: {@OperationData}", data);
         }
 
-        return _options.EnablePerformanceLogging 
+        return _options.EnablePerformanceLogging
             ? new ProviderOperationTracker(_logger, _enricher, _options, providerType, operation, data)
             : new NoOpDisposable();
     }
@@ -147,7 +147,7 @@ public sealed class ProviderOperationLogger
 
         if (_options.EnableStructuredLogging)
         {
-            _logger.Log(_options.LogLevel, "Provider operation {ProviderType}.{Operation} completed successfully in {Duration}ms", 
+            _logger.Log(_options.LogLevel, "Provider operation {ProviderType}.{Operation} completed successfully in {Duration}ms",
                 providerType.Name, operation, duration.TotalMilliseconds);
         }
 
@@ -173,7 +173,7 @@ public sealed class ProviderOperationLogger
         data["ErrorType"] = error.GetType().Name;
         data["ErrorMessage"] = error.Message;
 
-        _logger.LogError(error, "Provider operation {ProviderType}.{Operation} failed after {Duration}ms: {ErrorMessage}", 
+        _logger.LogError(error, "Provider operation {ProviderType}.{Operation} failed after {Duration}ms: {ErrorMessage}",
             providerType.Name, operation, duration.TotalMilliseconds, error.Message);
 
         if (_logger.IsEnabled(LogLevel.Debug))
@@ -238,7 +238,7 @@ internal sealed class ProviderOperationTracker : IDisposable
                 // Log performance metrics
                 if (duration.TotalSeconds > 5) // Long-running operation
                 {
-                    _logger.LogWarning("Long-running provider operation {ProviderType}.{Operation} took {Duration}ms", 
+                    _logger.LogWarning("Long-running provider operation {ProviderType}.{Operation} took {Duration}ms",
                         _providerType.Name, _operation, duration.TotalMilliseconds);
                 }
 
@@ -250,7 +250,7 @@ internal sealed class ProviderOperationTracker : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error logging provider operation completion for {ProviderType}.{Operation}", 
+            _logger.LogError(ex, "Error logging provider operation completion for {ProviderType}.{Operation}",
                 _providerType.Name, _operation);
         }
 
@@ -313,9 +313,9 @@ public static class ProviderLoggingExtensions
         Dictionary<string, object>? additionalData = null)
     {
         var providerLogger = logger.CreateProviderLogger();
-        
+
         using var tracker = providerLogger.LogOperationStart(providerType, operation, additionalData);
-        
+
         try
         {
             action();
@@ -345,9 +345,9 @@ public static class ProviderLoggingExtensions
         Dictionary<string, object>? additionalData = null)
     {
         var providerLogger = logger.CreateProviderLogger();
-        
+
         using var tracker = providerLogger.LogOperationStart(providerType, operation, additionalData);
-        
+
         try
         {
             await action();
