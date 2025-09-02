@@ -55,6 +55,13 @@ public partial class WelcomeWizardViewModel : ViewModelBase
     public bool IsGmailStep => CurrentStep == OnboardingStep.GmailSignin;
     public bool IsOpenAiStep => CurrentStep == OnboardingStep.OpenaiSetup;
     public bool IsReadyStep => CurrentStep == OnboardingStep.Ready;
+    
+    // Button text for proceed button
+    public string ProceedButtonText => CurrentStep switch
+    {
+        OnboardingStep.Ready => "Start Using TrashMail Panda",
+        _ => "Next →"
+    };
 
     // Commands
     [RelayCommand]
@@ -151,6 +158,19 @@ public partial class WelcomeWizardViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void Proceed()
+    {
+        if (CurrentStep == OnboardingStep.Ready)
+        {
+            FinishSetup();
+        }
+        else
+        {
+            NextStep();
+        }
+    }
+
+    [RelayCommand]
     private void FinishSetup()
     {
         // This will be handled by the parent window/application
@@ -183,6 +203,7 @@ public partial class WelcomeWizardViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsGmailStep));
         OnPropertyChanged(nameof(IsOpenAiStep));
         OnPropertyChanged(nameof(IsReadyStep));
+        OnPropertyChanged(nameof(ProceedButtonText));
     }
 
     private void ResetStepState()
