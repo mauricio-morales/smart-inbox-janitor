@@ -275,11 +275,60 @@ public class CredentialEncryption : ICredentialEncryption
         }
     }
 
+    [System.Runtime.Versioning.SupportedOSPlatform("osx")]
     private Task<EncryptionResult> InitializeMacOSAsync()
     {
-        // TODO: Implement macOS Keychain Services initialization
-        _logger.LogWarning("macOS Keychain initialization not yet implemented");
-        return Task.FromResult(EncryptionResult.Success()); // Placeholder
+        try
+        {
+            // Test Keychain Services availability by attempting to access keychain
+            var testStatus = MacOSKeychain.SecKeychainGetDefault(out var defaultKeychain);
+            if (testStatus != MacOSKeychain.OSStatus.NoErr)
+            {
+                return Task.FromResult(EncryptionResult.Failure($"Failed to access default keychain: {testStatus}", EncryptionErrorType.ConfigurationError));
+            }
+
+            // Test basic keychain operations
+            const string testService = "TrashMailPanda-Test";
+            const string testAccount = "initialization-test";
+            const string testPassword = "test-credential-data";
+
+            // Try to store a test credential
+            var storeStatus = MacOSKeychain.SecKeychainAddGenericPassword(
+                defaultKeychain,
+                (uint)testService.Length, testService,
+                (uint)testAccount.Length, testAccount,
+                (uint)testPassword.Length, testPassword,
+                IntPtr.Zero);
+
+            if (storeStatus != MacOSKeychain.OSStatus.NoErr && storeStatus != MacOSKeychain.OSStatus.DuplicateItem)
+            {
+                return Task.FromResult(EncryptionResult.Failure($"Failed to test keychain write: {storeStatus}", EncryptionErrorType.ConfigurationError));
+            }
+
+            // Clean up test credential
+            MacOSKeychain.SecKeychainFindGenericPassword(
+                defaultKeychain,
+                (uint)testService.Length, testService,
+                (uint)testAccount.Length, testAccount,
+                out _, out var passwordData,
+                out var itemRef);
+
+            if (itemRef != IntPtr.Zero)
+            {
+                MacOSKeychain.SecKeychainItemDelete(itemRef);
+                MacOSKeychain.CFRelease(itemRef);
+            }
+            if (passwordData != IntPtr.Zero)
+            {
+                MacOSKeychain.SecKeychainItemFreeContent(IntPtr.Zero, passwordData);
+            }
+
+            return Task.FromResult(EncryptionResult.Success());
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(EncryptionResult.Failure($"macOS Keychain initialization failed: {ex.Message}", EncryptionErrorType.ConfigurationError));
+        }
     }
 
     private Task<EncryptionResult> InitializeLinuxAsync()
@@ -327,18 +376,110 @@ public class CredentialEncryption : ICredentialEncryption
         }
     }
 
+    [System.Runtime.Versioning.SupportedOSPlatform("osx")]
     private Task<EncryptionResult<string>> EncryptMacOSAsync(string plainText, string? context)
     {
-        // TODO: Implement macOS Keychain Services encryption
-        _logger.LogWarning("macOS encryption not yet implemented");
-        return Task.FromResult(EncryptionResult<string>.Failure("macOS encryption not implemented", EncryptionErrorType.PlatformNotSupported));
+        try
+        {
+            var service = context ?? "TrashMailPanda";
+            var account = $"credential-{Guid.NewGuid()}";
+
+            var status = MacOSKeychain.SecKeychainGetDefault(out var defaultKeychain);
+            if (status != MacOSKeychain.OSStatus.NoErr)
+            {
+                return Task.FromResult(EncryptionResult<string>.Failure($"Failed to get default keychain: {status}", EncryptionErrorType.EncryptionFailed));
+            }
+
+            // Store the credential in keychain
+            status = MacOSKeychain.SecKeychainAddGenericPassword(
+                defaultKeychain,
+                (uint)service.Length, service,
+                (uint)account.Length, account,
+                (uint)plainText.Length, plainText,
+                IntPtr.Zero);
+
+            if (status != MacOSKeychain.OSStatus.NoErr)
+            {
+                return Task.FromResult(EncryptionResult<string>.Failure($"Failed to store credential in keychain: {status}", EncryptionErrorType.EncryptionFailed));
+            }
+
+            // Return the account identifier as the "encrypted" data
+            var encryptedData = $"{service}:{account}";
+            var encryptedBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(encryptedData));
+
+            return Task.FromResult(EncryptionResult<string>.Success(encryptedBase64));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(EncryptionResult<string>.Failure($"macOS encryption failed: {ex.Message}", EncryptionErrorType.EncryptionFailed));
+        }
     }
 
+    [System.Runtime.Versioning.SupportedOSPlatform("osx")]
     private Task<EncryptionResult<string>> DecryptMacOSAsync(string encryptedText, string? context)
     {
-        // TODO: Implement macOS Keychain Services decryption
-        _logger.LogWarning("macOS decryption not yet implemented");
-        return Task.FromResult(EncryptionResult<string>.Failure("macOS decryption not implemented", EncryptionErrorType.PlatformNotSupported));
+        try
+        {
+            // Decode the service:account identifier
+            var encryptedData = Encoding.UTF8.GetString(Convert.FromBase64String(encryptedText));
+            var parts = encryptedData.Split(':', 2);
+            if (parts.Length != 2)
+            {
+                return Task.FromResult(EncryptionResult<string>.Failure("Invalid encrypted data format", EncryptionErrorType.DecryptionFailed));
+            }
+
+            var service = parts[0];
+            var account = parts[1];
+
+            var status = MacOSKeychain.SecKeychainGetDefault(out var defaultKeychain);
+            if (status != MacOSKeychain.OSStatus.NoErr)
+            {
+                return Task.FromResult(EncryptionResult<string>.Failure($"Failed to get default keychain: {status}", EncryptionErrorType.DecryptionFailed));
+            }
+
+            // Retrieve the credential from keychain
+            status = MacOSKeychain.SecKeychainFindGenericPassword(
+                defaultKeychain,
+                (uint)service.Length, service,
+                (uint)account.Length, account,
+                out var passwordLength,
+                out var passwordData,
+                out var itemRef);
+
+            if (status != MacOSKeychain.OSStatus.NoErr)
+            {
+                return Task.FromResult(EncryptionResult<string>.Failure($"Failed to retrieve credential from keychain: {status}", EncryptionErrorType.DecryptionFailed));
+            }
+
+            try
+            {
+                // Copy the password data to a managed string
+                var passwordBytes = new byte[passwordLength];
+                Marshal.Copy(passwordData, passwordBytes, 0, (int)passwordLength);
+                var plainText = Encoding.UTF8.GetString(passwordBytes);
+
+                // Clear the byte array
+                Array.Clear(passwordBytes, 0, passwordBytes.Length);
+
+                return Task.FromResult(EncryptionResult<string>.Success(plainText));
+            }
+            finally
+            {
+                // Clean up resources
+                if (passwordData != IntPtr.Zero)
+                {
+                    MacOSKeychain.SecKeychainItemFreeContent(IntPtr.Zero, passwordData);
+                }
+                if (itemRef != IntPtr.Zero)
+                {
+                    MacOSKeychain.CFRelease(itemRef);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(EncryptionResult<string>.Failure($"macOS decryption failed: {ex.Message}", EncryptionErrorType.DecryptionFailed));
+        }
     }
 
     private Task<EncryptionResult<string>> EncryptLinuxAsync(string plainText, string? context)
@@ -373,6 +514,59 @@ public class CredentialEncryption : ICredentialEncryption
         }
 
         return features;
+    }
+
+    #endregion
+
+    #region macOS Keychain Services P/Invoke
+
+    [System.Runtime.Versioning.SupportedOSPlatform("osx")]
+    private static class MacOSKeychain
+    {
+        public enum OSStatus : int
+        {
+            NoErr = 0,
+            DuplicateItem = -25299,
+            ItemNotFound = -25300,
+            UserCanceled = -128,
+            AuthFailed = -25293
+        }
+
+        [DllImport("/System/Library/Frameworks/Security.framework/Security", CallingConvention = CallingConvention.Cdecl)]
+        public static extern OSStatus SecKeychainGetDefault(out IntPtr keychain);
+
+        [DllImport("/System/Library/Frameworks/Security.framework/Security", CallingConvention = CallingConvention.Cdecl)]
+        public static extern OSStatus SecKeychainAddGenericPassword(
+            IntPtr keychain,
+            uint serviceNameLength,
+            [MarshalAs(UnmanagedType.LPStr)] string serviceName,
+            uint accountNameLength,
+            [MarshalAs(UnmanagedType.LPStr)] string accountName,
+            uint passwordLength,
+            [MarshalAs(UnmanagedType.LPStr)] string passwordData,
+            IntPtr itemRef);
+
+        [DllImport("/System/Library/Frameworks/Security.framework/Security", CallingConvention = CallingConvention.Cdecl)]
+        public static extern OSStatus SecKeychainFindGenericPassword(
+            IntPtr keychain,
+            uint serviceNameLength,
+            [MarshalAs(UnmanagedType.LPStr)] string serviceName,
+            uint accountNameLength,
+            [MarshalAs(UnmanagedType.LPStr)] string accountName,
+            out uint passwordLength,
+            out IntPtr passwordData,
+            out IntPtr itemRef);
+
+        [DllImport("/System/Library/Frameworks/Security.framework/Security", CallingConvention = CallingConvention.Cdecl)]
+        public static extern OSStatus SecKeychainItemDelete(IntPtr itemRef);
+
+        [DllImport("/System/Library/Frameworks/Security.framework/Security", CallingConvention = CallingConvention.Cdecl)]
+        public static extern OSStatus SecKeychainItemFreeContent(
+            IntPtr attrList,
+            IntPtr data);
+
+        [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void CFRelease(IntPtr cf);
     }
 
     #endregion

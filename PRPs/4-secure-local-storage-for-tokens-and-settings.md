@@ -2,11 +2,11 @@
 
 ## Goal
 
-**Feature Goal**: Implement a comprehensive secure storage system that encrypts Gmail OAuth tokens, OpenAI API keys, and application settings at rest using OS-level credential storage and database encryption, ensuring unauthorized parties cannot access sensitive data even with local file system access.
+**Feature Goal**: Complete the existing comprehensive secure storage system by implementing missing macOS/Linux OS keychain integrations and finalizing token rotation capabilities, ensuring all Gmail OAuth tokens, OpenAI API keys, and application settings are encrypted at rest using OS-level credential storage and SQLite database encryption.
 
-**Deliverable**: Production-ready SecureStorageService integrated into the .NET application with encrypted SQLite database, OS keychain integration (DPAPI, macOS Keychain, libsecret), token rotation capabilities, and comprehensive security audit logging.
+**Deliverable**: Production-ready complete implementation of the existing SecureStorageManager and CredentialEncryption classes with full cross-platform OS keychain integration (DPAPI on Windows, macOS Keychain, libsecret on Linux), automatic token rotation, and comprehensive security audit logging.
 
-**Success Definition**: All sensitive credentials are encrypted at rest, tokens automatically rotate before expiration, security events are logged without exposing secrets, and the system gracefully handles corruption/compromise scenarios with recovery procedures.
+**Success Definition**: All sensitive credentials are encrypted at rest across Windows, macOS, and Linux platforms, tokens automatically rotate before expiration, security events are logged without exposing secrets, and the system gracefully handles corruption/compromise scenarios with recovery procedures.
 
 ## User Persona
 
@@ -32,333 +32,409 @@
 
 ## What
 
-A hybrid secure storage system combining .NET OS-level credential storage APIs (DPAPI, macOS Keychain, libsecret) with encrypted SQLite database storage that automatically manages token lifecycles and provides comprehensive security monitoring.
+Complete the existing hybrid secure storage system that combines .NET OS-level credential storage APIs (DPAPI, macOS Keychain, libsecret) with encrypted SQLite database storage. The system already has comprehensive interfaces and partial implementations - this task focuses on completing the missing macOS/Linux implementations and token rotation features.
 
 **🔑 ZERO-PASSWORD USER EXPERIENCE GUARANTEE**: Users will never be prompted for passwords, passphrases, or secret keys. All encryption is handled automatically using OS-level security features and machine-specific key derivation.
 
 ### Success Criteria
 
-- [ ] Gmail OAuth tokens encrypted and stored in OS keychain using .NET ProtectedData/Keychain APIs (zero user input required)
-- [ ] OpenAI API keys encrypted with AES-256-GCM using System.Security.Cryptography and stored securely (automatic encryption without passwords)
-- [ ] Email metadata and user rules stored in encrypted SQLite database using Microsoft.Data.Sqlite with SQLitePCLRaw.bundle_e_sqlcipher
-- [ ] Automatic token rotation with 5-minute expiration buffer
-- [ ] Security audit logging without exposing actual credentials
+- [ ] Complete macOS Keychain Services integration in CredentialEncryption class (currently stubbed with TODO)
+- [ ] Complete Linux libsecret integration in CredentialEncryption class (currently stubbed with TODO)
+- [ ] Gmail OAuth tokens encrypted and stored using completed cross-platform credential encryption (Windows DPAPI already working)
+- [ ] OpenAI API keys encrypted using completed cross-platform System.Security.Cryptography implementation
+- [ ] Email metadata and user rules stored in encrypted SQLite database using existing Microsoft.Data.Sqlite with SQLitePCLRaw.bundle_e_sqlcipher
+- [ ] Implement automatic token rotation service using existing SecureStorageManager methods
+- [ ] Security audit logging without exposing actual credentials (SecurityAuditLogger already implemented)
 - [ ] Recovery procedures for corrupted storage and compromised credentials
-- [ ] xUnit tests covering encryption, decryption, and rotation scenarios
-- [ ] Integration tests validating end-to-end security across app restarts
+- [ ] xUnit tests covering cross-platform encryption, decryption, and rotation scenarios
+- [ ] Integration tests validating end-to-end security across app restarts on all platforms
 
 ## All Needed Context
 
 ### Context Completeness Check
 
-_This PRP provides everything needed to implement secure credential storage from the current stub implementations, including specific encryption patterns, OS integration methods, database schema, and comprehensive validation procedures._
+_This PRP provides everything needed to complete the existing secure credential storage implementation, including specific cross-platform OS keychain integration patterns, token rotation service implementation, and comprehensive validation procedures for the existing .NET architecture._
 
 ### Documentation & References
 
 ```yaml
 # MUST READ - Include these in your context window
 - url: https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.protecteddata
-  why: .NET ProtectedData API for OS-level credential encryption on Windows (DPAPI)
+  why: .NET ProtectedData API for OS-level credential encryption on Windows (DPAPI) - already implemented
   critical: Cross-platform encryption availability detection and secure string encryption methods
 
+- url: https://developer.apple.com/documentation/security/keychain_services
+  why: macOS Keychain Services API for secure credential storage - needed for macOS implementation
+  critical: Keychain item creation, retrieval, and secure key storage patterns
+
+- url: https://wiki.gnome.org/Projects/Libsecret
+  why: Linux libsecret library for GNOME Keyring integration - needed for Linux implementation
+  critical: Secret storage, retrieval, and platform-specific integration patterns
+
+- file: src/Shared/TrashMailPanda.Shared/Security/ISecureStorageManager.cs
+  why: Complete ISecureStorageManager interface already defined with comprehensive credential operations
+  pattern: SecureStorageResult<T> pattern, async operations, health check integration
+  gotcha: Interface is complete - implementation in SecureStorageManager class needs no changes
+
+- file: src/Shared/TrashMailPanda.Shared/Security/SecureStorageManager.cs
+  why: Fully implemented SecureStorageManager with credential caching and provider integration
+  pattern: Comprehensive logging, error handling, credential key prefixes, audit integration
+  gotcha: Implementation is complete - no changes needed, just use existing methods
+
+- file: src/Shared/TrashMailPanda.Shared/Security/ICredentialEncryption.cs
+  why: Complete ICredentialEncryption interface defining cross-platform encryption contract
+  pattern: EncryptionResult<T> pattern, platform-specific async operations, health checks
+  gotcha: Interface is complete - need to implement macOS/Linux methods in CredentialEncryption class
+
+- file: src/Shared/TrashMailPanda.Shared/Security/CredentialEncryption.cs
+  why: Partial implementation with Windows DPAPI working, macOS/Linux methods stubbed with TODO comments
+  pattern: Platform detection, Windows DPAPI implementation, health check integration
+  gotcha: Windows implementation complete, macOS/Linux methods return "not implemented" errors
+
+- file: src/Providers/Storage/TrashMailPanda.Providers.Storage/SqliteStorageProvider.cs
+  why: Complete SQLite provider with SQLCipher encryption, token storage methods already implemented
+  pattern: Encrypted database schema, token storage/retrieval, transaction management
+  gotcha: Implementation is complete - already handles encrypted tokens and secure storage
+
 - url: https://www.nuget.org/packages/SQLitePCLRaw.bundle_e_sqlcipher/
-  why: SQLCipher integration for .NET with pre-built binaries for all platforms
-  critical: Database encryption setup, connection strings, and performance considerations
-
-- url: https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.aes
-  why: .NET System.Security.Cryptography for AES-256-GCM encryption and key derivation functions
-  critical: Cipher creation, authentication tags, and secure random number generation
-
-- file: src/TrashMailPanda.Core/Interfaces/IStorageProvider.cs
-  why: Complete IStorageProvider interface with encrypted token storage methods already defined
-  pattern: Result<T> pattern for all provider methods, GetEncryptedTokensAsync/SetEncryptedTokenAsync interface
-  gotcha: Must preserve exact interface contracts and error handling patterns
-
-- file: src/TrashMailPanda.Providers/Storage/SQLiteProvider.cs
-  why: Existing implementation that needs to be enhanced with secure storage
-  pattern: Methods return Result<T> with proper error handling
-  gotcha: Must maintain same public interface while implementing actual functionality
-
-- file: src/shared/types/config.types.ts
-  why: SQLiteStorageConfig includes encryptionKey field and connection parameters
-  pattern: Configuration interfaces with readonly properties and optional fields
-  gotcha: Must handle missing encryptionKey and provide secure key generation
-
-- docfile: PRPs/ai_docs/secure_storage_implementation.md
-  why: Comprehensive implementation guide with security patterns and code examples
-  section: Complete technology stack decisions, encryption patterns, and integration requirements
+  why: SQLCipher integration for .NET already configured in project file
+  critical: Database encryption is already set up and working
 ```
 
 ### Current Codebase Tree
 
 ```bash
-smart-inbox-janitor/
+TrashMailPanda/
 ├── src/
-│   ├── main/                     # Electron main process (needs SecureStorageManager)
-│   │   ├── index.ts              # Main process entry point
-│   │   ├── ipc.ts                # IPC handlers (needs secure storage endpoints)
-│   │   └── window.ts             # Window management
-│   ├── preload/                  # Secure IPC bridge (needs credential APIs)
-│   │   └── index.ts              # Preload script for secure communication
-│   ├── shared/
-│   │   ├── types/                # Complete type system (EXISTS)
-│   │   │   ├── storage.types.ts  # StorageProvider interface with encrypted methods
-│   │   │   ├── config.types.ts   # Storage configuration types
-│   │   │   └── index.ts          # Type exports with Result<T> pattern
-│   │   └── schemas/              # Zod validation schemas (EXISTS)
-│   ├── providers/storage/sqlite/ # Current stub implementation (NEEDS REPLACEMENT)
-│   │   └── SQLiteProvider.ts     # Stub returning "not implemented" errors
-│   └── renderer/                 # React application (needs error handling)
-├── __tests__/                    # Test infrastructure (EXISTS)
-│   ├── setup.ts                  # Jest setup with custom matchers
-│   └── (empty directories)       # No actual tests yet - need to create
-├── package.json                  # Dependencies include better-sqlite3, keytar
-└── PRPs/ai_docs/                 # Implementation guidance (EXISTS)
-    └── secure_storage_implementation.md
+│   ├── TrashMailPanda/TrashMailPanda/           # Main Avalonia application (EXISTS)
+│   │   ├── Views/                              # Avalonia XAML views with MVVM
+│   │   ├── ViewModels/                         # MVVM view models with CommunityToolkit.Mvvm
+│   │   └── Services/                           # Application services and orchestration
+│   ├── Shared/TrashMailPanda.Shared/           # Shared types and utilities (COMPLETE)
+│   │   ├── Security/                           # Security infrastructure (MOSTLY COMPLETE)
+│   │   │   ├── ISecureStorageManager.cs        # Complete interface ✓
+│   │   │   ├── SecureStorageManager.cs         # Complete implementation ✓
+│   │   │   ├── ICredentialEncryption.cs        # Complete interface ✓
+│   │   │   ├── CredentialEncryption.cs         # Windows DPAPI ✓, macOS/Linux TODO
+│   │   │   ├── SecurityAuditLogger.cs          # Complete implementation ✓
+│   │   │   └── [20+ security result/model files] # All result types and models ✓
+│   │   ├── Base/                               # IProvider architecture ✓
+│   │   └── Models/                             # Domain models and DTOs ✓
+│   ├── Providers/                              # Provider implementations
+│   │   ├── Email/                              # Gmail provider (in progress)
+│   │   ├── LLM/                                # OpenAI provider (in progress)
+│   │   └── Storage/                            # SQLite provider with encryption (COMPLETE)
+│   │       └── SqliteStorageProvider.cs        # Full SQLCipher implementation ✓
+│   └── Tests/TrashMailPanda.Tests/             # xUnit test infrastructure (EXISTS)
+├── data/app.db                                 # Encrypted SQLite database (EXISTS)
+├── TrashMailPanda.sln                         # .NET solution file ✓
+└── PRPs/ai_docs/                              # Implementation guidance (EXISTS)
 ```
 
-### Desired Codebase Tree with Files to be Added
+### Desired Codebase Tree with Files to be Added/Modified
 
 ```bash
-smart-inbox-janitor/
+TrashMailPanda/
 ├── src/
-│   ├── main/
-│   │   ├── security/             # NEW: Security-focused services
-│   │   │   ├── SecureStorageManager.ts    # NEW: Main secure storage orchestrator
-│   │   │   ├── CredentialEncryption.ts    # NEW: Encryption/decryption utilities
-│   │   │   ├── TokenRotationService.ts    # NEW: Automatic token rotation
-│   │   │   └── SecurityAuditLogger.ts     # NEW: Security event logging
-│   │   └── ipc.ts                # MODIFY: Add secure storage IPC handlers
-│   ├── preload/
-│   │   └── index.ts              # MODIFY: Expose secure storage APIs to renderer
-│   ├── providers/storage/sqlite/
-│   │   ├── SQLiteProvider.ts     # REPLACE: Full implementation with SQLCipher
-│   │   ├── migrations/           # NEW: Database schema migrations
-│   │   │   ├── 001_initial.sql   # NEW: Initial encrypted schema
-│   │   │   └── 002_audit.sql     # NEW: Audit logging tables
-│   │   └── schemas/              # NEW: SQL schema definitions
-│   │       └── encrypted_storage.sql     # NEW: Complete encrypted schema
-│   └── shared/
-│       ├── utils/                # NEW: Shared utilities
-│       │   ├── crypto.utils.ts   # NEW: Crypto helper functions
-│       │   └── validation.utils.ts       # NEW: Security validation utilities
-│       └── types/
-│           └── security.types.ts # NEW: Security-specific type definitions
-├── __tests__/
-│   ├── integration/              # NEW: Integration test suites
-│   │   ├── secure-storage.test.ts        # NEW: End-to-end security tests
-│   │   └── token-rotation.test.ts        # NEW: Token lifecycle tests
-│   ├── unit/                     # NEW: Unit test suites
-│   │   ├── SecureStorageManager.test.ts  # NEW: Storage manager tests
-│   │   ├── CredentialEncryption.test.ts  # NEW: Encryption tests
-│   │   └── SQLiteProvider.test.ts        # NEW: Provider implementation tests
-│   └── fixtures/                 # NEW: Test data and mocks
-│       ├── mock-credentials.ts    # NEW: Mock credential data
-│       └── test-keys.ts           # NEW: Test encryption keys
-└── migrations/                   # NEW: Database migration scripts
-    └── sqlite/                   # NEW: SQLite-specific migrations
-        ├── 001_initial.sql       # NEW: Create encrypted tables
-        └── 002_audit_tables.sql  # NEW: Add audit logging
+│   ├── Shared/TrashMailPanda.Shared/
+│   │   ├── Security/
+│   │   │   ├── CredentialEncryption.cs           # MODIFY: Complete macOS/Linux implementations
+│   │   │   │   └── TODO: Implement EncryptMacOSAsync/DecryptMacOSAsync methods
+│   │   │   │   └── TODO: Implement EncryptLinuxAsync/DecryptLinuxAsync methods
+│   │   │   │   └── TODO: Complete InitializeMacOSAsync/InitializeLinuxAsync methods
+│   │   │   ├── TokenRotationService.cs           # NEW: Automatic token rotation service
+│   │   │   └── ITokenRotationService.cs          # NEW: Token rotation interface
+│   │   └── Utils/                                # NEW: Platform-specific utilities
+│   │       ├── MacOSKeychainHelper.cs            # NEW: macOS Keychain Services wrapper
+│   │       └── LinuxSecretHelper.cs              # NEW: Linux libsecret wrapper
+│   └── Tests/TrashMailPanda.Tests/
+│       ├── Security/                             # NEW: Security test suites
+│       │   ├── CredentialEncryptionTests.cs      # NEW: Cross-platform encryption tests
+│       │   ├── SecureStorageManagerTests.cs      # NEW: Storage manager integration tests
+│       │   ├── TokenRotationServiceTests.cs      # NEW: Token rotation tests
+│       │   └── PlatformSpecificTests.cs          # NEW: OS-specific encryption tests
+│       └── Integration/                          # NEW: Integration test suites
+│           ├── SecureStorageIntegrationTests.cs  # NEW: End-to-end security tests
+│           └── CrossPlatformStorageTests.cs      # NEW: Multi-platform validation tests
+└── Dependencies/                                 # NEW: Platform-specific native libraries
+    ├── macOS/                                    # NEW: macOS Keychain Services bindings
+    │   └── KeychainServices.cs                   # NEW: P/Invoke declarations for Keychain
+    └── Linux/                                    # NEW: Linux libsecret bindings
+        └── LibSecretWrapper.cs                   # NEW: P/Invoke declarations for libsecret
 ```
 
 ### Known Gotchas & Library Quirks
 
-```typescript
-// CRITICAL: Keytar is deprecated - use Electron's safeStorage API instead
-import { safeStorage } from 'electron';
+```csharp
+// CRITICAL: Platform-specific attribute usage for P/Invoke methods
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
+private Task<EncryptionResult<string>> EncryptWindowsAsync(string plainText, string? context)
 
-// CRITICAL: Check safeStorage availability and implement graceful fallback
-if (!safeStorage.isEncryptionAvailable()) {
-  console.warn('OS-level encryption not available, using fallback encryption');
-  // Implement fallback that still requires no user passwords
+// CRITICAL: SQLCipher is already configured and working in SqliteStorageProvider
+// Connection string example from existing code:
+var connectionString = new SqliteConnectionStringBuilder
+{
+    DataSource = _databasePath,
+    Password = _password  // SQLCipher encryption key
+}.ToString();
+
+// GOTCHA: macOS Keychain Services requires specific P/Invoke signatures
+[DllImport("/System/Library/Frameworks/Security.framework/Security")]
+private static extern int SecItemAdd(IntPtr attributes, IntPtr result);
+
+// GOTCHA: Linux libsecret requires GNOME desktop environment
+// Must check for libsecret availability before attempting to use
+private static bool IsLibSecretAvailable() => 
+    RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && File.Exists("/usr/lib/libsecret-1.so");
+
+// CRITICAL: Must preserve existing Result<T> pattern from codebase
+public async Task<EncryptionResult<string>> EncryptAsync(string plainText, string? context = null)
+{
+    if (!_isInitialized)
+    {
+        return EncryptionResult<string>.Failure("Encryption not initialized", EncryptionErrorType.ConfigurationError);
+    }
+    // Implementation continues...
 }
 
-// CRITICAL: SQLCipher requires specific PRAGMA commands before any operations
-db.exec("PRAGMA cipher_compatibility = 4");
-db.exec(`PRAGMA key = '${encryptionKey}'`);
-
-// GOTCHA: better-sqlite3 must be external in Electron-Vite config
-// Already configured in electron.vite.config.ts rollupOptions.external
-
-// CRITICAL: Must preserve Result<T> pattern from existing codebase
-async getEncryptedTokens(): Promise<Result<Record<string, string>>> {
-  try {
-    const tokens = await this.retrieveTokens();
-    return createSuccessResult(tokens);
-  } catch (error) {
-    return createErrorResult(new SecurityError('Token retrieval failed'));
-  }
+// GOTCHA: Secure memory handling in .NET
+public void SecureClear(Span<char> sensitiveData)
+{
+    // Clear sensitive data from memory
+    sensitiveData.Clear();
+    // Additional security: overwrite with random data
+    var random = new Random();
+    for (int i = 0; i < sensitiveData.Length; i++)
+    {
+        sensitiveData[i] = (char)random.Next(32, 127);
+    }
+    sensitiveData.Clear();
 }
 
-// GOTCHA: AES-GCM requires authentication tag handling
-const cipher = crypto.createCipherGCM('aes-256-gcm', key);
-cipher.setAAD(Buffer.from('smart-inbox-janitor')); // Additional authentication data
-const authTag = cipher.getAuthTag(); // Must store with encrypted data
-
-// CRITICAL: IPC security - main process only handles sensitive operations
-// Renderer process never directly accesses encryption keys or raw tokens
+// CRITICAL: All existing security infrastructure is complete
+// Windows DPAPI implementation in CredentialEncryption.cs works perfectly
+// SecureStorageManager.cs has full implementation with caching and audit logging
+// SqliteStorageProvider.cs has complete SQLCipher encryption working
 ```
 
 ## Implementation Blueprint
 
 ### Data Models and Structure
 
-Leveraging existing comprehensive type system with security enhancements:
+Leveraging existing comprehensive security type system - ALL MODELS ALREADY EXIST:
 
-```typescript
-// Existing types from src/shared/types/storage.types.ts - PRESERVE
-interface StorageProvider {
-  getEncryptedTokens(): Promise<Result<Record<string, string>>>;
-  setEncryptedToken(provider: string, encryptedToken: string): Promise<Result<void>>;
-  removeEncryptedToken(provider: string): Promise<Result<void>>;
-  // ... other existing methods
+```csharp
+// Existing complete interfaces from src/Shared/TrashMailPanda.Shared/Security/ - NO CHANGES NEEDED
+public interface ISecureStorageManager
+{
+    Task<SecureStorageResult> StoreCredentialAsync(string key, string credential);
+    Task<SecureStorageResult<string>> RetrieveCredentialAsync(string key);
+    Task<SecureStorageResult> RemoveCredentialAsync(string key);
+    // ... complete interface already implemented
 }
 
-// New security-specific types - ADD
-interface SecureCredential {
-  readonly encryptedData: string;
-  readonly iv: string;
-  readonly authTag: string;
-  readonly algorithm: string;
-  readonly createdAt: Date;
-  readonly expiresAt?: Date;
+public interface ICredentialEncryption
+{
+    Task<EncryptionResult<string>> EncryptAsync(string plainText, string? context = null);
+    Task<EncryptionResult<string>> DecryptAsync(string encryptedText, string? context = null);
+    // ... complete interface already defined
 }
 
-interface SecurityAuditEvent {
-  readonly timestamp: Date;
-  readonly eventType: SecurityEventType;
-  readonly provider: string;
-  readonly success: boolean;
-  readonly metadata: Record<string, unknown>;
+// Existing complete result types - ALL IMPLEMENTED
+public record SecureStorageResult<T>
+{
+    public bool IsSuccess { get; init; }
+    public T? Value { get; init; }
+    public string? ErrorMessage { get; init; }
+    public SecureStorageErrorType ErrorType { get; init; }
 }
 
-type SecurityEventType =
-  | 'credential_store'
-  | 'credential_retrieve'
-  | 'token_rotation'
-  | 'encryption_key_rotation'
-  | 'security_violation';
+public record EncryptionResult<T>
+{
+    public bool IsSuccess { get; init; }
+    public T? Value { get; init; }
+    public string? ErrorMessage { get; init; }
+    public EncryptionErrorType ErrorType { get; init; }
+}
+
+// New interfaces to be added for token rotation
+public interface ITokenRotationService
+{
+    Task<Result<bool>> StartRotationSchedulerAsync();
+    Task<Result<bool>> StopRotationSchedulerAsync();
+    Task<Result<TokenRotationResult>> RotateTokensAsync(string providerName);
+    Task<Result<bool>> IsTokenNearExpiryAsync(string providerName);
+}
+
+public record TokenRotationResult
+{
+    public string ProviderName { get; init; } = string.Empty;
+    public bool WasRotated { get; init; }
+    public DateTime? NewExpiryDate { get; init; }
+    public string? ErrorMessage { get; init; }
+}
 ```
 
 ### Implementation Tasks (ordered by dependencies)
 
 ```yaml
-Task 1: CREATE src/shared/utils/crypto.utils.ts
-  - IMPLEMENT: AES-256-GCM encryption/decryption utilities with proper auth tag handling
-  - FOLLOW pattern: src/shared/types/ (Result<T> return types, readonly interfaces)
-  - NAMING: CryptoUtils class with static methods, descriptive function names
-  - SECURITY: Generate secure random IVs, derive keys from machine characteristics (no user passwords), secure memory handling
-  - UX_CRITICAL: All key derivation must be automatic - never prompt user for passwords
-  - PLACEMENT: Shared utilities directory for use across main/preload processes
+Task 1: CREATE src/Shared/TrashMailPanda.Shared/Utils/MacOSKeychainHelper.cs
+  - IMPLEMENT: macOS Keychain Services P/Invoke wrapper with SecItemAdd, SecItemCopyMatching, SecItemDelete
+  - FOLLOW pattern: src/Shared/TrashMailPanda.Shared/Security/CredentialEncryption.cs (platform detection and error handling)
+  - NAMING: MacOSKeychainHelper class with static methods, descriptive P/Invoke function names
+  - SECURITY: Use kSecAttrService and kSecAttrAccount for keychain item identification
+  - PLATFORM: Apply [SupportedOSPlatform("osx")] attribute for macOS-specific code
+  - PLACEMENT: Shared utilities directory for use by CredentialEncryption
 
-Task 2: CREATE src/main/security/CredentialEncryption.ts
-  - IMPLEMENT: High-level credential encryption service using CryptoUtils
-  - FOLLOW pattern: PRPs/ai_docs/secure_storage_implementation.md (encryption patterns)
-  - NAMING: CredentialEncryption class with encryptCredential/decryptCredential methods
-  - DEPENDENCIES: Import CryptoUtils from Task 1, use Electron safeStorage for automatic key storage
-  - UX_CRITICAL: Must gracefully handle safeStorage unavailability with automatic fallback (no user prompts)
-  - PLACEMENT: Main process security directory
+Task 2: CREATE src/Shared/TrashMailPanda.Shared/Utils/LinuxSecretHelper.cs
+  - IMPLEMENT: Linux libsecret P/Invoke wrapper with secret_store, secret_retrieve, secret_clear functions
+  - FOLLOW pattern: src/Shared/TrashMailPanda.Shared/Security/CredentialEncryption.cs (platform detection and error handling)
+  - NAMING: LinuxSecretHelper class with static methods, descriptive P/Invoke function names
+  - SECURITY: Use secret schemas for GNOME keyring integration
+  - PLATFORM: Apply [SupportedOSPlatform("linux")] attribute for Linux-specific code
+  - PLACEMENT: Shared utilities directory for use by CredentialEncryption
 
-Task 3: CREATE src/main/security/SecurityAuditLogger.ts
-  - IMPLEMENT: Security event logging without exposing sensitive data
-  - FOLLOW pattern: src/shared/types/storage.types.ts (ClassificationHistoryItem structure)
-  - NAMING: SecurityAuditLogger class with logSecurityEvent method
-  - DEPENDENCIES: Use existing StorageProvider interface for persistence
-  - PLACEMENT: Main process security directory
+Task 3: MODIFY src/Shared/TrashMailPanda.Shared/Security/CredentialEncryption.cs
+  - IMPLEMENT: Complete macOS implementation in EncryptMacOSAsync, DecryptMacOSAsync, InitializeMacOSAsync methods
+  - FOLLOW pattern: existing Windows DPAPI implementation in same file
+  - DEPENDENCIES: MacOSKeychainHelper from Task 1
+  - REPLACE: TODO placeholders with full macOS Keychain Services integration
+  - SECURITY: Use existing context parameter for keychain item identification
 
-Task 4: REPLACE src/providers/storage/sqlite/SQLiteProvider.ts
-  - IMPLEMENT: Full SQLiteProvider with SQLCipher encryption replacing stub implementation
-  - FOLLOW pattern: src/shared/types/storage.types.ts (exact interface implementation)
-  - NAMING: Preserve existing class name and method signatures exactly
-  - DEPENDENCIES: @journeyapps/sqlcipher, CredentialEncryption from Task 2
-  - CRITICAL: Must return Result<T> types matching existing interface contracts
+Task 4: MODIFY src/Shared/TrashMailPanda.Shared/Security/CredentialEncryption.cs
+  - IMPLEMENT: Complete Linux implementation in EncryptLinuxAsync, DecryptLinuxAsync, InitializeLinuxAsync methods
+  - FOLLOW pattern: existing Windows DPAPI implementation in same file
+  - DEPENDENCIES: LinuxSecretHelper from Task 2
+  - REPLACE: TODO placeholders with full libsecret integration
+  - SECURITY: Handle libsecret availability detection and graceful fallback
 
-Task 5: CREATE src/main/security/SecureStorageManager.ts
-  - IMPLEMENT: Main orchestrator for secure credential operations
-  - FOLLOW pattern: PRPs/ai_docs/secure_storage_implementation.md (hybrid storage architecture)
-  - NAMING: SecureStorageManager class with provider-specific methods
-  - DEPENDENCIES: CredentialEncryption, SecurityAuditLogger, SQLiteProvider from previous tasks
-  - PLACEMENT: Main process security directory
+Task 5: CREATE src/Shared/TrashMailPanda.Shared/Security/ITokenRotationService.cs
+  - IMPLEMENT: Token rotation service interface with scheduling and provider-specific methods
+  - FOLLOW pattern: existing ISecureStorageManager.cs interface structure
+  - NAMING: ITokenRotationService interface with Result<T> return types
+  - METHODS: StartRotationSchedulerAsync, StopRotationSchedulerAsync, RotateTokensAsync, IsTokenNearExpiryAsync
+  - PLACEMENT: Security interfaces directory
 
-Task 6: CREATE src/main/security/TokenRotationService.ts
-  - IMPLEMENT: Automatic token rotation with scheduling and failure handling
-  - FOLLOW pattern: PRPs/ai_docs/secure_storage_implementation.md (rotation service patterns)
-  - NAMING: TokenRotationService class with start/stop rotation scheduler
-  - DEPENDENCIES: SecureStorageManager from Task 5, Gmail API refresh logic
-  - PLACEMENT: Main process security directory
+Task 6: CREATE src/Shared/TrashMailPanda.Shared/Security/TokenRotationService.cs
+  - IMPLEMENT: Token rotation service implementation with Timer-based scheduling
+  - FOLLOW pattern: src/Shared/TrashMailPanda.Shared/Security/SecureStorageManager.cs (logging, error handling)
+  - DEPENDENCIES: ISecureStorageManager, ICredentialEncryption, ILogger<TokenRotationService>
+  - NAMING: TokenRotationService class implementing ITokenRotationService interface
+  - PLACEMENT: Security implementations directory
 
-Task 7: MODIFY src/main/ipc.ts
-  - INTEGRATE: Add IPC handlers for secure storage operations
-  - FIND pattern: existing IPC handler structure in current file
-  - ADD: secure-storage:* channels with input validation and error handling
-  - PRESERVE: Existing IPC handlers and registration patterns
-  - SECURITY: Validate all renderer requests, sanitize error messages
+Task 7: CREATE src/Tests/TrashMailPanda.Tests/Security/CredentialEncryptionTests.cs
+  - IMPLEMENT: xUnit tests for cross-platform credential encryption with platform-specific test methods
+  - FOLLOW pattern: existing test structure in TrashMailPanda.Tests project
+  - NAMING: CredentialEncryptionTests class with [Fact] and [Theory] attributes
+  - COVERAGE: Windows DPAPI, macOS Keychain, Linux libsecret encryption/decryption roundtrips
+  - PLATFORM: Use conditional compilation for platform-specific tests
 
-Task 8: MODIFY src/preload/index.ts
-  - INTEGRATE: Expose secure storage APIs to renderer process
-  - FIND pattern: existing electronAPI structure in current file
-  - ADD: secureStorage object with typed method signatures
-  - PRESERVE: Existing API surface and type safety
-  - SECURITY: Never expose encryption keys or raw credential operations
+Task 8: CREATE src/Tests/TrashMailPanda.Tests/Security/SecureStorageManagerTests.cs
+  - IMPLEMENT: xUnit tests for SecureStorageManager integration with mocked dependencies
+  - FOLLOW pattern: existing test structure with Mock<T> usage if available
+  - DEPENDENCIES: Test existing complete SecureStorageManager implementation
+  - COVERAGE: All public methods, credential caching, audit logging verification
+  - PLACEMENT: Security test directory
 
-Task 9: CREATE __tests__/unit/CredentialEncryption.test.ts
-  - IMPLEMENT: Unit tests for encryption/decryption with various scenarios
-  - FOLLOW pattern: __tests__/setup.ts (custom Jest matchers, Result<T> validation)
-  - NAMING: describe blocks by functionality, test names describe specific scenarios
-  - COVERAGE: Happy path, error cases, key rotation, tampered data detection
-  - PLACEMENT: Unit tests directory
+Task 9: CREATE src/Tests/TrashMailPanda.Tests/Security/TokenRotationServiceTests.cs
+  - IMPLEMENT: xUnit tests for token rotation service with timer scheduling
+  - FOLLOW pattern: existing async test patterns in TrashMailPanda.Tests
+  - DEPENDENCIES: Mock ISecureStorageManager, test timer scheduling
+  - COVERAGE: Rotation scheduling, provider-specific rotation, expiry detection
+  - PLACEMENT: Security test directory
 
-Task 10: CREATE __tests__/unit/SecureStorageManager.test.ts
-  - IMPLEMENT: Unit tests for storage manager with mocked dependencies
-  - FOLLOW pattern: __tests__/setup.ts (toBeValidResult matcher usage)
-  - NAMING: Test each public method with success and failure scenarios
-  - DEPENDENCIES: Mock CredentialEncryption, SecurityAuditLogger, SQLiteProvider
-  - COVERAGE: All public methods, error propagation, audit logging verification
+Task 10: CREATE src/Tests/TrashMailPanda.Tests/Integration/SecureStorageIntegrationTests.cs
+  - IMPLEMENT: End-to-end integration tests for complete security system
+  - FOLLOW pattern: existing integration test structure in TrashMailPanda.Tests
+  - DEPENDENCIES: Real implementations with test database, cross-platform validation
+  - COVERAGE: Full credential lifecycle, app restart persistence, corruption recovery
+  - PLACEMENT: Integration test directory
 
-Task 11: CREATE __tests__/integration/secure-storage.test.ts
-  - IMPLEMENT: End-to-end integration tests across app restart scenarios
-  - FOLLOW pattern: __tests__/setup.ts (test environment configuration)
-  - NAMING: Integration test scenarios describing full user workflows
-  - DEPENDENCIES: Real SQLiteProvider with test database, mocked Electron APIs
-  - COVERAGE: Store/retrieve credentials, app restart persistence, corruption recovery
+Task 11: MODIFY src/TrashMailPanda/TrashMailPanda/Services/ServiceCollectionExtensions.cs
+  - INTEGRATE: Register ITokenRotationService and TokenRotationService in DI container
+  - FIND pattern: existing security service registrations in same file
+  - ADD: services.AddSingleton<ITokenRotationService, TokenRotationService>() with proper lifetime
+  - PRESERVE: Existing service registrations and DI configuration
+  - VALIDATION: Ensure all dependencies are registered before dependent services
 
-Task 12: CREATE migrations/sqlite/001_initial.sql
-  - IMPLEMENT: Initial encrypted database schema for email metadata and credentials
-  - FOLLOW pattern: src/shared/types/storage.types.ts (table structures matching interfaces)
-  - NAMING: SQL table and column names using snake_case convention
-  - ENCRYPTION: Design schema for encrypted storage of sensitive fields
-  - PLACEMENT: Database migration scripts directory
+Task 12: VALIDATE Complete System Integration
+  - VERIFY: All platforms (Windows, macOS, Linux) can encrypt/decrypt credentials successfully
+  - TEST: Full application startup with credential storage and retrieval
+  - CONFIRM: Token rotation service integrates with existing SecureStorageManager
+  - VALIDATE: All existing security infrastructure continues to work without modifications
 ```
 
 ### Implementation Patterns & Key Details
 
-```typescript
-// Secure Storage Manager Pattern - Core orchestrator with ZERO user passwords
-export class SecureStorageManager {
-  constructor(
-    private credentialEncryption: CredentialEncryption,
-    private sqliteProvider: SQLiteProvider,
-    private auditLogger: SecurityAuditLogger,
-  ) {}
-
-  async storeGmailTokens(tokens: GmailTokens): Promise<Result<void>> {
-    try {
-      // ZERO-PASSWORD: Use OS keychain for tokens via Electron safeStorage (automatic)
-      const encryptedTokens = await this.credentialEncryption.encryptTokens(tokens);
-      const result = await this.sqliteProvider.setEncryptedToken('gmail', encryptedTokens);
-
-      await this.auditLogger.logSecurityEvent({
-        eventType: 'credential_store',
-        provider: 'gmail',
-        success: result.success,
-        metadata: { tokenExpiryDate: tokens.expiryDate },
-      });
-
-      return result;
-    } catch (error) {
-      return createErrorResult(new SecurityError('Failed to store Gmail tokens'));
+```csharp
+// macOS Keychain Services P/Invoke pattern - CRITICAL implementation detail
+[SupportedOSPlatform("osx")]
+private Task<EncryptionResult<string>> EncryptMacOSAsync(string plainText, string? context)
+{
+    try
+    {
+        // PATTERN: Create CFDictionary for keychain attributes
+        var serviceBytes = Encoding.UTF8.GetBytes("TrashMailPanda");
+        var accountBytes = Encoding.UTF8.GetBytes(context ?? "default");
+        var secretBytes = Encoding.UTF8.GetBytes(plainText);
+        
+        // GOTCHA: Must use CFDictionary with specific kSec* constants
+        var attributes = NSDictionary.FromObjectsAndKeys(
+            new object[] { serviceBytes, accountBytes, secretBytes },
+            new object[] { "kSecAttrService", "kSecAttrAccount", "kSecValueData" }
+        );
+        
+        var status = SecItemAdd(attributes.Handle, IntPtr.Zero);
+        // CRITICAL: Handle keychain errors properly with OSStatus codes
+        
+        return Task.FromResult(EncryptionResult<string>.Success("keychain_reference"));
     }
-  }
+    catch (Exception ex)
+    {
+        return Task.FromResult(EncryptionResult<string>.Failure($"macOS encryption failed: {ex.Message}", EncryptionErrorType.EncryptionFailed));
+    }
+}
+
+// Linux libsecret P/Invoke pattern - CRITICAL implementation detail
+[SupportedOSPlatform("linux")]
+private Task<EncryptionResult<string>> EncryptLinuxAsync(string plainText, string? context)
+{
+    try
+    {
+        // PATTERN: Check libsecret availability before attempting operations
+        if (!IsLibSecretAvailable())
+        {
+            return Task.FromResult(EncryptionResult<string>.Failure("libsecret not available", EncryptionErrorType.PlatformNotSupported));
+        }
+        
+        // GOTCHA: Must create schema before storing secrets
+        var schema = CreateSecretSchema();
+        var service = "TrashMailPanda";
+        var account = context ?? "default";
+        
+        // CRITICAL: Use secret_store_sync for synchronous operation
+        var result = secret_store_sync(schema, service, account, plainText, IntPtr.Zero);
+        
+        return Task.FromResult(EncryptionResult<string>.Success("libsecret_reference"));
+    }
+    catch (Exception ex)
+    {
+        return Task.FromResult(EncryptionResult<string>.Failure($"Linux encryption failed: {ex.Message}", EncryptionErrorType.EncryptionFailed));
+    }
+}
+
+// Existing SecureStorageManager - NO CHANGES NEEDED (already complete)
+public class SecureStorageManager : ISecureStorageManager
+{
+    // PATTERN: Complete implementation already exists with credential caching
+    // GOTCHA: Implementation is production-ready - just use the existing methods
+    // CRITICAL: StoreGmailTokenAsync and RetrieveGmailTokenAsync helpers already implemented
+    
+    public async Task<SecureStorageResult> StoreGmailTokenAsync(string tokenType, string token)
+    {
+        var key = $"{GmailTokenPrefix}{tokenType}";
+        return await StoreCredentialAsync(key, token); // Uses existing complete implementation
+    }
 }
 
 // SQLCipher Integration Pattern - Replace stub with encrypted storage
@@ -457,25 +533,25 @@ ipcMain.handle('secure-storage:store-gmail-tokens', async (event, tokens: GmailT
 ### Integration Points
 
 ```yaml
-ELECTRON_MAIN_PROCESS:
-  - integrate: SecureStorageManager as singleton service
-  - startup: Initialize encrypted storage during app initialization
-  - ipc: Add secure storage channels with validation
+AVALONIA_APPLICATION:
+  - integrate: ISecureStorageManager and ICredentialEncryption as singleton services
+  - startup: Initialize cross-platform encrypted storage during app initialization via StartupOrchestrator
+  - dependency_injection: Register services in ServiceCollectionExtensions.cs
 
-PRELOAD_BRIDGE:
-  - expose: Secure storage APIs to renderer via contextBridge
-  - security: Never expose raw encryption operations or keys
-  - typing: Strongly typed interfaces matching main process
+PROVIDER_SYSTEM:
+  - enhance: Use existing SecureStorageManager in Gmail and OpenAI providers for credential management
+  - preserve: Existing IProvider interface contracts and Result<T> patterns
+  - integrate: TokenRotationService with existing provider health check system
 
 SQLITE_PROVIDER:
-  - replace: Current stub implementation with SQLCipher integration
-  - preserve: Exact interface contracts and Result<T> patterns
-  - enhance: Add encrypted metadata storage and audit logging
+  - maintain: Existing complete SqliteStorageProvider.cs with SQLCipher integration
+  - preserve: Current encrypted token storage methods (GetEncryptedTokensAsync/SetEncryptedTokenAsync)
+  - validate: Database encryption continues to work with cross-platform credential system
 
-ELECTRON_SAFESTORAGE:
-  - integrate: OS-level credential storage for master keys
-  - fallback: Implement secure fallback for unsupported platforms
-  - validation: Check encryption availability during startup
+CROSS_PLATFORM_ENCRYPTION:
+  - windows: Continue using existing working Windows DPAPI implementation
+  - macos: Add macOS Keychain Services via P/Invoke to complete CredentialEncryption
+  - linux: Add Linux libsecret integration via P/Invoke to complete CredentialEncryption
 ```
 
 ## Validation Loop
@@ -484,68 +560,69 @@ ELECTRON_SAFESTORAGE:
 
 ```bash
 # Run after each file creation - fix before proceeding
-npm run lint                         # ESLint with auto-fix for new security files
-npm run type-check                   # TypeScript compilation including new types
-npm run format                       # Prettier formatting for consistent style
+dotnet build                         # Full solution build with all new cross-platform code
+dotnet format --verify-no-changes    # Verify code formatting meets project standards  
+dotnet restore                       # Restore NuGet packages for any new dependencies
 
 # Security-specific validation
-npm run test:types                   # Validate type-only imports and interfaces
-npm run test:schemas                 # Validate Zod schemas if added
+dotnet build --configuration Release # Release build validation for deployment
+dotnet test --logger console --verbosity normal --filter Category=Security # Security-specific unit tests
 
-# Expected: Zero errors. Security code must have perfect type safety.
+# Expected: Zero errors. Security code must compile on all target platforms.
 ```
 
 ### Level 2: Unit Tests (Component Validation)
 
 ```bash
 # Test each security component as created
-npm run test -- __tests__/unit/CredentialEncryption.test.ts
-npm run test -- __tests__/unit/SecureStorageManager.test.ts
-npm run test -- __tests__/unit/SQLiteProvider.test.ts
+dotnet test --filter "FullyQualifiedName~CredentialEncryptionTests"
+dotnet test --filter "FullyQualifiedName~SecureStorageManagerTests"  
+dotnet test --filter "FullyQualifiedName~TokenRotationServiceTests"
 
-# Test encryption/decryption roundtrips
-npm run test:encryption              # Custom script for crypto validation
+# Test cross-platform encryption/decryption roundtrips
+dotnet test --filter "Category=CrossPlatform" --logger console
+dotnet test --filter "FullyQualifiedName~PlatformSpecificTests"
 
-# Expected: All tests pass with 100% coverage for security components
+# Expected: All tests pass with platform-specific conditional compilation working correctly
 ```
 
 ### Level 3: Integration Testing (System Validation)
 
 ```bash
 # End-to-end security validation
-npm run test -- __tests__/integration/secure-storage.test.ts
+dotnet test --filter "FullyQualifiedName~SecureStorageIntegrationTests"
+dotnet test --filter "FullyQualifiedName~CrossPlatformStorageTests"
 
 # Test app lifecycle with secure storage
-npm run dev &                        # Start app in development
-sleep 5                              # Allow startup
-# Simulate credential storage and app restart cycle
-npm run test:integration:restart     # Custom test for restart persistence
+dotnet run --project src/TrashMailPanda/TrashMailPanda &   # Start app in development
+sleep 5                                                    # Allow startup
+# Verify credential storage and app restart persistence work correctly
+dotnet test --filter "Category=Integration" --logger console
 
-# Database encryption validation
-npm run test:sqlcipher               # Verify database encryption is active
+# Database encryption validation - SQLCipher already working in existing SqliteStorageProvider
 
-# Expected: All credentials persist across restarts, encryption verified
+# Expected: All credentials persist across restarts, cross-platform encryption verified
 ```
 
 ### Level 4: Security & Compliance Validation
 
 ```bash
 # Security scanning
-npm audit --audit-level=moderate     # Check for known vulnerabilities
-npm run lint:security                # Security-focused ESLint rules
+dotnet list package --vulnerable     # Check for vulnerable NuGet packages
+dotnet tool run security-scan --project src/ # Security-focused static analysis if available
 
-# Encryption validation
-npm run test:crypto                  # Validate encryption strength and patterns
-npm run test:key-rotation            # Test automatic key rotation
+# Cross-platform encryption validation  
+dotnet test --filter "Category=Encryption" --logger console # Validate encryption on all platforms
+dotnet test --filter "FullyQualifiedName~TokenRotationServiceTests" # Test automatic token rotation
 
-# Compliance checks
-npm run test:audit-logging           # Verify security events are logged
-npm run test:gdpr-compliance         # Test data deletion capabilities
+# Compliance and audit checks
+dotnet test --filter "Category=Audit" --logger console # Verify security events are logged
+dotnet test --filter "Category=GDPR" --logger console  # Test data deletion capabilities if applicable
 
 # Performance impact assessment
-npm run test:crypto-performance      # Measure encryption overhead
+dotnet test --filter "Category=Performance" --logger console # Measure encryption overhead
 
-# Expected: No security vulnerabilities, all compliance tests pass
+# Expected: No security vulnerabilities, all compliance tests pass, cross-platform functionality verified
 ```
 
 ## Final Validation Checklist
@@ -553,62 +630,63 @@ npm run test:crypto-performance      # Measure encryption overhead
 ### Technical Validation
 
 - [ ] All 4 validation levels completed successfully
-- [ ] Encryption/decryption roundtrip tests pass: `npm run test:encryption`
-- [ ] Database encryption verified: `npm run test:sqlcipher`
-- [ ] Token rotation works automatically: `npm run test:key-rotation`
-- [ ] App restart preserves credentials: `npm run test:integration:restart`
-- [ ] Security audit logging complete: `npm run test:audit-logging`
+- [ ] Cross-platform encryption/decryption roundtrip tests pass: `dotnet test --filter "Category=CrossPlatform"`
+- [ ] Database encryption continues to work: existing SqliteStorageProvider with SQLCipher verified
+- [ ] Token rotation works automatically: `dotnet test --filter "FullyQualifiedName~TokenRotationServiceTests"`
+- [ ] App restart preserves credentials: `dotnet test --filter "Category=Integration"`
+- [ ] Security audit logging works: existing SecurityAuditLogger integration verified
 
 ### Feature Validation
 
-- [ ] Gmail OAuth tokens encrypted in OS keychain using Electron safeStorage
-- [ ] OpenAI API keys encrypted with AES-256-GCM and rotated automatically
-- [ ] Email metadata stored in encrypted SQLite database with SQLCipher
-- [ ] Security events logged without exposing actual credentials
-- [ ] Users never prompted for passwords, passphrases, or master keys during any operation
-- [ ] Cross-platform compatibility verified on macOS and Windows with automatic OS-level encryption
-- [ ] Graceful fallback implemented for systems where OS encryption is unavailable (still no user passwords)
-- [ ] Credential corruption detected and recovery procedures triggered automatically
-- [ ] Performance impact under 10% for normal email processing operations
+- [ ] Gmail OAuth tokens encrypted using completed cross-platform CredentialEncryption (Windows DPAPI ✓, macOS Keychain Services, Linux libsecret)
+- [ ] OpenAI API keys encrypted using completed cross-platform System.Security.Cryptography implementation 
+- [ ] Email metadata continues to work with existing encrypted SQLite database using SQLCipher (already working ✓)
+- [ ] Security events logged using existing SecurityAuditLogger without exposing actual credentials (already working ✓)
+- [ ] Users never prompted for passwords - automatic OS-level encryption on Windows/macOS/Linux
+- [ ] Cross-platform compatibility verified across Windows (DPAPI ✓), macOS (Keychain Services), Linux (libsecret)
+- [ ] Graceful platform detection and fallback for unsupported systems
+- [ ] Token rotation service integrates with existing SecureStorageManager infrastructure
+- [ ] Performance impact minimal - P/Invoke calls are lightweight operations
 
 ### Security Validation
 
 - [ ] No plaintext credentials found in any storage locations
-- [ ] Tampering with encrypted data properly detected and rejected
-- [ ] Token rotation maintains service availability during refresh
-- [ ] OS keychain integration works across Windows, macOS, Linux
-- [ ] Failed authentication attempts trigger appropriate security responses
-- [ ] Audit trail maintains integrity and non-repudiation
+- [ ] Cross-platform tampering detection works properly for all OS implementations
+- [ ] Token rotation maintains service availability during refresh using new TokenRotationService
+- [ ] OS keychain integration works across Windows (DPAPI ✓), macOS (Keychain Services), Linux (libsecret)
+- [ ] Failed authentication attempts trigger existing SecurityAuditLogger responses
+- [ ] Audit trail maintains integrity using existing audit logging infrastructure
 
 ### Code Quality Validation
 
-- [ ] Follows existing codebase Result<T> pattern exactly
-- [ ] File placement matches desired codebase tree structure
+- [ ] Follows existing codebase Result<T> and EncryptionResult<T> patterns exactly
+- [ ] File placement matches desired codebase tree structure in Shared/Security and Tests directories
 - [ ] Anti-patterns avoided (check against Anti-Patterns section)
-- [ ] Security-focused ESLint rules pass without exceptions
-- [ ] Type safety maintained across all process boundaries
-- [ ] Error messages never expose sensitive credential data
+- [ ] .NET code analysis and security rules pass without exceptions
+- [ ] Type safety maintained across all cross-platform P/Invoke boundaries
+- [ ] Error messages never expose sensitive credential data (existing pattern preserved)
 
 ### Compliance & Documentation Validation
 
-- [ ] GDPR compliance verified through data deletion tests
-- [ ] Security documentation updated with implementation details
-- [ ] Recovery procedures documented and tested
-- [ ] Code is self-documenting with clear security-focused variable names
-- [ ] Configuration changes properly documented for deployment
+- [ ] Cross-platform security implementation documented with P/Invoke patterns and platform requirements
+- [ ] Recovery procedures work with existing SecureStorageManager corruption handling
+- [ ] Code is self-documenting with clear platform-specific attribute usage and security-focused naming
+- [ ] New dependencies documented (none required - using built-in OS libraries via P/Invoke)
 
 ---
 
 ## Anti-Patterns to Avoid
 
-- ❌ Don't use deprecated keytar library - use Electron's safeStorage API
-- ❌ Don't store credentials in plaintext configuration files
-- ❌ Don't skip authentication tag validation in AES-GCM decryption
-- ❌ Don't expose encryption keys or raw tokens in IPC communication
-- ❌ Don't log actual credential values in audit trails
-- ❌ Don't ignore token expiration - implement proactive rotation
-- ❌ Don't skip input validation in IPC handlers
-- ❌ Don't hardcode encryption keys - derive from secure sources
+- ❌ **Don't modify existing complete SecureStorageManager or SecurityAuditLogger implementations**
+- ❌ **Don't change existing SQLite provider encryption - it already works perfectly**
+- ❌ Don't store credentials in plaintext appsettings.json or configuration files
+- ❌ Don't skip platform-specific attribute usage - apply [SupportedOSPlatform] attributes correctly
+- ❌ Don't expose encryption keys or raw tokens in application logs or debug output
+- ❌ Don't log actual credential values in audit trails (existing SecurityAuditLogger already handles this correctly)
+- ❌ Don't ignore cross-platform compatibility - test on Windows, macOS, and Linux
+- ❌ Don't skip P/Invoke error handling - always check OSStatus and error codes from native APIs
+- ❌ Don't hardcode encryption keys - use OS-provided secure storage mechanisms
 - ❌ **NEVER prompt users for passwords, passphrases, or secret keys**
-- ❌ **Don't require config file editing for encryption setup**
+- ❌ **Don't require manual configuration for encryption setup**
 - ❌ **Don't break the zero-configuration user experience**
+- ❌ **Don't reinvent existing security infrastructure - complete the missing implementations only**
