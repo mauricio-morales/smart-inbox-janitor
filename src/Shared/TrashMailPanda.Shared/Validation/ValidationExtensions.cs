@@ -27,9 +27,9 @@ public static class ValidationExtensions
     {
         var validationResults = new List<ValidationResult>();
         var validationContext = new ValidationContext(config, null, null);
-        
+
         var isValid = Validator.TryValidateObject(config, validationContext, validationResults, validateAllProperties: true);
-        
+
         if (isValid)
         {
             return Result<ConfigurationValidationResult>.Success(
@@ -96,7 +96,7 @@ public static class ValidationExtensions
         var allSuggestions = resultsList.SelectMany(r => r.Suggestions).ToList();
         var allRules = resultsList.SelectMany(r => r.AppliedRules).Distinct().ToList();
         var totalDuration = resultsList.Aggregate(TimeSpan.Zero, (acc, r) => acc.Add(r.ValidationDuration));
-        
+
         var isValid = allErrors.Count == 0;
 
         return new ConfigurationValidationResult
@@ -248,7 +248,7 @@ public static class ValidationExtensions
             });
         }
 
-        if (configTypeName.Contains("Database", StringComparison.OrdinalIgnoreCase) || 
+        if (configTypeName.Contains("Database", StringComparison.OrdinalIgnoreCase) ||
             configTypeName.Contains("Storage", StringComparison.OrdinalIgnoreCase))
         {
             rules.Add(new ConfigurationValidationRule
@@ -286,7 +286,7 @@ public static class ValidationExtensions
                 var propertyName = property.Name.ToLowerInvariant();
                 var value = property.GetValue(config)?.ToString();
 
-                if (sensitivePropertyNames.Any(sensitive => propertyName.Contains(sensitive)) && 
+                if (sensitivePropertyNames.Any(sensitive => propertyName.Contains(sensitive)) &&
                     !string.IsNullOrEmpty(value))
                 {
                     warnings.Add(new ConfigurationValidationWarning

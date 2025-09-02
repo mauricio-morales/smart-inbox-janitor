@@ -97,11 +97,11 @@ public abstract class BaseProviderFactory<TProvider, TImplementation, TConfig> :
                 // Cleanup the created provider if validation fails
                 if (providerResult.Value is IDisposable disposable)
                     disposable.Dispose();
-                
+
                 return Result<TProvider>.Failure(postValidationResult.Error);
             }
 
-            _logger.LogInformation("Successfully created provider of type {ProviderType} using factory {FactoryName}", 
+            _logger.LogInformation("Successfully created provider of type {ProviderType} using factory {FactoryName}",
                 typeof(TImplementation).Name, FactoryName);
 
             return providerResult;
@@ -109,7 +109,7 @@ public abstract class BaseProviderFactory<TProvider, TImplementation, TConfig> :
         catch (Exception ex)
         {
             var error = ex.ToProviderError($"Failed to create provider using factory {FactoryName}");
-            _logger.LogError(ex, "Error creating provider of type {ProviderType} using factory {FactoryName}", 
+            _logger.LogError(ex, "Error creating provider of type {ProviderType} using factory {FactoryName}",
                 typeof(TImplementation).Name, FactoryName);
             return Result<TProvider>.Failure(error);
         }
@@ -127,8 +127,8 @@ public abstract class BaseProviderFactory<TProvider, TImplementation, TConfig> :
         }
 
         var result = await CreateProviderAsync(typedConfig, logger, cancellationToken);
-        return result.IsSuccess 
-            ? Result<object>.Success(result.Value) 
+        return result.IsSuccess
+            ? Result<object>.Success(result.Value)
             : Result<object>.Failure(result.Error);
     }
 

@@ -37,7 +37,7 @@ public class ProviderStatusDashboardViewModelTests
             DisplayName = $"{name} Display Name",
             Description = $"Description for {name}",
             Icon = "🔧",
-            Type = "Email",
+            Type = ProviderType.Email,
             IsRequired = isRequired,
             Prerequisites = "Test prerequisites",
             Complexity = SetupComplexity.Simple,
@@ -281,10 +281,10 @@ public class ProviderStatusDashboardViewModelTests
         // Update provider cards to require setup
         var card1 = viewModel.ProviderCards.First(c => c.ProviderName == "Provider1");
         var card2 = viewModel.ProviderCards.First(c => c.ProviderName == "Provider2");
-        
+
         var requiresSetupStatus1 = CreateTestStatus("Provider1", false, requiresSetup: true);
         var requiresSetupStatus2 = CreateTestStatus("Provider2", false, requiresSetup: true);
-        
+
         card1.UpdateFromProviderStatus(requiresSetupStatus1);
         card2.UpdateFromProviderStatus(requiresSetupStatus2);
 

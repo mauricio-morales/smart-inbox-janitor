@@ -10,6 +10,6 @@ public class EncryptionResult
     public EncryptionErrorType? ErrorType { get; init; }
 
     public static EncryptionResult Success() => new() { IsSuccess = true };
-    public static EncryptionResult Failure(string errorMessage, EncryptionErrorType errorType) => 
+    public static EncryptionResult Failure(string errorMessage, EncryptionErrorType errorType) =>
         new() { IsSuccess = false, ErrorMessage = errorMessage, ErrorType = errorType };
 }

@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using TrashMailPanda.Shared.Utils;
 
 namespace TrashMailPanda.Shared.Security;
 
@@ -11,7 +12,7 @@ namespace TrashMailPanda.Shared.Security;
 /// Platform-specific credential encryption implementation
 /// Uses DPAPI on Windows, Keychain on macOS, and libsecret on Linux
 /// </summary>
-public class CredentialEncryption : ICredentialEncryption
+public class CredentialEncryption : ICredentialEncryption, IDisposable
 {
     private readonly ILogger<CredentialEncryption> _logger;
     private bool _isInitialized = false;
@@ -120,11 +121,11 @@ public class CredentialEncryption : ICredentialEncryption
         try
         {
             _logger.LogDebug("Generating master key using system entropy");
-            
+
             using var rng = RandomNumberGenerator.Create();
             var key = new byte[32]; // 256-bit key
             rng.GetBytes(key);
-            
+
             return EncryptionResult<byte[]>.Success(key);
         }
         catch (Exception ex)
@@ -185,8 +186,8 @@ public class CredentialEncryption : ICredentialEncryption
                 issues.Add($"Key generation test failed: {keyResult.ErrorMessage}");
             }
 
-            result = result with 
-            { 
+            result = result with
+            {
                 Issues = issues,
                 IsHealthy = result.CanEncrypt && result.CanDecrypt && result.KeyGenerationWorks,
                 Status = issues.Count == 0 ? "Healthy" : $"Issues found: {issues.Count}"
@@ -195,9 +196,9 @@ public class CredentialEncryption : ICredentialEncryption
         catch (Exception ex)
         {
             _logger.LogError(ex, "Exception during encryption health check");
-            result = result with 
-            { 
-                IsHealthy = false, 
+            result = result with
+            {
+                IsHealthy = false,
                 Status = "Health check failed",
                 Issues = new List<string> { $"Health check exception: {ex.Message}" }
             };
@@ -228,7 +229,7 @@ public class CredentialEncryption : ICredentialEncryption
     {
         // Clear sensitive data from memory
         sensitiveData.Clear();
-        
+
         // Additional security: overwrite with random data
         var random = new Random();
         for (int i = 0; i < sensitiveData.Length; i++)
@@ -248,7 +249,7 @@ public class CredentialEncryption : ICredentialEncryption
             return "macOS";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             return "Linux";
-        
+
         return "Unknown";
     }
 
@@ -261,7 +262,7 @@ public class CredentialEncryption : ICredentialEncryption
             var testData = Encoding.UTF8.GetBytes("test");
             var encrypted = ProtectedData.Protect(testData, null, DataProtectionScope.CurrentUser);
             var decrypted = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
-            
+
             if (!testData.AsSpan().SequenceEqual(decrypted))
             {
                 return Task.FromResult(EncryptionResult.Failure("DPAPI test failed", EncryptionErrorType.ConfigurationError));
@@ -331,11 +332,49 @@ public class CredentialEncryption : ICredentialEncryption
         }
     }
 
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
     private Task<EncryptionResult> InitializeLinuxAsync()
     {
-        // TODO: Implement Linux libsecret initialization
-        _logger.LogWarning("Linux libsecret initialization not yet implemented");
-        return Task.FromResult(EncryptionResult.Success()); // Placeholder
+        try
+        {
+            // Check if libsecret is available
+            if (!LinuxSecretHelper.IsLibSecretAvailable())
+            {
+                _logger.LogWarning("libsecret is not available on this Linux system");
+                return Task.FromResult(EncryptionResult.Failure("libsecret not available", EncryptionErrorType.PlatformNotSupported));
+            }
+
+            // Test libsecret operations with a test credential
+            const string testService = "TrashMailPanda-Test";
+            const string testAccount = "initialization-test";
+            const string testSecret = "test-credential-data";
+
+            // Try to store a test credential
+            var stored = LinuxSecretHelper.StoreSecret(testService, testAccount, testSecret);
+            if (!stored)
+            {
+                return Task.FromResult(EncryptionResult.Failure("Failed to test libsecret storage", EncryptionErrorType.ConfigurationError));
+            }
+
+            // Try to retrieve the test credential
+            var retrieved = LinuxSecretHelper.RetrieveSecret(testService, testAccount);
+            if (retrieved != testSecret)
+            {
+                LinuxSecretHelper.RemoveSecret(testService, testAccount); // Cleanup
+                return Task.FromResult(EncryptionResult.Failure("libsecret test failed - stored and retrieved data don't match", EncryptionErrorType.ConfigurationError));
+            }
+
+            // Clean up test credential
+            LinuxSecretHelper.RemoveSecret(testService, testAccount);
+
+            _logger.LogInformation("Linux libsecret initialization successful");
+            return Task.FromResult(EncryptionResult.Success());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Linux libsecret initialization failed");
+            return Task.FromResult(EncryptionResult.Failure($"libsecret initialization failed: {ex.Message}", EncryptionErrorType.ConfigurationError));
+        }
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
@@ -345,10 +384,10 @@ public class CredentialEncryption : ICredentialEncryption
         {
             var plainBytes = Encoding.UTF8.GetBytes(plainText);
             var entropy = context != null ? Encoding.UTF8.GetBytes(context) : null;
-            
+
             var encryptedBytes = ProtectedData.Protect(plainBytes, entropy, DataProtectionScope.CurrentUser);
             var encryptedBase64 = Convert.ToBase64String(encryptedBytes);
-            
+
             return Task.FromResult(EncryptionResult<string>.Success(encryptedBase64));
         }
         catch (Exception ex)
@@ -364,10 +403,10 @@ public class CredentialEncryption : ICredentialEncryption
         {
             var encryptedBytes = Convert.FromBase64String(encryptedText);
             var entropy = context != null ? Encoding.UTF8.GetBytes(context) : null;
-            
+
             var decryptedBytes = ProtectedData.Unprotect(encryptedBytes, entropy, DataProtectionScope.CurrentUser);
             var plainText = Encoding.UTF8.GetString(decryptedBytes);
-            
+
             return Task.FromResult(EncryptionResult<string>.Success(plainText));
         }
         catch (Exception ex)
@@ -482,24 +521,80 @@ public class CredentialEncryption : ICredentialEncryption
         }
     }
 
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
     private Task<EncryptionResult<string>> EncryptLinuxAsync(string plainText, string? context)
     {
-        // TODO: Implement Linux libsecret encryption
-        _logger.LogWarning("Linux encryption not yet implemented");
-        return Task.FromResult(EncryptionResult<string>.Failure("Linux encryption not implemented", EncryptionErrorType.PlatformNotSupported));
+        try
+        {
+            // Check if libsecret is available
+            if (!LinuxSecretHelper.IsLibSecretAvailable())
+            {
+                return Task.FromResult(EncryptionResult<string>.Failure("libsecret not available", EncryptionErrorType.PlatformNotSupported));
+            }
+
+            var service = context ?? "TrashMailPanda";
+            var account = $"credential-{Guid.NewGuid()}";
+
+            // Store the credential in GNOME keyring
+            var stored = LinuxSecretHelper.StoreSecret(service, account, plainText);
+            if (!stored)
+            {
+                return Task.FromResult(EncryptionResult<string>.Failure("Failed to store credential in keyring", EncryptionErrorType.EncryptionFailed));
+            }
+
+            // Return the service:account identifier as the "encrypted" data
+            var encryptedData = $"{service}:{account}";
+            var encryptedBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(encryptedData));
+
+            return Task.FromResult(EncryptionResult<string>.Success(encryptedBase64));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(EncryptionResult<string>.Failure($"Linux encryption failed: {ex.Message}", EncryptionErrorType.EncryptionFailed));
+        }
     }
 
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
     private Task<EncryptionResult<string>> DecryptLinuxAsync(string encryptedText, string? context)
     {
-        // TODO: Implement Linux libsecret decryption
-        _logger.LogWarning("Linux decryption not yet implemented");
-        return Task.FromResult(EncryptionResult<string>.Failure("Linux decryption not implemented", EncryptionErrorType.PlatformNotSupported));
+        try
+        {
+            // Check if libsecret is available
+            if (!LinuxSecretHelper.IsLibSecretAvailable())
+            {
+                return Task.FromResult(EncryptionResult<string>.Failure("libsecret not available", EncryptionErrorType.PlatformNotSupported));
+            }
+
+            // Decode the service:account identifier
+            var encryptedData = Encoding.UTF8.GetString(Convert.FromBase64String(encryptedText));
+            var parts = encryptedData.Split(':', 2);
+            if (parts.Length != 2)
+            {
+                return Task.FromResult(EncryptionResult<string>.Failure("Invalid encrypted data format", EncryptionErrorType.DecryptionFailed));
+            }
+
+            var service = parts[0];
+            var account = parts[1];
+
+            // Retrieve the credential from GNOME keyring
+            var plainText = LinuxSecretHelper.RetrieveSecret(service, account);
+            if (plainText == null)
+            {
+                return Task.FromResult(EncryptionResult<string>.Failure("Failed to retrieve credential from keyring", EncryptionErrorType.DecryptionFailed));
+            }
+
+            return Task.FromResult(EncryptionResult<string>.Success(plainText));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(EncryptionResult<string>.Failure($"Linux decryption failed: {ex.Message}", EncryptionErrorType.DecryptionFailed));
+        }
     }
 
     private List<string> GetSupportedFeatures()
     {
         var features = new List<string> { "Encryption", "Decryption", "Key Generation", "Secure Clear" };
-        
+
         if (_platform == "Windows")
         {
             features.AddRange(new[] { "DPAPI", "Current User Scope" });
@@ -567,6 +662,36 @@ public class CredentialEncryption : ICredentialEncryption
 
         [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", CallingConvention = CallingConvention.Cdecl)]
         public static extern void CFRelease(IntPtr cf);
+    }
+
+    #endregion
+
+    #region IDisposable Implementation
+
+    private bool _disposed = false;
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Dispose managed resources
+                _logger?.LogDebug("Disposing credential encryption resources");
+            }
+
+            // Clear any sensitive data
+            _isInitialized = false;
+            _platform = string.Empty;
+
+            _disposed = true;
+        }
     }
 
     #endregion

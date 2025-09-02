@@ -28,19 +28,19 @@ public static class ProviderServiceExtensions
     /// <param name="configuration">Optional configuration for provider system</param>
     /// <returns>Builder for fluent configuration</returns>
     public static ProviderRegistrationBuilder AddProviderFactorySystem(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         IConfiguration? configuration = null)
     {
         // Register core provider infrastructure
         services.TryAddSingleton<ProviderRegistry>();
         services.TryAddSingleton<IProviderRegistry>(provider => provider.GetRequiredService<ProviderRegistry>());
-        
+
         // Register configuration validation services
         services.TryAddSingleton<IValidateOptions<ProviderSystemConfiguration>, ProviderSystemConfigurationValidator>();
-        
+
         // Register hosted service for provider lifecycle management
         services.TryAddSingleton<IHostedService, ProviderSystemHostedService>();
-        
+
         // Register health checks integration
         services.AddHealthChecks()
             .AddCheck<ProviderRegistryHealthCheck>("provider_registry")
@@ -77,9 +77,9 @@ public static class ProviderServiceExtensions
     {
         // Register the factory with specified lifetime
         services.Add(new ServiceDescriptor(typeof(TFactory), typeof(TFactory), factoryLifetime));
-        services.Add(new ServiceDescriptor(typeof(IProviderFactory<TProvider, TConfig>), 
+        services.Add(new ServiceDescriptor(typeof(IProviderFactory<TProvider, TConfig>),
             provider => provider.GetRequiredService<TFactory>(), factoryLifetime));
-        services.Add(new ServiceDescriptor(typeof(IProviderFactory), 
+        services.Add(new ServiceDescriptor(typeof(IProviderFactory),
             provider => provider.GetRequiredService<TFactory>(), factoryLifetime));
 
         // Register factory registration action to be executed during startup
@@ -145,13 +145,13 @@ public static class ProviderServiceExtensions
             var registry = serviceProvider.GetRequiredService<IProviderRegistry>();
             var config = serviceProvider.GetRequiredService<IOptions<TConfig>>().Value;
             var logger = serviceProvider.GetRequiredService<ILogger<TProvider>>();
-            
+
             var result = registry.CreateProviderAsync<TProvider>(config, logger).GetAwaiter().GetResult();
             if (result.IsFailure)
             {
                 throw new InvalidOperationException($"Failed to create provider {typeof(TProvider).Name}: {result.Error}");
             }
-            
+
             return result.Value;
         }, providerLifetime));
 
@@ -180,8 +180,8 @@ public static class ProviderServiceExtensions
         foreach (var assembly in assemblies)
         {
             var factoryTypes = assembly.GetTypes()
-                .Where(t => t.IsClass && !t.IsAbstract && 
-                           t.GetInterfaces().Any(i => i.IsGenericType && 
+                .Where(t => t.IsClass && !t.IsAbstract &&
+                           t.GetInterfaces().Any(i => i.IsGenericType &&
                                                i.GetGenericTypeDefinition() == typeof(IProviderFactory<,>)))
                 .ToList();
 
@@ -189,16 +189,16 @@ public static class ProviderServiceExtensions
             {
                 var factoryInterface = factoryType.GetInterfaces()
                     .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IProviderFactory<,>));
-                
+
                 var genericArgs = factoryInterface.GetGenericArguments();
                 var providerType = genericArgs[0];
                 var configType = genericArgs[1];
 
                 // Register the factory
                 services.Add(new ServiceDescriptor(factoryType, factoryType, factoryLifetime));
-                services.Add(new ServiceDescriptor(factoryInterface, 
+                services.Add(new ServiceDescriptor(factoryInterface,
                     provider => provider.GetRequiredService(factoryType), factoryLifetime));
-                services.Add(new ServiceDescriptor(typeof(IProviderFactory), 
+                services.Add(new ServiceDescriptor(typeof(IProviderFactory),
                     provider => provider.GetRequiredService(factoryType), factoryLifetime));
 
                 // Register factory for automatic registration
@@ -242,7 +242,7 @@ public static class ProviderServiceExtensions
 
         // Register logging enrichers
         services.TryAddSingleton<IProviderLogEnricher, DefaultProviderLogEnricher>();
-        
+
         return services;
     }
 
@@ -271,7 +271,7 @@ public static class ProviderServiceExtensions
         // Register health check implementations
         services.TryAddSingleton<ProviderRegistryHealthCheck>();
         services.TryAddSingleton<ProviderSystemHealthCheck>();
-        
+
         return services;
     }
 
@@ -290,15 +290,15 @@ public static class ProviderServiceExtensions
         try
         {
             // Validate that ProviderRegistry is registered
-            if (!services.Any(s => s.ServiceType == typeof(ProviderRegistry) || 
+            if (!services.Any(s => s.ServiceType == typeof(ProviderRegistry) ||
                                   s.ServiceType == typeof(IProviderRegistry)))
             {
                 errors.Add("ProviderRegistry is not registered. Call AddProviderFactorySystem() first.");
             }
 
             // Validate factory registrations
-            var factoryRegistrations = services.Where(s => 
-                s.ServiceType.IsGenericType && 
+            var factoryRegistrations = services.Where(s =>
+                s.ServiceType.IsGenericType &&
                 s.ServiceType.GetGenericTypeDefinition() == typeof(IProviderFactory<,>))
                 .ToList();
 
@@ -308,8 +308,8 @@ public static class ProviderServiceExtensions
             }
 
             // Validate configuration registrations
-            var configServices = services.Where(s => 
-                s.ServiceType.IsGenericType && 
+            var configServices = services.Where(s =>
+                s.ServiceType.IsGenericType &&
                 s.ServiceType.GetGenericTypeDefinition() == typeof(IOptions<>) &&
                 s.ServiceType.GenericTypeArguments[0].IsSubclassOf(typeof(BaseProviderConfig)))
                 .ToList();
@@ -383,7 +383,7 @@ public sealed class ProviderRegistrationBuilder
     /// <param name="factoryLifetime">Default lifetime for factories</param>
     /// <returns>The builder for chaining</returns>
     public ProviderRegistrationBuilder WithAutoDiscovery(
-        Assembly[]? assemblies = null, 
+        Assembly[]? assemblies = null,
         ServiceLifetime factoryLifetime = ServiceLifetime.Singleton)
     {
         _services.AddProviderFactoriesFromAssemblies(assemblies, factoryLifetime);

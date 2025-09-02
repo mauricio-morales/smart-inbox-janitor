@@ -58,6 +58,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ICredentialEncryption, CredentialEncryption>();
         services.AddSingleton<ISecureStorageManager, SecureStorageManager>();
         services.AddSingleton<ISecurityAuditLogger, SecurityAuditLogger>();
+        services.AddSingleton<ITokenRotationService, TokenRotationService>();
 
         return services;
     }

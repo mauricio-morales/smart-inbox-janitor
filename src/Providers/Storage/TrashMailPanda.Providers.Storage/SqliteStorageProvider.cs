@@ -54,7 +54,7 @@ public class SqliteStorageProvider : IStorageProvider
 
             // Create database schema
             await CreateSchemaAsync();
-            
+
             _initialized = true;
         }
         catch (Exception ex)
@@ -68,7 +68,7 @@ public class SqliteStorageProvider : IStorageProvider
         EnsureInitialized();
 
         const string sql = "SELECT rule_type, rule_key, rule_value FROM user_rules";
-        
+
         var alwaysKeepSenders = new List<string>();
         var alwaysKeepDomains = new List<string>();
         var alwaysKeepListIds = new List<string>();
@@ -197,11 +197,11 @@ public class SqliteStorageProvider : IStorageProvider
             return null;
 
         var reasonsJson = reader.IsDBNull(8) ? null : reader.GetString(8);
-        var reasons = string.IsNullOrEmpty(reasonsJson) ? null : 
+        var reasons = string.IsNullOrEmpty(reasonsJson) ? null :
             JsonSerializer.Deserialize<string[]>(reasonsJson);
 
         var userActionStr = reader.IsDBNull(11) ? null : reader.GetString(11);
-        UserAction? userAction = string.IsNullOrEmpty(userActionStr) ? null : 
+        UserAction? userAction = string.IsNullOrEmpty(userActionStr) ? null :
             Enum.Parse<UserAction>(userActionStr);
 
         return new EmailMetadata
@@ -296,14 +296,14 @@ public class SqliteStorageProvider : IStorageProvider
 
         var results = new List<ClassificationHistoryItem>();
         using var reader = await command.ExecuteReaderAsync();
-        
+
         while (await reader.ReadAsync())
         {
             var reasonsJson = reader.IsDBNull(4) ? "[]" : reader.GetString(4);
             var reasons = JsonSerializer.Deserialize<string[]>(reasonsJson) ?? Array.Empty<string>();
 
             var userFeedbackStr = reader.IsDBNull(6) ? null : reader.GetString(6);
-            UserFeedback? userFeedback = string.IsNullOrEmpty(userFeedbackStr) ? null : 
+            UserFeedback? userFeedback = string.IsNullOrEmpty(userFeedbackStr) ? null :
                 Enum.Parse<UserFeedback>(userFeedbackStr);
 
             results.Add(new ClassificationHistoryItem
@@ -348,7 +348,7 @@ public class SqliteStorageProvider : IStorageProvider
         EnsureInitialized();
 
         const string sql = "SELECT provider, encrypted_token FROM encrypted_tokens";
-        
+
         var tokens = new Dictionary<string, string>();
         using var command = _connection!.CreateCommand();
         command.CommandText = sql;
@@ -384,7 +384,7 @@ public class SqliteStorageProvider : IStorageProvider
         EnsureInitialized();
 
         const string sql = "SELECT key, value FROM app_config";
-        
+
         var config = new AppConfig();
         using var command = _connection!.CreateCommand();
         command.CommandText = sql;
@@ -435,7 +435,7 @@ public class SqliteStorageProvider : IStorageProvider
     private async Task SetConfigValueAsync(string key, object? value)
     {
         const string sql = "INSERT OR REPLACE INTO app_config (key, value) VALUES (@key, @value)";
-        
+
         using var command = _connection!.CreateCommand();
         command.CommandText = sql;
         command.Parameters.AddWithValue("@key", key);

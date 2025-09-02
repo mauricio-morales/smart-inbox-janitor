@@ -48,7 +48,7 @@ public sealed class ProviderRegistryHealthCheck : IHealthCheck
             try
             {
                 var stats = _providerRegistry.GetStatistics();
-                
+
                 data.Add("total_factories", stats.TotalFactories);
                 data.Add("total_provider_types", stats.TotalProviderTypes);
                 data.Add("total_instances", stats.TotalInstances);
@@ -161,8 +161,8 @@ public sealed class ProviderSystemHealthCheck : IHealthCheck
             }
 
             // Determine health status
-            var status = errors.Count == 0 ? 
-                        (warnings.Count == 0 ? Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy : Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded) : 
+            var status = errors.Count == 0 ?
+                        (warnings.Count == 0 ? Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy : Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded) :
                         Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy;
 
             var issues = new List<string>();
@@ -299,12 +299,12 @@ public sealed class ProviderHealthCheck<TProvider> : IHealthCheck where TProvide
                     using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
                     var healthResultTask = await providerWithHealth.HealthCheckAsync(combinedCts.Token);
-                    
+
                     if (healthResultTask.IsFailure)
                     {
                         data.Add("provider_health_check", true);
                         data.Add("provider_health_error", healthResultTask.Error?.Message ?? "Unknown error");
-                        
+
                         return new Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult(
                             Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
                             $"Provider {providerName} health check failed: {healthResultTask.Error?.Message}",
@@ -320,8 +320,8 @@ public sealed class ProviderHealthCheck<TProvider> : IHealthCheck where TProvide
                     if (healthResult.IsHealthy)
                     {
                         return new Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult(
-                            Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy, 
-                            $"Provider {providerName} is healthy", 
+                            Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy,
+                            $"Provider {providerName} is healthy",
                             data: data);
                     }
                     else
@@ -335,8 +335,8 @@ public sealed class ProviderHealthCheck<TProvider> : IHealthCheck where TProvide
                             _ => Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded
                         };
                         return new Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult(
-                            status, 
-                            $"Provider {providerName} has issues: {issues}", 
+                            status,
+                            $"Provider {providerName} has issues: {issues}",
                             data: data);
                     }
                 }

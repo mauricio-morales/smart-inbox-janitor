@@ -46,12 +46,12 @@ public class SecurityAuditLoggerImpl : ISecurityAuditLogger
         // Log to application logger based on severity
         if (operationEvent.Success)
         {
-            _logger.LogInformation("Credential operation: {Operation} for key {Key} succeeded", 
+            _logger.LogInformation("Credential operation: {Operation} for key {Key} succeeded",
                 operationEvent.Operation, entry.CredentialKey);
         }
         else
         {
-            _logger.LogWarning("Credential operation: {Operation} for key {Key} failed: {Error}", 
+            _logger.LogWarning("Credential operation: {Operation} for key {Key} failed: {Error}",
                 operationEvent.Operation, entry.CredentialKey, operationEvent.ErrorMessage);
         }
 
@@ -90,7 +90,7 @@ public class SecurityAuditLoggerImpl : ISecurityAuditLogger
             _ => LogLevel.Information
         };
 
-        _logger.Log(logLevel, "Security event: {EventType} - {Description}", 
+        _logger.Log(logLevel, "Security event: {EventType} - {Description}",
             securityEvent.EventType, securityEvent.Description);
 
         return Task.CompletedTask;
@@ -105,7 +105,7 @@ public class SecurityAuditLoggerImpl : ISecurityAuditLogger
                 .OrderByDescending(entry => entry.Timestamp)
                 .ToList()
                 .AsReadOnly();
-            
+
             return Task.FromResult<IReadOnlyList<AuditLogEntry>>(result);
         }
     }
@@ -150,9 +150,9 @@ public class SecurityAuditLoggerImpl : ISecurityAuditLogger
         {
             return "***";
         }
-        
-        return key.Length <= 10 
-            ? $"{key[..3]}***{key[^2..]}" 
+
+        return key.Length <= 10
+            ? $"{key[..3]}***{key[^2..]}"
             : $"{key[..4]}***{key[^3..]}";
     }
 }

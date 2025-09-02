@@ -1,6 +1,7 @@
 using TrashMailPanda.ViewModels;
 using TrashMailPanda.Models;
 using TrashMailPanda.Shared;
+using TrashMailPanda.Services;
 using Xunit;
 
 namespace TrashMailPanda.Tests.ViewModels;
@@ -15,7 +16,7 @@ public class ProviderStatusCardViewModelTests
             DisplayName = $"{name} Display Name",
             Description = $"Description for {name}",
             Icon = "🔧",
-            Type = "Email",
+            Type = ProviderType.Email,
             IsRequired = true,
             Prerequisites = "Test prerequisites",
             Complexity = SetupComplexity.Simple,
@@ -101,8 +102,18 @@ public class ProviderStatusCardViewModelTests
     public void SetupComplexity_ShouldReturnCorrectText(SetupComplexity complexity, string expected)
     {
         // Arrange
-        var displayInfo = CreateTestDisplayInfo();
-        displayInfo.Complexity = complexity;
+        var displayInfo = new ProviderDisplayInfo
+        {
+            Name = "TestProvider",
+            DisplayName = "TestProvider Display Name",
+            Description = "Description for TestProvider",
+            Icon = "🔧",
+            Type = ProviderType.Email,
+            IsRequired = true,
+            Prerequisites = "Test prerequisites",
+            Complexity = complexity,
+            EstimatedSetupTimeMinutes = 5
+        };
         var viewModel = new ProviderStatusCardViewModel(displayInfo);
 
         // Act
@@ -121,8 +132,18 @@ public class ProviderStatusCardViewModelTests
     public void EstimatedTime_ShouldReturnCorrectText(int minutes, string expected)
     {
         // Arrange
-        var displayInfo = CreateTestDisplayInfo();
-        displayInfo.EstimatedSetupTimeMinutes = minutes;
+        var displayInfo = new ProviderDisplayInfo
+        {
+            Name = "TestProvider",
+            DisplayName = "TestProvider Display Name",
+            Description = "Description for TestProvider",
+            Icon = "🔧",
+            Type = ProviderType.Email,
+            IsRequired = true,
+            Prerequisites = "Test prerequisites",
+            Complexity = SetupComplexity.Simple,
+            EstimatedSetupTimeMinutes = minutes
+        };
         var viewModel = new ProviderStatusCardViewModel(displayInfo);
 
         // Act
@@ -162,10 +183,16 @@ public class ProviderStatusCardViewModelTests
         // Arrange
         var displayInfo = CreateTestDisplayInfo();
         var viewModel = new ProviderStatusCardViewModel(displayInfo);
-        var status = CreateTestStatus();
-        status.Status = statusText;
-        status.RequiresSetup = statusText.Contains("Setup") || statusText.Contains("Required");
-        status.IsInitialized = !status.RequiresSetup;
+        var requiresSetup = statusText.Contains("Setup") || statusText.Contains("Required");
+        var status = new ProviderStatus
+        {
+            Name = "TestProvider",
+            IsHealthy = !requiresSetup,
+            IsInitialized = !requiresSetup,
+            RequiresSetup = requiresSetup,
+            Status = statusText,
+            LastCheck = DateTime.UtcNow
+        };
 
         // Act
         viewModel.UpdateFromProviderStatus(status);
@@ -190,8 +217,15 @@ public class ProviderStatusCardViewModelTests
         // Arrange
         var displayInfo = CreateTestDisplayInfo();
         var viewModel = new ProviderStatusCardViewModel(displayInfo);
-        var status = CreateTestStatus();
-        status.Status = statusText;
+        var status = new ProviderStatus
+        {
+            Name = "TestProvider",
+            IsHealthy = false,
+            IsInitialized = false,
+            RequiresSetup = true,
+            Status = statusText,
+            LastCheck = DateTime.UtcNow
+        };
 
         // Act
         viewModel.UpdateFromProviderStatus(status);

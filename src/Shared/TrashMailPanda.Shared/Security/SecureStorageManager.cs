@@ -17,10 +17,10 @@ public class SecureStorageManager : ISecureStorageManager
     private readonly ILogger<SecureStorageManager> _logger;
     private readonly ConcurrentDictionary<string, string> _credentialCache;
     private readonly object _initializationLock = new();
-    
+
     private bool _isInitialized = false;
     private DateTime? _lastHealthCheck;
-    
+
     // Credential key prefixes for different providers
     private const string GmailTokenPrefix = "gmail_";
     private const string OpenAITokenPrefix = "openai_";
@@ -53,7 +53,7 @@ public class SecureStorageManager : ISecureStorageManager
             if (!encryptionResult.IsSuccess)
             {
                 _logger.LogError("Failed to initialize credential encryption: {Error}", encryptionResult.ErrorMessage);
-                return SecureStorageResult.Failure($"Encryption initialization failed: {encryptionResult.ErrorMessage}", 
+                return SecureStorageResult.Failure($"Encryption initialization failed: {encryptionResult.ErrorMessage}",
                     SecureStorageErrorType.ConfigurationError);
             }
 
@@ -107,7 +107,7 @@ public class SecureStorageManager : ISecureStorageManager
             if (!encryptionResult.IsSuccess)
             {
                 _logger.LogError("Failed to encrypt credential for key {Key}: {Error}", MaskKey(key), encryptionResult.ErrorMessage);
-                return SecureStorageResult.Failure($"Encryption failed: {encryptionResult.ErrorMessage}", 
+                return SecureStorageResult.Failure($"Encryption failed: {encryptionResult.ErrorMessage}",
                     SecureStorageErrorType.EncryptionError);
             }
 
@@ -264,7 +264,7 @@ public class SecureStorageManager : ISecureStorageManager
             // Check encryption system health
             var encryptionHealth = await _credentialEncryption.HealthCheckAsync();
             details.Add("encryption_health", encryptionHealth);
-            
+
             if (!encryptionHealth.IsHealthy)
             {
                 issues.AddRange(encryptionHealth.Issues.Select(issue => $"Encryption: {issue}"));
@@ -333,9 +333,9 @@ public class SecureStorageManager : ISecureStorageManager
             Platform = _credentialEncryption.GetEncryptionStatus().Platform,
             StoredCredentialCount = _credentialCache.Count,
             LastHealthCheck = _lastHealthCheck,
-            SupportedOperations = new List<string> 
-            { 
-                "Store", "Retrieve", "Remove", "Exists", "List", "HealthCheck" 
+            SupportedOperations = new List<string>
+            {
+                "Store", "Retrieve", "Remove", "Exists", "List", "HealthCheck"
             }
         };
     }
@@ -382,9 +382,9 @@ public class SecureStorageManager : ISecureStorageManager
         {
             return "***";
         }
-        
-        return key.Length <= 10 
-            ? $"{key[..3]}***{key[^2..]}" 
+
+        return key.Length <= 10
+            ? $"{key[..3]}***{key[^2..]}"
             : $"{key[..4]}***{key[^3..]}";
     }
 }

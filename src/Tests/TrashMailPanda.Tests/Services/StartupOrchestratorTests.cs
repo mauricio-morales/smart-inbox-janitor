@@ -3,6 +3,7 @@ using Moq;
 using TrashMailPanda.Services;
 using TrashMailPanda.Shared;
 using TrashMailPanda.Shared.Security;
+using TrashMailPanda.Shared.Base;
 using Xunit;
 
 namespace TrashMailPanda.Tests.Services;
@@ -34,10 +35,10 @@ public class StartupOrchestratorTests
             _mockLogger.Object,
             _mockStorageProvider.Object,
             _mockSecureStorageManager.Object,
-            _mockEmailProvider.Object,
-            _mockLlmProvider.Object,
             _mockProviderStatusService.Object,
-            _mockProviderBridgeService.Object);
+            _mockProviderBridgeService.Object,
+            _mockEmailProvider.Object,
+            _mockLlmProvider.Object);
     }
 
     private void SetupSuccessfulInitialization()
@@ -46,7 +47,7 @@ public class StartupOrchestratorTests
             .Returns(Task.CompletedTask);
 
         _mockSecureStorageManager.Setup(x => x.InitializeAsync())
-            .ReturnsAsync(Result<bool>.Success(true));
+            .ReturnsAsync(SecureStorageResult.Success());
 
         _mockProviderBridgeService.Setup(x => x.GetEmailProviderStatusAsync())
             .ReturnsAsync(Result<ProviderStatus>.Success(new ProviderStatus
@@ -92,10 +93,10 @@ public class StartupOrchestratorTests
                 null!,
                 _mockStorageProvider.Object,
                 _mockSecureStorageManager.Object,
-                _mockEmailProvider.Object,
-                _mockLlmProvider.Object,
                 _mockProviderStatusService.Object,
-                _mockProviderBridgeService.Object));
+                _mockProviderBridgeService.Object,
+                _mockEmailProvider.Object,
+                _mockLlmProvider.Object));
     }
 
     [Fact]
@@ -107,10 +108,10 @@ public class StartupOrchestratorTests
                 _mockLogger.Object,
                 null!,
                 _mockSecureStorageManager.Object,
-                _mockEmailProvider.Object,
-                _mockLlmProvider.Object,
                 _mockProviderStatusService.Object,
-                _mockProviderBridgeService.Object));
+                _mockProviderBridgeService.Object,
+                _mockEmailProvider.Object,
+                _mockLlmProvider.Object));
     }
 
     [Fact]
@@ -155,7 +156,7 @@ public class StartupOrchestratorTests
             .Returns(Task.CompletedTask);
 
         _mockSecureStorageManager.Setup(x => x.InitializeAsync())
-            .ReturnsAsync(Result<bool>.Failure(new Exception("Security init failed")));
+            .ReturnsAsync(SecureStorageResult.Failure("Security init failed", SecureStorageErrorType.ConfigurationError));
 
         var orchestrator = CreateOrchestrator();
 
@@ -256,10 +257,10 @@ public class StartupOrchestratorTests
             .Returns(Task.CompletedTask);
 
         _mockSecureStorageManager.Setup(x => x.InitializeAsync())
-            .ReturnsAsync(Result<bool>.Success(true));
+            .ReturnsAsync(SecureStorageResult.Success());
 
         _mockProviderBridgeService.Setup(x => x.GetEmailProviderStatusAsync())
-            .ReturnsAsync(Result<ProviderStatus>.Failure(new Exception("Email provider failed")));
+            .ReturnsAsync(Result<ProviderStatus>.Failure(new InitializationError("Email provider failed")));
 
         _mockProviderBridgeService.Setup(x => x.GetLLMProviderStatusAsync())
             .ReturnsAsync(Result<ProviderStatus>.Success(new ProviderStatus
@@ -295,7 +296,7 @@ public class StartupOrchestratorTests
             .Returns(Task.CompletedTask);
 
         _mockSecureStorageManager.Setup(x => x.InitializeAsync())
-            .ReturnsAsync(Result<bool>.Success(true));
+            .ReturnsAsync(SecureStorageResult.Success());
 
         _mockProviderBridgeService.Setup(x => x.GetEmailProviderStatusAsync())
             .ReturnsAsync(Result<ProviderStatus>.Success(new ProviderStatus()));
@@ -324,7 +325,7 @@ public class StartupOrchestratorTests
             .Returns(Task.CompletedTask);
 
         _mockSecureStorageManager.Setup(x => x.InitializeAsync())
-            .ReturnsAsync(Result<bool>.Success(true));
+            .ReturnsAsync(SecureStorageResult.Success());
 
         _mockProviderBridgeService.Setup(x => x.GetEmailProviderStatusAsync())
             .ReturnsAsync(Result<ProviderStatus>.Success(new ProviderStatus
