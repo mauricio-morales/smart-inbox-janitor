@@ -107,7 +107,7 @@
     },
     {
       "label": "⚡ Quick CI Check",
-      "detail": "Fast validation - format check, build, and test",
+      "detail": "Fast validation - format code, build, and test",
       "type": "shell",
       "command": "dotnet",
       "args": ["test", "--configuration", "Release"],
@@ -119,7 +119,7 @@
       },
       "problemMatcher": "$msCompile",
       "dependsOrder": "sequence",
-      "dependsOn": ["🧪 Code Quality Check"]
+      "dependsOn": ["🎨 Format Code"]
     },
     {
       "label": "📱 Build macOS App",
