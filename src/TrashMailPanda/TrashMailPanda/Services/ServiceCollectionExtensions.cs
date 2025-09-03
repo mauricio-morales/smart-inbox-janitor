@@ -107,14 +107,27 @@ public static class ServiceCollectionExtensions
     /// </summary>
     private static IServiceCollection AddViewModels(this IServiceCollection services)
     {
-        // Register view models as transients (new instance per request)
-        services.AddTransient<MainWindowViewModel>();
+        // Register core view models as transients (new instance per request)
         services.AddTransient<WelcomeWizardViewModel>();
 
         // Add provider status dashboard ViewModels
         services.AddTransient<ProviderStatusDashboardViewModel>();
         // Note: ProviderStatusCardViewModel is created directly by the dashboard ViewModel
         // so it doesn't need DI registration
+
+        // Add email dashboard ViewModel
+        services.AddTransient<EmailDashboardViewModel>();
+
+        // Add setup dialog ViewModels
+        services.AddTransient<OpenAISetupViewModel>();
+
+        // Register MainWindowViewModel with navigation dependencies
+        services.AddTransient<MainWindowViewModel>(provider => new MainWindowViewModel(
+            provider.GetRequiredService<ProviderStatusDashboardViewModel>(),
+            provider.GetRequiredService<EmailDashboardViewModel>(),
+            provider,
+            provider.GetRequiredService<ILogger<MainWindowViewModel>>()
+        ));
 
         return services;
     }
