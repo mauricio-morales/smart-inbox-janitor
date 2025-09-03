@@ -210,6 +210,9 @@ public class ProviderStatusDashboardViewModelTests
 
         var viewModel = CreateViewModel();
 
+        // Wait for constructor initialization to complete
+        await Task.Delay(100);
+
         // Act
         await viewModel.RefreshAllProvidersCommand.ExecuteAsync(null);
 

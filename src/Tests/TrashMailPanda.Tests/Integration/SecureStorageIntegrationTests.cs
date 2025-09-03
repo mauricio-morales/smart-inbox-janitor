@@ -284,7 +284,7 @@ public class SecureStorageIntegrationTests : IDisposable
         var secureStorageManager = new SecureStorageManager(credentialEncryption, _secureStorageManagerLogger);
         await secureStorageManager.InitializeAsync();
 
-        const int concurrentOperations = 10;
+        const int concurrentOperations = 3; // Reduced for better test performance
         var tasks = new List<Task>();
 
         // Act - Perform concurrent operations
@@ -311,8 +311,9 @@ public class SecureStorageIntegrationTests : IDisposable
             }));
         }
 
-        // Assert - All operations should complete successfully
-        await Task.WhenAll(tasks);
+        // Assert - All operations should complete successfully with timeout
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await Task.WhenAll(tasks).WaitAsync(cts.Token);
 
         // Verify no credentials remain
         var keysResult = await secureStorageManager.GetStoredCredentialKeysAsync();

@@ -106,25 +106,33 @@ public class StartupOrchestrator : IStartupOrchestrator
 
     private async Task ExecuteStartupSequenceAsync(CancellationToken cancellationToken)
     {
+        // Check cancellation before starting
+        cancellationToken.ThrowIfCancellationRequested();
+
         // Step 1: Initialize Storage
         UpdateProgress(StartupStep.InitializingStorage, "Initializing storage provider", 1);
         await InitializeStorageAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
 
         // Step 2: Initialize Security
         UpdateProgress(StartupStep.InitializingSecurity, "Initializing security services", 2);
         await InitializeSecurityAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
 
         // Step 3: Initialize Email Provider
         UpdateProgress(StartupStep.InitializingEmailProvider, "Initializing email provider", 3);
         await InitializeEmailProviderAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
 
         // Step 4: Initialize LLM Provider
         UpdateProgress(StartupStep.InitializingLLMProvider, "Initializing LLM provider", 4);
         await InitializeLLMProviderAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
 
         // Step 5: Health Checks
         UpdateProgress(StartupStep.CheckingProviderHealth, "Checking provider health", 5);
         await PerformHealthChecksAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
 
         // Step 6: Complete
         UpdateProgress(StartupStep.Ready, "Startup complete", TotalSteps, isComplete: true);
