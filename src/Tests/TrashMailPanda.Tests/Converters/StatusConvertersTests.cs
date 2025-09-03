@@ -151,27 +151,27 @@ public class ProviderStatusToColorConverterTests
     public void Convert_WithProviderStatus_ShouldReturnCorrectBrush()
     {
         // Arrange
-        var healthyStatus = new ProviderStatus 
-        { 
-            Name = "Test", 
-            IsHealthy = true, 
-            Status = "Connected", 
+        var healthyStatus = new ProviderStatus
+        {
+            Name = "Test",
+            IsHealthy = true,
+            Status = "Connected",
             RequiresSetup = false,
             IsInitialized = true
         };
-        var setupRequiredStatus = new ProviderStatus 
-        { 
-            Name = "Test", 
-            IsHealthy = false, 
-            Status = "Setup Required", 
+        var setupRequiredStatus = new ProviderStatus
+        {
+            Name = "Test",
+            IsHealthy = false,
+            Status = "Setup Required",
             RequiresSetup = true,
             IsInitialized = false
         };
-        var errorStatus = new ProviderStatus 
-        { 
-            Name = "Test", 
-            IsHealthy = false, 
-            Status = "Error", 
+        var errorStatus = new ProviderStatus
+        {
+            Name = "Test",
+            IsHealthy = false,
+            Status = "Error",
             RequiresSetup = false,
             IsInitialized = true
         };
@@ -241,11 +241,11 @@ public class ProviderStatusToIconConverterTests
     public void Convert_WithProviderStatus_ShouldReturnCorrectIcon()
     {
         // Arrange
-        var healthyStatus = new ProviderStatus 
-        { 
-            Name = "Test", 
-            IsHealthy = true, 
-            Status = "Connected", 
+        var healthyStatus = new ProviderStatus
+        {
+            Name = "Test",
+            IsHealthy = true,
+            Status = "Connected",
             RequiresSetup = false,
             IsInitialized = true
         };
@@ -257,11 +257,11 @@ public class ProviderStatusToIconConverterTests
             IsInitialized = false,
             Status = "OAuth Setup Required"
         };
-        var errorStatus = new ProviderStatus 
-        { 
-            Name = "Test", 
-            IsHealthy = false, 
-            Status = "Error", 
+        var errorStatus = new ProviderStatus
+        {
+            Name = "Test",
+            IsHealthy = false,
+            Status = "Error",
             RequiresSetup = false,
             IsInitialized = true
         };
