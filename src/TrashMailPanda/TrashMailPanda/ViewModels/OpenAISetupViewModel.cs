@@ -109,7 +109,7 @@ public partial class OpenAISetupViewModel : ViewModelBase
                 FileName = url,
                 UseShellExecute = true
             });
-            
+
             _logger.LogInformation("Opened OpenAI dashboard URL: {Url}", url);
         }
         catch (Exception ex)
@@ -149,7 +149,7 @@ public partial class OpenAISetupViewModel : ViewModelBase
 
             // Save to secure storage
             var result = await _secureStorage.StoreCredentialAsync(
-                ProviderCredentialTypes.OpenAIApiKey, 
+                ProviderCredentialTypes.OpenAIApiKey,
                 ApiKey.Trim());
 
             if (result.IsSuccess)
@@ -158,7 +158,7 @@ public partial class OpenAISetupViewModel : ViewModelBase
                 StatusMessage = "API key saved successfully";
                 ValidationMessage = null;
                 DialogResult = true;
-                
+
                 _logger.LogInformation("OpenAI API key saved successfully to secure storage");
 
                 // Close dialog after short delay to show success message

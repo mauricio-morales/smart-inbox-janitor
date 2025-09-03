@@ -90,7 +90,7 @@ public partial class EmailDashboardViewModel : ViewModelBase
         try
         {
             _logger.LogInformation("Initializing email dashboard");
-            
+
             StatusMessage = "Checking provider connections...";
             ConnectionStatusText = "Validating Gmail, OpenAI, and Storage connections...";
 
@@ -98,7 +98,7 @@ public partial class EmailDashboardViewModel : ViewModelBase
             await RefreshProviderStatusAsync();
 
             LastUpdateText = DateTime.Now.ToString("HH:mm:ss");
-            
+
             _logger.LogInformation("Email dashboard initialization completed");
         }
         catch (Exception ex)
@@ -136,7 +136,7 @@ public partial class EmailDashboardViewModel : ViewModelBase
 
             LastUpdateText = DateTime.Now.ToString("HH:mm:ss");
             StatusMessage = IsReady ? "All connections healthy" : "Some providers need attention";
-            
+
             _logger.LogInformation("Provider connection refresh completed");
         }
         catch (Exception ex)
@@ -186,13 +186,13 @@ public partial class EmailDashboardViewModel : ViewModelBase
         try
         {
             _logger.LogInformation("Starting email processing workflow");
-            
+
             StatusMessage = "Starting email processing...";
             EmailProcessingRequested?.Invoke(this, EventArgs.Empty);
-            
+
             // TODO: Implement actual email processing workflow
             // For now, this is a placeholder that would trigger the email processing UI
-            
+
         }
         catch (Exception ex)
         {
@@ -376,7 +376,7 @@ public partial class EmailDashboardViewModel : ViewModelBase
     {
         // Unsubscribe from events
         _providerStatusService.ProviderStatusChanged -= OnProviderStatusChanged;
-        
+
         _logger.LogInformation("EmailDashboardViewModel cleanup completed");
     }
 }

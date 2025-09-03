@@ -135,6 +135,13 @@ public class TokenRotationService : ITokenRotationService, IDisposable
                 var needsRotation = await IsTokenNearExpiryAsync(providerName, cancellationToken);
                 if (!needsRotation.IsSuccess)
                 {
+                    TokenRotationFailed?.Invoke(this, new TokenRotationFailedEventArgs
+                    {
+                        ProviderName = providerName,
+                        ErrorMessage = needsRotation.Error?.Message ?? "Unknown error checking token expiry",
+                        IsFinalAttempt = true
+                    });
+
                     return Result<TokenRotationResult>.Failure(new ProcessingError($"Failed to check token expiry: {needsRotation.Error.Message}"));
                 }
 
@@ -261,7 +268,7 @@ public class TokenRotationService : ITokenRotationService, IDisposable
             {
                 "gmail" => await CheckGmailTokenExpiryAsync(settings.ExpiryThreshold, cancellationToken),
                 "openai" => await CheckOpenAITokenExpiryAsync(settings.ExpiryThreshold, cancellationToken),
-                _ => Result<bool>.Success(false)
+                _ => Result<bool>.Failure(new UnsupportedOperationError($"Unsupported provider: {providerName}"))
             };
 
             return hasTokens;
@@ -527,6 +534,7 @@ public class TokenRotationService : ITokenRotationService, IDisposable
 
         _rotationTimer?.Dispose();
         _rotationSemaphore?.Dispose();
+        _isRunning = false;
 
         _disposed = true;
         _logger.LogInformation("Token rotation service disposed");

@@ -165,7 +165,7 @@ public class TokenRotationServiceTests : IDisposable
         Assert.NotNull(result.Value);
         Assert.Equal("openai", result.Value.ProviderName);
         Assert.False(result.Value.WasRotated);
-        Assert.Contains("don't require automatic rotation", result.Value.Reason);
+        Assert.Contains("Token is not near expiry", result.Value.Reason);
     }
 
     [Fact]

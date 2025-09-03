@@ -62,7 +62,11 @@ public class ProviderStatusDashboardViewModelTests
     [Fact]
     public void Constructor_ShouldInitializeProperties()
     {
-        // Arrange & Act
+        // Arrange
+        _mockBridgeService.Setup(x => x.GetProviderDisplayInfo())
+            .Returns(new Dictionary<string, ProviderDisplayInfo>());
+
+        // Act
         var viewModel = CreateViewModel();
 
         // Assert

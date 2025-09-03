@@ -66,40 +66,25 @@ public partial class ProviderStatusCardViewModel : ViewModelBase
         _ => "10+ minutes"
     };
 
-    // Button states and text
-    public bool ShowSetupButton => RequiresSetup || !IsHealthy;
+    // Button states and text  
+    public bool ShowSetupButton => !IsHealthy;
     public bool ShowStatusDetails => IsInitialized || !string.IsNullOrEmpty(ErrorMessage);
 
     public string ActionButtonText
     {
         get
         {
-            if (IsHealthy && IsInitialized)
-                return "Reconfigure";
-
-            if (RequiresSetup)
+            // Check specific status messages first for appropriate actions
+            return CurrentStatus switch
             {
-                return CurrentStatus?.ToLowerInvariant() switch
-                {
-                    "oauth setup required" => "Setup OAuth",
-                    "api key required" => "Enter API Key",
-                    "setup required" => "Setup",
-                    _ => "Configure"
-                };
-            }
-
-            if (!IsHealthy && IsInitialized)
-            {
-                return CurrentStatus?.ToLowerInvariant() switch
-                {
-                    "authentication required" => "Sign In",
-                    "api key invalid" => "Fix API Key",
-                    "connection failed" => "Reconnect",
-                    _ => "Fix Issue"
-                };
-            }
-
-            return "Configure";
+                "OAuth Setup Required" => "Setup OAuth",
+                "API Key Required" => "Enter API Key",
+                "Setup Required" => "Setup",
+                "Authentication Required" => "Sign In",
+                "API Key Invalid" => "Fix API Key",
+                "Connection Failed" => "Reconnect",
+                _ => IsHealthy && IsInitialized ? "Reconfigure" : RequiresSetup ? "Configure" : "Fix Issue"
+            };
         }
     }
 
@@ -107,11 +92,11 @@ public partial class ProviderStatusCardViewModel : ViewModelBase
     {
         get
         {
-            if (IsLoading)
-                return "Checking status...";
-
             if (!string.IsNullOrEmpty(StatusMessage))
                 return StatusMessage;
+
+            if (IsLoading)
+                return "Checking status...";
 
             return CurrentStatus switch
             {

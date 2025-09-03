@@ -165,11 +165,11 @@ public class SecureStorageManagerTests : IDisposable
         // Act & Assert
         var nullResult = await _secureStorageManager.StoreCredentialAsync("key", null!);
         Assert.False(nullResult.IsSuccess);
-        Assert.Contains("credential cannot be null or empty", nullResult.ErrorMessage!);
+        Assert.Contains("Credential cannot be null or empty", nullResult.ErrorMessage!);
 
         var emptyResult = await _secureStorageManager.StoreCredentialAsync("key", "");
         Assert.False(emptyResult.IsSuccess);
-        Assert.Contains("credential cannot be null or empty", emptyResult.ErrorMessage!);
+        Assert.Contains("Credential cannot be null or empty", emptyResult.ErrorMessage!);
     }
 
     [Fact]
@@ -423,13 +423,30 @@ public class SecureStorageManagerTests : IDisposable
                 Issues = new List<string>()
             });
 
+        // Set up encryption with correct parameter order: EncryptAsync(plainText, context)
+        _mockCredentialEncryption
+            .Setup(x => x.EncryptAsync("test-credential-value-12345", "health_check_test_credential"))
+            .ReturnsAsync(EncryptionResult<string>.Success("encrypted_test_value"));
+
+        _mockCredentialEncryption
+            .Setup(x => x.DecryptAsync("encrypted_test_value", "health_check_test_credential"))
+            .ReturnsAsync(EncryptionResult<string>.Success("test-credential-value-12345"));
+
+        // Generic fallback for other calls
         _mockCredentialEncryption
             .Setup(x => x.EncryptAsync(It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync(EncryptionResult<string>.Success("encrypted"));
+            .ReturnsAsync((string plainText, string context) => EncryptionResult<string>.Success($"encrypted_{plainText}"));
 
         _mockCredentialEncryption
             .Setup(x => x.DecryptAsync(It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync(EncryptionResult<string>.Success("decrypted"));
+            .ReturnsAsync((string encryptedText, string context) =>
+            {
+                // Strip the "encrypted_" prefix to simulate decryption
+                var originalValue = encryptedText.StartsWith("encrypted_")
+                    ? encryptedText.Substring(10)
+                    : encryptedText;
+                return EncryptionResult<string>.Success(originalValue);
+            });
 
         // Act
         var result = await _secureStorageManager.HealthCheckAsync();
