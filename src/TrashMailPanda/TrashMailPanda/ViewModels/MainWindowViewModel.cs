@@ -54,7 +54,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _providerDashboardViewModel.DashboardAccessRequested += OnDashboardAccessRequested;
         _providerDashboardViewModel.ProviderSetupRequested += OnProviderSetupRequested;
         _providerDashboardViewModel.ProviderConfigurationRequested += OnProviderConfigurationRequested;
-        
+
         // Subscribe to email dashboard events
         _emailDashboardViewModel.ReturnToDashboardRequested += OnReturnToDashboardRequested;
         _emailDashboardViewModel.EmailProcessingRequested += OnEmailProcessingRequested;
@@ -142,7 +142,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _logger.LogError(ex, "Exception navigating to email dashboard");
             NavigationStatus = "Navigation failed - returning to provider status";
-            
+
             // Fallback to provider dashboard on error
             CurrentView = _providerDashboardViewModel;
             WindowTitle = "TrashMail Panda - Provider Status";
@@ -193,10 +193,10 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             _logger.LogInformation("Email processing requested from email dashboard");
-            
+
             // TODO: Implement email processing workflow
             NavigationStatus = "Email processing workflow starting...";
-            
+
             // For now, this is a placeholder
             // In the future, this would navigate to the email processing UI
         }
@@ -214,9 +214,9 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             _logger.LogInformation("Provider setup requested for {Provider}", providerName);
-            
+
             NavigationStatus = $"Opening {providerName} setup...";
-            
+
             // Open appropriate setup dialog based on provider type
             switch (providerName?.ToLowerInvariant())
             {
@@ -226,22 +226,22 @@ public partial class MainWindowViewModel : ViewModelBase
                     // TODO: Implement Gmail OAuth setup dialog
                     await Task.Delay(2000);
                     break;
-                    
+
                 case "openai":
                     _logger.LogInformation("Opening OpenAI API key setup dialog");
                     await OpenOpenAISetupDialogAsync();
                     break;
-                    
+
                 default:
                     _logger.LogInformation("Generic setup for {Provider} not yet implemented", providerName);
                     NavigationStatus = $"{providerName} setup not yet implemented";
                     await Task.Delay(2000);
                     break;
             }
-            
+
             // Reset navigation status
-            NavigationStatus = IsOnProviderDashboard 
-                ? "Provider Status Dashboard" 
+            NavigationStatus = IsOnProviderDashboard
+                ? "Provider Status Dashboard"
                 : "Email Processing Dashboard";
         }
         catch (Exception ex)
@@ -259,9 +259,9 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             _logger.LogInformation("Provider configuration requested for {Provider}", providerName);
-            
+
             NavigationStatus = $"Opening {providerName} configuration...";
-            
+
             // TODO: Implement actual configuration dialog navigation based on provider type
             switch (providerName?.ToLowerInvariant())
             {
@@ -278,11 +278,11 @@ public partial class MainWindowViewModel : ViewModelBase
                     NavigationStatus = $"{providerName} configuration would open here";
                     break;
             }
-            
+
             // Reset navigation status after delay
             await Task.Delay(3000);
-            NavigationStatus = IsOnProviderDashboard 
-                ? "Provider Status Dashboard" 
+            NavigationStatus = IsOnProviderDashboard
+                ? "Provider Status Dashboard"
                 : "Email Processing Dashboard";
         }
         catch (Exception ex)
@@ -301,12 +301,12 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var viewModel = _serviceProvider.GetRequiredService<OpenAISetupViewModel>();
             await viewModel.LoadExistingApiKeyAsync();
-            
+
             var dialog = new OpenAISetupDialog(viewModel);
-            
+
             // Subscribe to close event
             viewModel.RequestClose += (sender, args) => dialog.Close();
-            
+
             // Show dialog (modal)
             var mainWindow = GetMainWindow();
             if (mainWindow != null)
@@ -317,12 +317,12 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 dialog.Show(); // Show as regular window if no parent
             }
-            
+
             if (viewModel.DialogResult)
             {
                 _logger.LogInformation("OpenAI setup completed successfully");
                 NavigationStatus = "OpenAI API key saved successfully";
-                
+
                 // Refresh provider status to reflect the change
                 await _providerDashboardViewModel.RefreshAllProvidersCommand.ExecuteAsync(null);
             }
@@ -357,14 +357,14 @@ public partial class MainWindowViewModel : ViewModelBase
         if (e.PropertyName == nameof(ProviderStatusDashboardViewModel.CanAccessMainDashboard))
         {
             CanAccessMainDashboard = _providerDashboardViewModel.CanAccessMainDashboard;
-            
+
             _logger.LogDebug("CanAccessMainDashboard updated to {CanAccess}", CanAccessMainDashboard);
-            
+
             // Update navigation status based on availability
             if (CurrentView == _providerDashboardViewModel)
             {
-                NavigationStatus = CanAccessMainDashboard 
-                    ? "All providers ready - email dashboard available" 
+                NavigationStatus = CanAccessMainDashboard
+                    ? "All providers ready - email dashboard available"
                     : "Provider setup or issues detected";
             }
         }

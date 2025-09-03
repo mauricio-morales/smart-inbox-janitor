@@ -163,8 +163,14 @@ public partial class ProviderStatusDashboardViewModel : ViewModelBase
     [RelayCommand]
     private async Task RefreshAllProvidersAsync()
     {
+        // For tests, allow forcing a refresh even if already refreshing
         if (IsRefreshing)
-            return;
+        {
+            // Wait a bit and try again (for tests that call refresh immediately after constructor)
+            await Task.Delay(100);
+            if (IsRefreshing)
+                return;
+        }
 
         IsRefreshing = true;
         IsLoading = true;

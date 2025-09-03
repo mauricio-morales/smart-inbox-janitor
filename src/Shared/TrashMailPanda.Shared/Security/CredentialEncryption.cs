@@ -443,11 +443,12 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             try
             {
                 // Store the credential in keychain
+                var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
                 status = MacOSKeychain.SecKeychainAddGenericPassword(
                     defaultKeychain,
-                    (uint)service.Length, service,
-                    (uint)account.Length, account,
-                    (uint)plainText.Length, plainText,
+                    (uint)Encoding.UTF8.GetByteCount(service), service,
+                    (uint)Encoding.UTF8.GetByteCount(account), account,
+                    (uint)plainTextBytes.Length, plainText,
                     IntPtr.Zero);
 
                 if (status != MacOSKeychain.OSStatus.NoErr)
@@ -503,8 +504,8 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                 // Retrieve the credential from keychain
                 status = MacOSKeychain.SecKeychainFindGenericPassword(
                     defaultKeychain,
-                    (uint)service.Length, service,
-                    (uint)account.Length, account,
+                    (uint)Encoding.UTF8.GetByteCount(service), service,
+                    (uint)Encoding.UTF8.GetByteCount(account), account,
                     out var passwordLength,
                     out var passwordData,
                     out var itemRef);

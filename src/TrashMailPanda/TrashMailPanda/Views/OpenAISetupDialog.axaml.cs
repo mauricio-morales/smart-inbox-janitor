@@ -9,7 +9,7 @@ public partial class OpenAISetupDialog : Window
     {
         InitializeComponent();
     }
-    
+
     public OpenAISetupDialog(OpenAISetupViewModel viewModel) : this()
     {
         DataContext = viewModel;
