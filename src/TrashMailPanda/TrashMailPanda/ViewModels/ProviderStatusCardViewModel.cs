@@ -235,15 +235,17 @@ public partial class ProviderStatusCardViewModel : ViewModelBase
                 StatusMessage = "Opening configuration...";
                 ConfigurationRequested?.Invoke(this, ProviderName);
             }
+
+            // Reset loading state after a reasonable delay since we're not implementing
+            // actual dialogs yet - this prevents the button from staying stuck
+            await Task.Delay(2000);
+            IsLoading = false;
+            StatusMessage = RequiresSetup ? "Setup requested" : "Configuration requested";
         }
         catch (Exception ex)
         {
             StatusMessage = $"Error: {ex.Message}";
-        }
-        finally
-        {
-            // Note: IsLoading will be managed by the setup/configuration process
-            // Don't set it to false here as the operation may be ongoing
+            IsLoading = false;
         }
     }
 

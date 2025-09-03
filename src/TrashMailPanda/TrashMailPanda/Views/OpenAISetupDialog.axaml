@@ -1,0 +1,137 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:TrashMailPanda.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="400"
+        x:Class="TrashMailPanda.Views.OpenAISetupDialog"
+        x:DataType="vm:OpenAISetupViewModel"
+        Title="OpenAI API Setup"
+        Width="500" Height="400"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/avalonia-logo.ico">
+
+    <Design.DataContext>
+        <vm:OpenAISetupViewModel/>
+    </Design.DataContext>
+
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="15" Margin="0,0,0,20">
+            <Border Background="#FF6F00" Width="40" Height="40" CornerRadius="20">
+                <TextBlock Text="🔑" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="OpenAI API Key Setup" FontSize="18" FontWeight="Bold"/>
+                <TextBlock Text="Configure AI-powered email classification" FontSize="12" Foreground="Gray"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="20">
+                
+                <!-- Instructions -->
+                <StackPanel Spacing="10">
+                    <TextBlock Text="How to get your OpenAI API key:" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="1. Visit platform.openai.com/api-keys" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBlock Text="2. Sign in to your OpenAI account" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBlock Text="3. Create a new API key" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBlock Text="4. Copy and paste it below" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                    </StackPanel>
+                    
+                    <Button Command="{Binding OpenOpenAIDashboardCommand}"
+                            Classes="link"
+                            HorizontalAlignment="Left"
+                            Margin="0,5,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="🔗" FontSize="12"/>
+                            <TextBlock Text="Open OpenAI API Keys page" FontSize="12" TextDecorations="Underline"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- API Key Input -->
+                <StackPanel Spacing="10">
+                    <TextBlock Text="API Key" FontWeight="SemiBold" FontSize="14"/>
+                    <TextBox Text="{Binding ApiKey}"
+                             PasswordChar="*"
+                             Watermark="sk-..."
+                             MinHeight="40"
+                             FontFamily="Consolas, Monaco, 'Courier New', monospace"/>
+                    <TextBlock Text="Your API key will be stored securely on this device" 
+                              FontSize="11" 
+                              Foreground="Gray"/>
+                </StackPanel>
+
+                <!-- Validation -->
+                <Border IsVisible="{Binding !!ValidationMessage}"
+                        Background="#FFEBEE" 
+                        Padding="10" 
+                        CornerRadius="4"
+                        BorderBrush="#F44336" 
+                        BorderThickness="1">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="⚠️" FontSize="14"/>
+                        <TextBlock Text="{Binding ValidationMessage}" 
+                                  FontSize="12" 
+                                  Foreground="#C62828"
+                                  TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Success Message -->
+                <Border IsVisible="{Binding IsValidated}"
+                        Background="#E8F5E8" 
+                        Padding="10" 
+                        CornerRadius="4"
+                        BorderBrush="#4CAF50" 
+                        BorderThickness="1">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="✅" FontSize="14"/>
+                        <TextBlock Text="API key is valid and has been saved securely" 
+                                  FontSize="12" 
+                                  Foreground="#2E7D32"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Status -->
+                <TextBlock Text="{Binding StatusMessage}" 
+                          FontSize="12" 
+                          Foreground="Gray"
+                          IsVisible="{Binding !!StatusMessage}"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,20,0,0">
+            <Button Command="{Binding CancelCommand}"
+                    Content="Cancel"
+                    Classes="secondary"
+                    MinWidth="80"
+                    Height="35"/>
+            
+            <Button Command="{Binding ValidateAndSaveCommand}"
+                    IsEnabled="{Binding CanSave}"
+                    Classes="primary"
+                    MinWidth="120"
+                    Height="35"
+                    IsDefault="True">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="💾" FontSize="12" IsVisible="{Binding !IsValidating}"/>
+                    <TextBlock Text="⏳" FontSize="12" IsVisible="{Binding IsValidating}"/>
+                    <TextBlock Text="{Binding SaveButtonText}" FontSize="12" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+        </StackPanel>
+    </Grid>
+
+</Window>

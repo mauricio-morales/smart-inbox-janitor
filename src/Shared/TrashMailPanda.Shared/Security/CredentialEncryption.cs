@@ -291,7 +291,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             try
             {
                 // Test basic keychain operations
-                const string testService = "TrashMailPanda-Test";
+                const string testService = "TrashMail Panda";
                 const string testAccount = "initialization-test";
                 const string testPassword = "test-credential-data";
 
@@ -356,7 +356,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             }
 
             // Test libsecret operations with a test credential
-            const string testService = "TrashMailPanda-Test";
+            const string testService = "TrashMail Panda";
             const string testAccount = "initialization-test";
             const string testSecret = "test-credential-data";
 
@@ -431,7 +431,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
     {
         try
         {
-            var service = context ?? "TrashMailPanda";
+            var service = context ?? "TrashMail Panda";
             var account = $"credential-{Guid.NewGuid()}";
 
             var status = MacOSKeychain.SecKeychainCopyDefault(out var defaultKeychain);
@@ -565,7 +565,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                 return Task.FromResult(EncryptionResult<string>.Failure("libsecret not available", EncryptionErrorType.PlatformNotSupported));
             }
 
-            var service = context ?? "TrashMailPanda";
+            var service = context ?? "TrashMail Panda";
             var account = $"credential-{Guid.NewGuid()}";
 
             // Store the credential in GNOME keyring

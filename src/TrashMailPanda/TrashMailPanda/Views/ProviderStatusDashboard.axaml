@@ -65,7 +65,7 @@
                 <!-- Refresh All Button -->
                 <Button Command="{Binding RefreshAllProvidersCommand}"
                         IsEnabled="{Binding !IsRefreshing}"
-                        Classes="dashboard-action"
+                        Classes="secondary"
                         HorizontalAlignment="Stretch">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="🔄" FontSize="14"/>
@@ -76,7 +76,7 @@
                 <!-- Main Dashboard Access Button -->
                 <Button Command="{Binding AccessMainDashboardCommand}"
                         IsVisible="{Binding CanAccessMainDashboard}"
-                        Classes="dashboard-primary"
+                        Classes="primary"
                         HorizontalAlignment="Stretch">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="✨" FontSize="14"/>
@@ -87,7 +87,7 @@
                 <!-- Setup All Button -->
                 <Button Command="{Binding SetupAllRequiredProvidersCommand}"
                         IsVisible="{Binding CanAccessMainDashboard, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}"
-                        Classes="dashboard-secondary"
+                        Classes="primary"
                         HorizontalAlignment="Stretch">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="⚙️" FontSize="14"/>
@@ -273,48 +273,6 @@
     <!-- Styles -->
     <UserControl.Styles>
         
-        <!-- Dashboard Action Buttons -->
-        <Style Selector="Button.dashboard-action">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#E0E0E0"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="MinWidth" Value="120"/>
-        </Style>
-        
-        <Style Selector="Button.dashboard-action:pointerover">
-            <Setter Property="Background" Value="#F5F5F5"/>
-            <Setter Property="BorderBrush" Value="#BDBDBD"/>
-        </Style>
-
-        <!-- Primary Dashboard Button -->
-        <Style Selector="Button.dashboard-primary">
-            <Setter Property="Background" Value="#4CAF50"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="16,10"/>
-            <Setter Property="MinWidth" Value="120"/>
-        </Style>
-        
-        <Style Selector="Button.dashboard-primary:pointerover">
-            <Setter Property="Background" Value="#45A049"/>
-        </Style>
-
-        <!-- Secondary Dashboard Button -->
-        <Style Selector="Button.dashboard-secondary">
-            <Setter Property="Background" Value="#FF9800"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="MinWidth" Value="120"/>
-        </Style>
-        
-        <Style Selector="Button.dashboard-secondary:pointerover">
-            <Setter Property="Background" Value="#F57C00"/>
-        </Style>
 
         <!-- Toggle Details Button -->
         <Style Selector="Button.toggle-details">
