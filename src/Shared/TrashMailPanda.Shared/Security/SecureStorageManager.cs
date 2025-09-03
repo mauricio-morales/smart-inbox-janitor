@@ -157,7 +157,37 @@ public class SecureStorageManager : ISecureStorageManager
                 }
             }
 
-            // If not in cache or cache is corrupted, credential doesn't exist
+            // If not in cache, try to retrieve from keychain directly
+            _logger.LogDebug("Credential not in cache for key {Key}, attempting keychain retrieval", MaskKey(key));
+            
+            try
+            {
+                // Build the expected keychain reference based on our predictable account name pattern
+                var service = key; // Use the key as the service context
+                var accountName = $"credential-{Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(key)).Replace("/", "_").Replace("+", "-")}";
+                var keychainReference = $"{service}:{accountName}";
+                var keychainReferenceBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(keychainReference));
+                
+                // Try to decrypt using the expected keychain reference
+                var directDecryptResult = await _credentialEncryption.DecryptAsync(keychainReferenceBase64, key);
+                if (directDecryptResult.IsSuccess && !string.IsNullOrEmpty(directDecryptResult.Value))
+                {
+                    // Found existing credential in keychain, cache it for future use
+                    _credentialCache.AddOrUpdate(key, keychainReferenceBase64, (k, v) => keychainReferenceBase64);
+                    _logger.LogInformation("Retrieved credential from keychain and cached for key: {Key}", MaskKey(key));
+                    return SecureStorageResult<string>.Success(directDecryptResult.Value);
+                }
+                else
+                {
+                    _logger.LogDebug("Direct keychain retrieval failed for key {Key}: {Error}", MaskKey(key), directDecryptResult.ErrorMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Exception during direct keychain retrieval for key {Key}", MaskKey(key));
+            }
+
+            // Credential doesn't exist
             _logger.LogDebug("Credential not found for key: {Key}", MaskKey(key));
             return SecureStorageResult<string>.Failure("Credential not found", SecureStorageErrorType.CredentialNotFound);
         }
