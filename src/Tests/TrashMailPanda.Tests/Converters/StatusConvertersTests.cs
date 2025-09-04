@@ -505,3 +505,59 @@ public class SetupTimeToTextConverterTests
             _converter.ConvertBack("5 minutes", typeof(int), null, _culture));
     }
 }
+
+public class ProviderNameToLogoConverterTests
+{
+    private readonly ProviderNameToLogoConverter _converter = new();
+    private readonly CultureInfo _culture = CultureInfo.InvariantCulture;
+
+    [Theory]
+    [InlineData("gmail", "📧")]
+    [InlineData("Google", "📧")]
+    [InlineData("GMAIL", "📧")]
+    [InlineData("openai", "🤖")]
+    [InlineData("OpenAI", "🤖")]
+    [InlineData("gpt", "🤖")]
+    [InlineData("sqlite", "💾")]
+    [InlineData("SQLite", "💾")]
+    [InlineData("storage", "💾")]
+    [InlineData("database", "💾")]
+    [InlineData("unknown", "⚙️")]
+    [InlineData("", "⚙️")]
+    public void Convert_WithProviderName_ShouldReturnCorrectLogo(string providerName, string expectedLogo)
+    {
+        // Act
+        var result = _converter.Convert(providerName, typeof(string), null, _culture);
+
+        // Assert
+        Assert.Equal(expectedLogo, result);
+    }
+
+    [Fact]
+    public void Convert_WithNullValue_ShouldReturnGenericGear()
+    {
+        // Act
+        var result = _converter.Convert(null, typeof(string), null, _culture);
+
+        // Assert
+        Assert.Equal("⚙️", result);
+    }
+
+    [Fact]
+    public void Convert_WithNonStringValue_ShouldReturnGenericGear()
+    {
+        // Act
+        var result = _converter.Convert(123, typeof(string), null, _culture);
+
+        // Assert
+        Assert.Equal("⚙️", result);
+    }
+
+    [Fact]
+    public void ConvertBack_ShouldThrowNotSupportedException()
+    {
+        // Act & Assert
+        Assert.Throws<NotSupportedException>(() =>
+            _converter.ConvertBack("📧", typeof(string), null, _culture));
+    }
+}

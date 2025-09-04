@@ -1,0 +1,12 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Simple OpenAI-inspired logo with AI/brain symbol -->
+  <circle cx="12" cy="12" r="10" fill="#00D7FF" stroke="#0066CC" stroke-width="2"/>
+  <circle cx="8" cy="9" r="1.5" fill="#FFFFFF"/>
+  <circle cx="16" cy="9" r="1.5" fill="#FFFFFF"/>
+  <path d="M8 15 Q12 18 16 15" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <!-- Neural network nodes -->
+  <circle cx="12" cy="6" r="1" fill="#FFFFFF"/>
+  <circle cx="6" cy="12" r="1" fill="#FFFFFF"/>
+  <circle cx="18" cy="12" r="1" fill="#FFFFFF"/>
+  <circle cx="12" cy="18" r="1" fill="#FFFFFF"/>
+</svg>
