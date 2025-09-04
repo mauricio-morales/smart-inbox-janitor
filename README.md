@@ -121,7 +121,7 @@ All actions include:
 
 ## 🧠 Learning System
 
-Smart Inbox Janitor adapts to your preferences:
+TrashMail Panda adapts to your preferences:
 
 - **Always Keep Rules**: Auto-approve emails from trusted senders
 - **Auto-Trash Rules**: Automatically handle unwanted senders/lists

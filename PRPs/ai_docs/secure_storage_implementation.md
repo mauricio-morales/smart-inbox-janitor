@@ -1,4 +1,4 @@
-# Secure Storage Implementation Guide for Smart Inbox Janitor
+# Secure Storage Implementation Guide for TrashMail Panda
 
 This document consolidates research findings for implementing secure local storage for OAuth tokens, API keys, and application settings in an Electron-based email management application.
 
@@ -268,4 +268,4 @@ interface SecurityAuditEvent {
 }
 ```
 
-This implementation guide ensures the Smart Inbox Janitor application meets enterprise-grade security requirements while maintaining usability for email processing workflows.
+This implementation guide ensures the TrashMail Panda application meets enterprise-grade security requirements while maintaining usability for email processing workflows.

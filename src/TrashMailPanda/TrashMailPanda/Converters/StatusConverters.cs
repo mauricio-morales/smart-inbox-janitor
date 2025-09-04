@@ -4,6 +4,7 @@ using System.Globalization;
 using TrashMailPanda.Models;
 using TrashMailPanda.Services;
 using TrashMailPanda.Shared;
+using TrashMailPanda.Theming;
 
 namespace TrashMailPanda.Converters;
 
@@ -34,15 +35,17 @@ public class BoolToHealthConverter : IValueConverter
 }
 
 /// <summary>
-/// Converts provider status information to appropriate color
+/// Converts provider status information to appropriate professional colors
+/// Uses centralized ProfessionalColors for consistent theming
 /// </summary>
 public class ProviderStatusToColorConverter : IValueConverter
 {
-    private static readonly IBrush HealthyBrush = new SolidColorBrush(Colors.Green);
-    private static readonly IBrush UnhealthyBrush = new SolidColorBrush(Colors.Red);
-    private static readonly IBrush SetupRequiredBrush = new SolidColorBrush(Colors.Orange);
-    private static readonly IBrush DisconnectedBrush = new SolidColorBrush(Colors.Gray);
-    private static readonly IBrush LoadingBrush = new SolidColorBrush(Colors.Blue);
+    // Professional color brushes using centralized color definitions
+    private static readonly IBrush HealthyBrush = new SolidColorBrush(ProfessionalColors.StatusSuccess);
+    private static readonly IBrush UnhealthyBrush = new SolidColorBrush(ProfessionalColors.StatusError);
+    private static readonly IBrush SetupRequiredBrush = new SolidColorBrush(ProfessionalColors.StatusWarning);
+    private static readonly IBrush DisconnectedBrush = new SolidColorBrush(ProfessionalColors.StatusNeutral);
+    private static readonly IBrush LoadingBrush = new SolidColorBrush(ProfessionalColors.StatusInfo);
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
@@ -64,40 +67,25 @@ public class ProviderStatusToColorConverter : IValueConverter
 
     private static IBrush GetColorForStatus(string status)
     {
-        return status?.ToLowerInvariant() switch
-        {
-            "connected" => HealthyBrush,
-            "healthy" => HealthyBrush,
-            "ready" => HealthyBrush,
-            "setup required" => SetupRequiredBrush,
-            "authentication required" => SetupRequiredBrush,
-            "oauth setup required" => SetupRequiredBrush,
-            "api key required" => SetupRequiredBrush,
-            "api key invalid" => UnhealthyBrush,
-            "connection failed" => UnhealthyBrush,
-            "error" => UnhealthyBrush,
-            "database error" => UnhealthyBrush,
-            "failed" => UnhealthyBrush,
-            "loading" => LoadingBrush,
-            "connecting" => LoadingBrush,
-            "testing" => LoadingBrush,
-            _ => DisconnectedBrush
-        };
+        // Use centralized color determination logic
+        var color = ProfessionalColors.GetStatusColor(status);
+        return new SolidColorBrush(color);
     }
 
     private static IBrush GetColorForProviderStatus(ProviderStatus status)
     {
+        // Use centralized logic for provider status colors
         if (status.IsHealthy)
         {
-            return HealthyBrush;
+            return new SolidColorBrush(ProfessionalColors.StatusSuccess);
         }
 
         if (status.RequiresSetup)
         {
-            return SetupRequiredBrush;
+            return new SolidColorBrush(ProfessionalColors.StatusWarning);
         }
 
-        return UnhealthyBrush;
+        return new SolidColorBrush(ProfessionalColors.StatusError);
     }
 }
 

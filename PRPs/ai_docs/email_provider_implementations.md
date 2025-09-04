@@ -373,7 +373,7 @@ class SQLiteStorageProvider implements StorageProvider {
 
 ```typescript
 class IndexedDBStorageProvider implements StorageProvider {
-  private dbName = 'smart-inbox-janitor';
+  private dbName = 'trashmail-panda';
   private version = 1;
   private db: IDBDatabase | null = null;
 
@@ -562,4 +562,4 @@ Use runtime validation (like Zod schemas) at provider boundaries.
 
 Create consistent error interfaces that abstract provider-specific error details.
 
-These patterns ensure robust, scalable, and maintainable provider implementations for the Smart Inbox Janitor project.
+These patterns ensure robust, scalable, and maintainable provider implementations for the TrashMail Panda project.
