@@ -3,11 +3,11 @@
         xmlns:vm="using:TrashMailPanda.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="400"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
         x:Class="TrashMailPanda.Views.OpenAISetupDialog"
         x:DataType="vm:OpenAISetupViewModel"
         Title="OpenAI API Setup"
-        Width="500" Height="400"
+        Width="1000" Height="600"
         CanResize="False"
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/avalonia-logo.ico">
@@ -34,82 +34,126 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- Content -->
-        <ScrollViewer Grid.Row="1">
-            <StackPanel Spacing="20">
-                
-                <!-- Instructions -->
-                <StackPanel Spacing="10">
-                    <TextBlock Text="How to get your OpenAI API key:" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="1. Visit platform.openai.com/api-keys" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                        <TextBlock Text="2. Sign in to your OpenAI account" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                        <TextBlock Text="3. Create a new API key" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                        <TextBlock Text="4. Copy and paste it below" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                    </StackPanel>
-                    
-                    <Button Command="{Binding OpenOpenAIDashboardCommand}"
-                            Classes="link"
-                            HorizontalAlignment="Left"
-                            Margin="0,5,0,0">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="🔗" FontSize="12"/>
-                            <TextBlock Text="Open OpenAI API Keys page" FontSize="12" TextDecorations="Underline"/>
+        <!-- Content - 2 Column Layout -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Left Column - Instructions -->
+            <ScrollViewer Grid.Column="0">
+                <StackPanel Spacing="20">
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="How to get your OpenAI API key:" FontWeight="SemiBold" FontSize="16" Foreground="{DynamicResource TextPrimary}"/>
+                        <StackPanel Spacing="8">
+                            <Border Background="{DynamicResource BackgroundPrimary}" Padding="12" CornerRadius="6" BorderBrush="{DynamicResource BorderLight}" BorderThickness="1">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="1. Visit platform.openai.com/api-keys" FontSize="13" Foreground="{DynamicResource TextSecondary}"/>
+                                    <TextBlock Text="2. Sign in to your OpenAI account" FontSize="13" Foreground="{DynamicResource TextSecondary}"/>
+                                    <TextBlock Text="3. Create a new API key" FontSize="13" Foreground="{DynamicResource TextSecondary}"/>
+                                    <TextBlock Text="4. Copy and paste it in the form on the right" FontSize="13" Foreground="{DynamicResource TextSecondary}"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
-                    </Button>
-                </StackPanel>
+                        
+                        <Button Command="{Binding OpenOpenAIDashboardCommand}"
+                                Classes="secondary"
+                                HorizontalAlignment="Left"
+                                MinWidth="200"
+                                Height="40">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="🔗" FontSize="14"/>
+                                <TextBlock Text="Open OpenAI API Keys page" FontSize="13" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
 
-                <!-- API Key Input -->
-                <StackPanel Spacing="10">
-                    <TextBlock Text="API Key" FontWeight="SemiBold" FontSize="14"/>
-                    <TextBox Text="{Binding ApiKey}"
-                             PasswordChar="*"
-                             Watermark="sk-..."
-                             MinHeight="40"
-                             FontFamily="Consolas, Monaco, 'Courier New', monospace"/>
-                    <TextBlock Text="Your API key will be stored securely on this device" 
-                              FontSize="11" 
-                              Foreground="Gray"/>
+                    <!-- Additional Information -->
+                    <StackPanel Spacing="15">
+                        <TextBlock Text="About OpenAI API:" FontWeight="SemiBold" FontSize="16" Foreground="{DynamicResource TextPrimary}"/>
+                        <Border Background="{DynamicResource BackgroundPrimary}" Padding="12" CornerRadius="6" BorderBrush="{DynamicResource BorderLight}" BorderThickness="1">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="• Your API key enables AI-powered email classification" FontSize="13" Foreground="{DynamicResource TextSecondary}"/>
+                                <TextBlock Text="• Keys are stored securely using your OS keychain" FontSize="13" Foreground="{DynamicResource TextSecondary}"/>
+                                <TextBlock Text="• You only pay for what you use (typically $0.01-$0.10/month)" FontSize="13" Foreground="{DynamicResource TextSecondary}"/>
+                                <TextBlock Text="• No emails are stored on OpenAI servers" FontSize="13" Foreground="{DynamicResource TextSecondary}"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </StackPanel>
-
-                <!-- Validation -->
-                <Border IsVisible="{Binding !!ValidationMessage}"
-                        Background="#FFEBEE" 
-                        Padding="10" 
-                        CornerRadius="4"
-                        BorderBrush="#F44336" 
-                        BorderThickness="1">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="⚠️" FontSize="14"/>
-                        <TextBlock Text="{Binding ValidationMessage}" 
+            </ScrollViewer>
+            
+            <!-- Right Column - API Key Input -->
+            <ScrollViewer Grid.Column="2">
+                <StackPanel Spacing="20">
+                    
+                    <!-- API Key Input -->
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="API Key" FontWeight="SemiBold" FontSize="16" Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBox Text="{Binding ApiKey}"
+                                 PasswordChar="*"
+                                 Watermark="sk-..."
+                                 MinHeight="50"
+                                 FontSize="14"
+                                 Padding="12"
+                                 BorderBrush="{DynamicResource BorderMedium}"
+                                 BorderThickness="1"
+                                 CornerRadius="6"
+                                 FontFamily="Consolas, Monaco, 'Courier New', monospace"/>
+                        <TextBlock Text="Your API key will be stored securely on this device using OS keychain" 
                                   FontSize="12" 
-                                  Foreground="#C62828"
+                                  Foreground="{DynamicResource TextTertiary}"
                                   TextWrapping="Wrap"/>
                     </StackPanel>
-                </Border>
 
-                <!-- Success Message -->
-                <Border IsVisible="{Binding IsValidated}"
-                        Background="#E8F5E8" 
-                        Padding="10" 
-                        CornerRadius="4"
-                        BorderBrush="#4CAF50" 
-                        BorderThickness="1">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="✅" FontSize="14"/>
-                        <TextBlock Text="API key is valid and has been saved securely" 
+                    <!-- Validation Message -->
+                    <Border IsVisible="{Binding !!ValidationMessage}"
+                            Classes="ErrorCard"
+                            Padding="16" 
+                            CornerRadius="6">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="⚠️" FontSize="16"/>
+                            <TextBlock Text="{Binding ValidationMessage}" 
+                                      FontSize="13" 
+                                      Foreground="{DynamicResource StatusError}"
+                                      TextWrapping="Wrap"
+                                      VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Success Message -->
+                    <Border IsVisible="{Binding IsValidated}"
+                            Background="#E8F5E8" 
+                            Padding="16" 
+                            CornerRadius="6"
+                            BorderBrush="{DynamicResource StatusSuccess}" 
+                            BorderThickness="1">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="✅" FontSize="16"/>
+                            <TextBlock Text="API key is valid and has been saved securely" 
+                                      FontSize="13" 
+                                      Foreground="{DynamicResource StatusSuccess}"
+                                      VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Status Message -->
+                    <Border IsVisible="{Binding !!StatusMessage}"
+                            Background="{DynamicResource BackgroundPrimary}"
+                            Padding="12"
+                            CornerRadius="6"
+                            BorderBrush="{DynamicResource BorderLight}"
+                            BorderThickness="1">
+                        <TextBlock Text="{Binding StatusMessage}" 
                                   FontSize="12" 
-                                  Foreground="#2E7D32"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- Status -->
-                <TextBlock Text="{Binding StatusMessage}" 
-                          FontSize="12" 
-                          Foreground="Gray"
-                          IsVisible="{Binding !!StatusMessage}"/>
-            </StackPanel>
-        </ScrollViewer>
+                                  Foreground="{DynamicResource TextTertiary}"
+                                  TextWrapping="Wrap"/>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
 
         <!-- Buttons -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,20,0,0">

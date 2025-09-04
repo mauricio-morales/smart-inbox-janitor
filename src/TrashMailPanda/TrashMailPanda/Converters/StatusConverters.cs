@@ -319,3 +319,34 @@ public class SetupTimeToTextConverter : IValueConverter
         throw new NotSupportedException("ConvertBack not supported for SetupTimeToTextConverter");
     }
 }
+
+/// <summary>
+/// Converts provider name to appropriate logo SVG path
+/// </summary>
+public class ProviderNameToLogoConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string providerName)
+        {
+            return providerName?.ToLowerInvariant() switch
+            {
+                "gmail" => "/Assets/Logos/gmail-logo.svg",
+                "google" => "/Assets/Logos/gmail-logo.svg", 
+                "openai" => "/Assets/Logos/openai-logo.svg",
+                "gpt" => "/Assets/Logos/openai-logo.svg",
+                "sqlite" => "/Assets/Logos/sqlite-logo.svg",
+                "storage" => "/Assets/Logos/sqlite-logo.svg",
+                "database" => "/Assets/Logos/sqlite-logo.svg",
+                _ => "⚙️" // Generic gear for unknown providers (fallback to emoji)
+            };
+        }
+
+        return "⚙️";
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException("ConvertBack not supported for ProviderNameToLogoConverter");
+    }
+}
