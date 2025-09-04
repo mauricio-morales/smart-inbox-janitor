@@ -432,7 +432,8 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         try
         {
             var service = context ?? "TrashMail Panda";
-            var account = $"credential-{Guid.NewGuid()}";
+            // Use predictable account name based on context for retrieval
+            var account = $"credential-{Convert.ToBase64String(Encoding.UTF8.GetBytes(context ?? "default")).Replace("/", "_").Replace("+", "-")}";
 
             var status = MacOSKeychain.SecKeychainCopyDefault(out var defaultKeychain);
             if (status != MacOSKeychain.OSStatus.NoErr)
@@ -442,6 +443,24 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
 
             try
             {
+                // Remove existing credential if it exists
+                MacOSKeychain.SecKeychainFindGenericPassword(
+                    defaultKeychain,
+                    (uint)Encoding.UTF8.GetByteCount(service), service,
+                    (uint)Encoding.UTF8.GetByteCount(account), account,
+                    out _, out var existingPasswordData,
+                    out var existingItemRef);
+
+                if (existingItemRef != IntPtr.Zero)
+                {
+                    MacOSKeychain.SecKeychainItemDelete(existingItemRef);
+                    MacOSKeychain.CFRelease(existingItemRef);
+                }
+                if (existingPasswordData != IntPtr.Zero)
+                {
+                    MacOSKeychain.SecKeychainItemFreeContent(IntPtr.Zero, existingPasswordData);
+                }
+
                 // Store the credential in keychain
                 var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
                 status = MacOSKeychain.SecKeychainAddGenericPassword(
@@ -567,7 +586,11 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             }
 
             var service = context ?? "TrashMail Panda";
-            var account = $"credential-{Guid.NewGuid()}";
+            // Use predictable account name based on context for retrieval
+            var account = $"credential-{Convert.ToBase64String(Encoding.UTF8.GetBytes(context ?? "default")).Replace("/", "_").Replace("+", "-")}";
+
+            // Remove existing credential if it exists
+            LinuxSecretHelper.RemoveSecret(service, account);
 
             // Store the credential in GNOME keyring
             var stored = LinuxSecretHelper.StoreSecret(service, account, plainText);

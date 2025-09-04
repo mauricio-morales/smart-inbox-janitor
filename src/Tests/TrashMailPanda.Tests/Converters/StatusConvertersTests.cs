@@ -4,6 +4,7 @@ using TrashMailPanda.Converters;
 using TrashMailPanda.Models;
 using TrashMailPanda.Services;
 using TrashMailPanda.Shared;
+using TrashMailPanda.Theming;
 using Xunit;
 
 namespace TrashMailPanda.Tests.Converters;
@@ -79,9 +80,9 @@ public class ProviderStatusToColorConverterTests
         var brush = (SolidColorBrush)result!;
 
         if (isHealthy)
-            Assert.Equal(Colors.Green, brush.Color);
+            Assert.Equal(ProfessionalColors.StatusSuccess, brush.Color);
         else
-            Assert.Equal(Colors.Red, brush.Color);
+            Assert.Equal(ProfessionalColors.StatusError, brush.Color);
     }
 
     [Theory]
@@ -96,7 +97,7 @@ public class ProviderStatusToColorConverterTests
         // Assert
         Assert.IsType<SolidColorBrush>(result);
         var brush = (SolidColorBrush)result!;
-        Assert.Equal(Colors.Green, brush.Color);
+        Assert.Equal(ProfessionalColors.StatusSuccess, brush.Color);
     }
 
     [Theory]
@@ -112,7 +113,7 @@ public class ProviderStatusToColorConverterTests
         // Assert
         Assert.IsType<SolidColorBrush>(result);
         var brush = (SolidColorBrush)result!;
-        Assert.Equal(Colors.Orange, brush.Color);
+        Assert.Equal(ProfessionalColors.StatusWarning, brush.Color);
     }
 
     [Theory]
@@ -129,7 +130,7 @@ public class ProviderStatusToColorConverterTests
         // Assert
         Assert.IsType<SolidColorBrush>(result);
         var brush = (SolidColorBrush)result!;
-        Assert.Equal(Colors.Red, brush.Color);
+        Assert.Equal(ProfessionalColors.StatusError, brush.Color);
     }
 
     [Theory]
@@ -144,7 +145,7 @@ public class ProviderStatusToColorConverterTests
         // Assert
         Assert.IsType<SolidColorBrush>(result);
         var brush = (SolidColorBrush)result!;
-        Assert.Equal(Colors.Blue, brush.Color);
+        Assert.Equal(ProfessionalColors.StatusInfo, brush.Color);
     }
 
     [Fact]
@@ -182,9 +183,9 @@ public class ProviderStatusToColorConverterTests
         var errorResult = _converter.Convert(errorStatus, typeof(IBrush), null, _culture);
 
         // Assert
-        Assert.Equal(Colors.Green, ((SolidColorBrush)healthyResult!).Color);
-        Assert.Equal(Colors.Orange, ((SolidColorBrush)setupResult!).Color);
-        Assert.Equal(Colors.Red, ((SolidColorBrush)errorResult!).Color);
+        Assert.Equal(ProfessionalColors.StatusSuccess, ((SolidColorBrush)healthyResult!).Color);
+        Assert.Equal(ProfessionalColors.StatusWarning, ((SolidColorBrush)setupResult!).Color);
+        Assert.Equal(ProfessionalColors.StatusError, ((SolidColorBrush)errorResult!).Color);
     }
 
     [Fact]
