@@ -301,7 +301,7 @@ public class SecureStorageManager : ISecureStorageManager
             }
 
             // Test credential storage/retrieval
-            const string testKey = "health_check_test_credential";
+            const string testKey = "TrashMail_Panda_Tests_Credential";
             const string testValue = "test-credential-value-12345";
 
             var storeResult = await StoreCredentialAsync(testKey, testValue);

@@ -512,18 +512,18 @@ public class ProviderNameToLogoConverterTests
     private readonly CultureInfo _culture = CultureInfo.InvariantCulture;
 
     [Theory]
-    [InlineData("gmail", "📧")]
-    [InlineData("Google", "📧")]
-    [InlineData("GMAIL", "📧")]
-    [InlineData("openai", "🤖")]
-    [InlineData("OpenAI", "🤖")]
-    [InlineData("gpt", "🤖")]
-    [InlineData("sqlite", "💾")]
-    [InlineData("SQLite", "💾")]
-    [InlineData("storage", "💾")]
-    [InlineData("database", "💾")]
-    [InlineData("unknown", "⚙️")]
-    [InlineData("", "⚙️")]
+    [InlineData("gmail", "/Assets/Logos/gmail-logo.png")]
+    [InlineData("Google", "/Assets/Logos/gmail-logo.png")]
+    [InlineData("GMAIL", "/Assets/Logos/gmail-logo.png")]
+    [InlineData("openai", "/Assets/Logos/openai-logo.png")]
+    [InlineData("OpenAI", "/Assets/Logos/openai-logo.png")]
+    [InlineData("gpt", "/Assets/Logos/openai-logo.png")]
+    [InlineData("sqlite", "/Assets/Logos/sqlite-logo.png")]
+    [InlineData("SQLite", "/Assets/Logos/sqlite-logo.png")]
+    [InlineData("storage", "/Assets/Logos/sqlite-logo.png")]
+    [InlineData("database", "/Assets/Logos/sqlite-logo.png")]
+    [InlineData("unknown", "/Assets/Logos/sqlite-logo.png")]
+    [InlineData("", "/Assets/Logos/sqlite-logo.png")]
     public void Convert_WithProviderName_ShouldReturnCorrectLogo(string providerName, string expectedLogo)
     {
         // Act
@@ -534,23 +534,23 @@ public class ProviderNameToLogoConverterTests
     }
 
     [Fact]
-    public void Convert_WithNullValue_ShouldReturnGenericGear()
+    public void Convert_WithNullValue_ShouldReturnGenericLogo()
     {
         // Act
         var result = _converter.Convert(null, typeof(string), null, _culture);
 
         // Assert
-        Assert.Equal("⚙️", result);
+        Assert.Equal("/Assets/Logos/sqlite-logo.png", result);
     }
 
     [Fact]
-    public void Convert_WithNonStringValue_ShouldReturnGenericGear()
+    public void Convert_WithNonStringValue_ShouldReturnGenericLogo()
     {
         // Act
         var result = _converter.Convert(123, typeof(string), null, _culture);
 
         // Assert
-        Assert.Equal("⚙️", result);
+        Assert.Equal("/Assets/Logos/sqlite-logo.png", result);
     }
 
     [Fact]
@@ -558,6 +558,6 @@ public class ProviderNameToLogoConverterTests
     {
         // Act & Assert
         Assert.Throws<NotSupportedException>(() =>
-            _converter.ConvertBack("📧", typeof(string), null, _culture));
+            _converter.ConvertBack("/Assets/Logos/gmail-logo.png", typeof(string), null, _culture));
     }
 }
