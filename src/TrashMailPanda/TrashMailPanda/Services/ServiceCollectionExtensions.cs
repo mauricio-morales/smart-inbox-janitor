@@ -120,6 +120,7 @@ public static class ServiceCollectionExtensions
 
         // Add setup dialog ViewModels
         services.AddTransient<OpenAISetupViewModel>();
+        services.AddTransient<GmailSetupViewModel>();
 
         // Register MainWindowViewModel with navigation dependencies
         services.AddTransient<MainWindowViewModel>(provider => new MainWindowViewModel(
