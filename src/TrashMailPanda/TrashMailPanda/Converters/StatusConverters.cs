@@ -344,7 +344,7 @@ public class SetupTimeToTextConverter : IValueConverter
 }
 
 /// <summary>
-/// Converts provider name to appropriate PNG logo URI for Avalonia
+/// Converts provider name to appropriate PNG logo path for display
 /// </summary>
 public class ProviderNameToLogoConverter : IValueConverter
 {
@@ -352,27 +352,24 @@ public class ProviderNameToLogoConverter : IValueConverter
     {
         if (value is string providerName)
         {
-            var logoPath = providerName?.ToLowerInvariant() switch
+            // Debug: Log the actual provider name being received - use Console.WriteLine for visibility
+            Console.WriteLine($"[ProviderNameToLogoConverter] Converting provider name: '{providerName}'");
+            return providerName?.ToLowerInvariant() switch
             {
                 "gmail" => "/Assets/Logos/gmail-logo.png",
-                "google" => "/Assets/Logos/gmail-logo.png",
-                "openai gpt" => "/Assets/Logos/openai-logo.png",
+                "google" => "/Assets/Logos/gmail-logo.png", 
                 "openai" => "/Assets/Logos/openai-logo.png",
+                "openai gpt" => "/Assets/Logos/openai-logo.png",
                 "gpt" => "/Assets/Logos/openai-logo.png",
-                "local storage" => "/Assets/Logos/sqlite-logo.png",
                 "sqlite" => "/Assets/Logos/sqlite-logo.png",
-                "storage" => "/Assets/Logos/sqlite-logo.png",
+                "local storage" => "/Assets/Logos/sqlite-logo.png",
+                "storage" => "/Assets/Logos/sqlite-logo.png", 
                 "database" => "/Assets/Logos/sqlite-logo.png",
-                _ => null // Return null for unknown providers so we can use fallback
+                _ => "/Assets/Logos/sqlite-logo.png" // Fallback to a generic logo
             };
-
-            if (logoPath != null)
-            {
-                return logoPath; // Return the path directly as string
-            }
         }
 
-        return null; // Return null to trigger text fallback
+        return "/Assets/Logos/sqlite-logo.png"; // Default fallback
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

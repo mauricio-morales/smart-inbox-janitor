@@ -250,27 +250,84 @@
             </ScrollViewer>
         </Grid>
 
-        <!-- Buttons -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,20,0,0">
-            <Button Command="{Binding CancelCommand}"
-                    Content="Cancel"
-                    Classes="secondary"
-                    MinWidth="80"
-                    Height="35"/>
+        <!-- Bottom Section with Status Bar and Buttons -->
+        <Grid Grid.Row="2" RowDefinitions="Auto,Auto" Margin="0,20,0,0">
             
-            <Button Command="{Binding ValidateAndSaveCommand}"
-                    IsEnabled="{Binding CanSave}"
-                    Classes="primary"
-                    MinWidth="150"
-                    Height="35"
-                    IsDefault="True">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="💾" FontSize="12" IsVisible="{Binding !IsValidating}"/>
-                    <TextBlock Text="⏳" FontSize="12" IsVisible="{Binding IsValidating}"/>
-                    <TextBlock Text="{Binding SaveButtonText}" FontSize="12" VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
-        </StackPanel>
+            <!-- Status Bar -->
+            <Border Grid.Row="0" 
+                    Background="{DynamicResource BackgroundPrimary}"
+                    BorderBrush="{DynamicResource BorderLight}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="12,8"
+                    Margin="0,0,0,12">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <!-- Status Icon -->
+                    <TextBlock Grid.Column="0" 
+                              Text="{Binding IsValidating, StringFormat='{}{0:⏳;📋}'}"
+                              FontSize="14"
+                              VerticalAlignment="Center"
+                              Margin="0,0,8,0"/>
+                    
+                    <!-- Status Message -->
+                    <TextBlock Grid.Column="1" 
+                              Text="{Binding StatusMessage}" 
+                              FontSize="12" 
+                              Foreground="{DynamicResource TextTertiary}"
+                              TextWrapping="Wrap"
+                              VerticalAlignment="Center"/>
+                    
+                    <!-- Progress Indicator (when validating) -->
+                    <Border Grid.Column="2"
+                            IsVisible="{Binding IsValidating}"
+                            Width="16" Height="16" 
+                            CornerRadius="8"
+                            Background="{DynamicResource SystemAccentColor}"
+                            Classes="loading-spinner"/>
+                </Grid>
+            </Border>
+
+            <!-- Buttons -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Command="{Binding CancelCommand}"
+                        Content="Cancel"
+                        Classes="secondary"
+                        MinWidth="80"
+                        Height="35"/>
+                
+                <Button Command="{Binding ValidateAndSaveCommand}"
+                        IsEnabled="{Binding CanSave}"
+                        Classes="primary"
+                        MinWidth="150"
+                        Height="35"
+                        IsDefault="True">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="💾" FontSize="12" IsVisible="{Binding !IsValidating}"/>
+                        <TextBlock Text="⏳" FontSize="12" IsVisible="{Binding IsValidating}"/>
+                        <TextBlock Text="{Binding SaveButtonText}" FontSize="12" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
     </Grid>
+
+    <!-- Styles for loading animation -->
+    <Window.Styles>
+        <Style Selector="Border.loading-spinner">
+            <Style.Animations>
+                <Animation Duration="0:0:1" IterationCount="Infinite">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="RotateTransform.Angle" Value="0"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="RotateTransform.Angle" Value="360"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+            <Setter Property="RenderTransform">
+                <RotateTransform/>
+            </Setter>
+        </Style>
+    </Window.Styles>
 
 </Window>

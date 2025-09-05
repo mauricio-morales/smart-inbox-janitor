@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TrashMailPanda.Shared.Models;
 
 namespace TrashMailPanda.Services;
 
@@ -16,4 +17,9 @@ public record ProviderStatus
     public string? ErrorMessage { get; init; }
     public DateTime LastCheck { get; init; } = DateTime.UtcNow;
     public Dictionary<string, object> Details { get; init; } = new();
+    
+    /// <summary>
+    /// Authenticated user information for providers that support it (e.g., Gmail)
+    /// </summary>
+    public AuthenticatedUserInfo? AuthenticatedUser { get; init; }
 }

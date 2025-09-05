@@ -60,21 +60,27 @@
             <Setter Property="BorderBrush" Value="{DynamicResource BorderMedium}"/>
         </Style>
         
-        <!-- Professional Warning/Error Card Styles -->
+        <!-- Professional Status Card Styles -->
+        <Style Selector="Border.SuccessCard">
+            <Setter Property="Background" Value="{DynamicResource StatusSuccessBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource StatusSuccess}"/>
+            <Setter Property="BorderThickness" Value="1,1,1,3"/>
+        </Style>
+        
         <Style Selector="Border.WarningCard">
-            <Setter Property="Background" Value="#FFF8E1"/>
+            <Setter Property="Background" Value="{DynamicResource StatusWarningBackground}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource StatusWarning}"/>
             <Setter Property="BorderThickness" Value="1,1,1,3"/>
         </Style>
         
         <Style Selector="Border.ErrorCard">
-            <Setter Property="Background" Value="#FFEBEE"/>
+            <Setter Property="Background" Value="{DynamicResource StatusErrorBackground}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource StatusError}"/>
             <Setter Property="BorderThickness" Value="1,1,1,3"/>
         </Style>
         
         <Style Selector="Border.InfoCard">
-            <Setter Property="Background" Value="#E3F2FD"/>
+            <Setter Property="Background" Value="{DynamicResource StatusInfoBackground}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource StatusInfo}"/>
             <Setter Property="BorderThickness" Value="1,1,1,3"/>
         </Style>

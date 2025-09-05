@@ -14,6 +14,7 @@
 
     <UserControl.Resources>
         <!-- Converters for data binding -->
+        <conv:StringEqualsConverter x:Key="StringEqualsConverter"/>
         <conv:ProviderStatusToColorConverter x:Key="StatusToColorConverter"/>
         <conv:ProviderStatusToIconConverter x:Key="StatusToIconConverter"/>
         <conv:ProviderStatusToButtonTextConverter x:Key="StatusToButtonTextConverter"/>
@@ -54,38 +55,26 @@
                         BorderBrush="{DynamicResource BorderLight}"
                         BorderThickness="1"
                         VerticalAlignment="Center">
-                    <!-- Provider Logo - Use MultiDataTrigger to show different images -->
-                    <Panel>
+                    <!-- Provider Logo PNG - Hardcoded for each provider -->
+                    <Grid>
                         <!-- Gmail Logo -->
-                        <Image Source="/Assets/Logos/gmail-logo.png" Width="20" Height="20"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform">
-                            <Image.IsVisible>
-                                <Binding Path="ProviderDisplayName" Converter="{x:Static conv:StringEqualsConverter.Instance}" ConverterParameter="Gmail"/>
-                            </Image.IsVisible>
-                        </Image>
+                        <Image Source="/Assets/Logos/gmail-logo.png"
+                               Width="20" Height="20"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding ProviderName, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Gmail}"/>
                         
                         <!-- OpenAI Logo -->
-                        <Image Source="/Assets/Logos/openai-logo.png" Width="20" Height="20"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform">
-                            <Image.IsVisible>
-                                <Binding Path="ProviderDisplayName" Converter="{x:Static conv:StringEqualsConverter.Instance}" ConverterParameter="OpenAI GPT"/>
-                            </Image.IsVisible>
-                        </Image>
+                        <Image Source="/Assets/Logos/openai-logo.png"
+                               Width="20" Height="20"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding ProviderName, Converter={StaticResource StringEqualsConverter}, ConverterParameter=OpenAI}"/>
                         
                         <!-- SQLite Logo -->
-                        <Image Source="/Assets/Logos/sqlite-logo.png" Width="20" Height="20"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform">
-                            <Image.IsVisible>
-                                <Binding Path="ProviderDisplayName" Converter="{x:Static conv:StringEqualsConverter.Instance}" ConverterParameter="Local Storage"/>
-                            </Image.IsVisible>
-                        </Image>
-                        
-                        <!-- Fallback emoji -->
-                        <TextBlock Text="⚙️" FontSize="16"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center"
-                                  Foreground="{DynamicResource ChromeMediumColor}"
-                                  IsVisible="False"/>
-                    </Panel>
+                        <Image Source="/Assets/Logos/sqlite-logo.png"
+                               Width="20" Height="20"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding ProviderName, Converter={StaticResource StringEqualsConverter}, ConverterParameter=SQLite}"/>
+                    </Grid>
                 </Border>
 
                 <!-- Provider Info -->
@@ -143,6 +132,28 @@
                                   FontSize="10"
                                   Foreground="{DynamicResource ChromeLowColor}"
                                   IsVisible="{Binding !IsLoading}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Authenticated User Information (when available) -->
+                <Border IsVisible="{Binding HasAuthenticatedUser}"
+                        Classes="SuccessCard"
+                        Padding="10"
+                        CornerRadius="4">
+                    <StackPanel Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="👤" FontSize="12" Foreground="{DynamicResource StatusSuccessText}"/>
+                            <TextBlock Text="Signed in as"
+                                      FontSize="12"
+                                      FontWeight="Medium"
+                                      Foreground="{DynamicResource StatusSuccessText}"/>
+                        </StackPanel>
+                        
+                        <TextBlock Text="{Binding AuthenticatedUserEmail}"
+                                  FontSize="13"
+                                  FontWeight="SemiBold"
+                                  Foreground="{DynamicResource StatusSuccessTextStrong}"
+                                  TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 

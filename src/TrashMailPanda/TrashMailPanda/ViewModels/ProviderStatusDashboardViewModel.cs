@@ -76,6 +76,7 @@ public partial class ProviderStatusDashboardViewModel : ViewModelBase
     public event EventHandler? DashboardAccessRequested;
     public event EventHandler<string>? ProviderSetupRequested;
     public event EventHandler<string>? ProviderConfigurationRequested;
+    public event EventHandler<string>? ProviderAuthenticationRequested;
 
     public ProviderStatusDashboardViewModel(
         IProviderBridgeService providerBridgeService,
@@ -132,6 +133,7 @@ public partial class ProviderStatusDashboardViewModel : ViewModelBase
                 // Subscribe to card events
                 cardViewModel.SetupRequested += OnProviderSetupRequested;
                 cardViewModel.ConfigurationRequested += OnProviderConfigurationRequested;
+                cardViewModel.AuthenticationRequested += OnProviderAuthenticationRequested;
                 cardViewModel.RefreshRequested += OnProviderRefreshRequested;
 
                 ProviderCards.Add(cardViewModel);
@@ -353,6 +355,15 @@ public partial class ProviderStatusDashboardViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Handle provider authentication requests from cards
+    /// </summary>
+    private void OnProviderAuthenticationRequested(object? sender, string providerName)
+    {
+        _logger.LogInformation("Authentication requested for provider {Provider}", providerName);
+        ProviderAuthenticationRequested?.Invoke(this, providerName);
+    }
+
+    /// <summary>
     /// Handle provider refresh requests from cards
     /// </summary>
     private async void OnProviderRefreshRequested(object? sender, string providerName)
@@ -439,6 +450,7 @@ public partial class ProviderStatusDashboardViewModel : ViewModelBase
         {
             card.SetupRequested -= OnProviderSetupRequested;
             card.ConfigurationRequested -= OnProviderConfigurationRequested;
+            card.AuthenticationRequested -= OnProviderAuthenticationRequested;
             card.RefreshRequested -= OnProviderRefreshRequested;
         }
     }
