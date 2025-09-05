@@ -149,7 +149,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         {
             // Test encryption/decryption round-trip
             const string testData = "test-credential-12345";
-            const string testContext = "TrashMail Panda Tests";
+            const string testContext = "TrashMail Panda";
 
             var encryptResult = await EncryptAsync(testData, testContext);
             if (!encryptResult.IsSuccess)

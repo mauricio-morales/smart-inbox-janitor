@@ -125,14 +125,18 @@ public class SecureStorageIntegrationTests : IDisposable
 
             await secureStorageManager2.InitializeAsync();
 
-            // On restart, in-memory cache would be empty, so retrieval would fail
-            // This demonstrates that our current implementation uses in-memory storage only
-            // In a real system, you'd persist encrypted data to disk/database
+            // On restart, in-memory cache would be empty, but OS keychain should persist
+            // This validates that our implementation correctly uses persistent OS keychain storage
+            // Credentials should be available after app restart via direct keychain retrieval
             var retrieveResult = await secureStorageManager2.RetrieveCredentialAsync(testKey);
 
-            // This is expected to fail in our current implementation since we only use in-memory cache
-            Assert.False(retrieveResult.IsSuccess);
-            Assert.Contains("not found", retrieveResult.ErrorMessage!);
+            // This should succeed because credentials persist in OS keychain across app restarts
+            Assert.True(retrieveResult.IsSuccess, $"Credential should persist across app restart: {retrieveResult.ErrorMessage}");
+            Assert.Equal(testCredential, retrieveResult.Value);
+
+            // Cleanup - remove the test credential
+            var removeResult = await secureStorageManager2.RemoveCredentialAsync(testKey);
+            Assert.True(removeResult.IsSuccess, "Cleanup should succeed");
 
             credentialEncryption2.Dispose();
         }

@@ -110,7 +110,7 @@
       "detail": "Fast validation - format code, build, and test",
       "type": "shell",
       "command": "dotnet",
-      "args": ["test", "--configuration", "Release"],
+      "args": ["test", "--blame-hang", "--blame-hang-timeout", "30s", "--configuration", "Release"],
       "group": "build",
       "presentation": {
         "echo": true,
@@ -177,7 +177,7 @@
       "detail": "Run xUnit tests with coverage",
       "type": "shell",
       "command": "dotnet",
-      "args": ["test", "--collect:\"XPlat Code Coverage\"", "--configuration", "Release"],
+      "args": ["test", "--blame-hang", "--blame-hang-timeout", "30s", "--collect:\"XPlat Code Coverage\"", "--configuration", "Release"],
       "group": "test",
       "presentation": {
         "echo": true,
@@ -191,7 +191,7 @@
       "detail": "Run tests in watch mode for active development",
       "type": "shell",
       "command": "dotnet",
-      "args": ["watch", "test", "--project", "src/Tests"],
+      "args": ["watch", "test", "--blame-hang", "--blame-hang-timeout", "30s", "--project", "src/Tests"],
       "group": "test",
       "presentation": {
         "echo": true,
