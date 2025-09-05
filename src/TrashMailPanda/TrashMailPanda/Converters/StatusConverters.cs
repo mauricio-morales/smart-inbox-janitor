@@ -357,13 +357,13 @@ public class ProviderNameToLogoConverter : IValueConverter
             return providerName?.ToLowerInvariant() switch
             {
                 "gmail" => "/Assets/Logos/gmail-logo.png",
-                "google" => "/Assets/Logos/gmail-logo.png", 
+                "google" => "/Assets/Logos/gmail-logo.png",
                 "openai" => "/Assets/Logos/openai-logo.png",
                 "openai gpt" => "/Assets/Logos/openai-logo.png",
                 "gpt" => "/Assets/Logos/openai-logo.png",
                 "sqlite" => "/Assets/Logos/sqlite-logo.png",
                 "local storage" => "/Assets/Logos/sqlite-logo.png",
-                "storage" => "/Assets/Logos/sqlite-logo.png", 
+                "storage" => "/Assets/Logos/sqlite-logo.png",
                 "database" => "/Assets/Logos/sqlite-logo.png",
                 _ => "/Assets/Logos/sqlite-logo.png" // Fallback to a generic logo
             };

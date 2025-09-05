@@ -311,17 +311,17 @@ public partial class MainWindowViewModel : ViewModelBase
                 case "gmail":
                     _logger.LogInformation("Initiating Gmail OAuth authentication in browser");
                     NavigationStatus = "Opening browser for Gmail sign-in...";
-                    
+
                     var authResult = await _gmailOAuthService.AuthenticateAsync();
-                    
+
                     if (authResult.IsSuccess)
                     {
                         _logger.LogInformation("Gmail OAuth authentication completed successfully");
                         NavigationStatus = "Gmail authentication successful - refreshing status...";
-                        
+
                         // Refresh provider status to reflect the change
                         await _providerDashboardViewModel.RefreshAllProvidersCommand.ExecuteAsync(null);
-                        
+
                         NavigationStatus = "Gmail authentication completed";
                     }
                     else
@@ -330,7 +330,7 @@ public partial class MainWindowViewModel : ViewModelBase
                         NavigationStatus = $"Gmail authentication failed: {authResult.Error?.Message}";
                     }
                     break;
-                    
+
                 default:
                     _logger.LogInformation("Authentication for {Provider} not implemented", providerName);
                     NavigationStatus = $"{providerName} authentication not implemented";
@@ -427,7 +427,8 @@ public partial class MainWindowViewModel : ViewModelBase
             var dialog = new Views.GmailSetupDialog(viewModel);
 
             // Subscribe to Gmail sign-in event
-            viewModel.RequestGmailSignIn += async (sender, args) => {
+            viewModel.RequestGmailSignIn += async (sender, args) =>
+            {
                 _logger.LogInformation("Gmail OAuth setup completed - triggering Gmail authentication");
                 await Task.Delay(500); // Brief delay to let dialog close
                 // Trigger additional refresh to ensure Gmail authentication is attempted

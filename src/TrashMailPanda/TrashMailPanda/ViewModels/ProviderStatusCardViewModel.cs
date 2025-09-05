@@ -225,11 +225,11 @@ public partial class ProviderStatusCardViewModel : ViewModelBase
             {
                 StatusMessage = "Initiating authentication...";
                 AuthenticationRequested?.Invoke(this, ProviderName);
-                
+
                 // For authentication, we can immediately trigger a refresh instead of the delay
                 await Task.Delay(500); // Brief pause for UI feedback
                 RefreshRequested?.Invoke(this, ProviderName);
-                
+
                 IsLoading = false;
                 StatusMessage = "Authentication started";
             }
@@ -237,7 +237,7 @@ public partial class ProviderStatusCardViewModel : ViewModelBase
             {
                 StatusMessage = "Starting setup...";
                 SetupRequested?.Invoke(this, ProviderName);
-                
+
                 // Reset loading state after a reasonable delay since we're not implementing
                 // actual dialogs yet - this prevents the button from staying stuck
                 await Task.Delay(2000);
@@ -248,7 +248,7 @@ public partial class ProviderStatusCardViewModel : ViewModelBase
             {
                 StatusMessage = "Opening configuration...";
                 ConfigurationRequested?.Invoke(this, ProviderName);
-                
+
                 await Task.Delay(2000);
                 IsLoading = false;
                 StatusMessage = "Configuration requested";

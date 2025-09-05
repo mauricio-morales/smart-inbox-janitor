@@ -153,7 +153,7 @@ public class ProviderBridgeService : IProviderBridgeService
                 if (connectivityResult.IsSuccess && connectivityResult.Value != null)
                 {
                     status.Details["user_email"] = connectivityResult.Value;
-                    
+
                     // Get full authenticated user info from Gmail provider
                     AuthenticatedUserInfo? authenticatedUser = null;
                     if (_emailProvider != null)
@@ -167,7 +167,7 @@ public class ProviderBridgeService : IProviderBridgeService
                             _logger.LogWarning(ex, "Failed to get detailed authenticated user info, using basic info");
                         }
                     }
-                    
+
                     // Create authenticated user info (use detailed info if available, fallback to email only)
                     status = status with
                     {
@@ -431,7 +431,7 @@ public class ProviderBridgeService : IProviderBridgeService
                 {
                     // Store user email in credentials for future reference
                     await _secureStorageManager.StoreCredentialAsync(ProviderCredentialTypes.GmailUserEmail, authenticatedUser.Email);
-                    
+
                     return Result<string>.Success(authenticatedUser.Email);
                 }
             }

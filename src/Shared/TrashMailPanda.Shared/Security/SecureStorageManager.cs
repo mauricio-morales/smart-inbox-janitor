@@ -159,7 +159,7 @@ public class SecureStorageManager : ISecureStorageManager
 
             // If not in cache, try to retrieve from keychain directly
             _logger.LogDebug("Credential not in cache for key {Key}, attempting keychain retrieval", MaskKey(key));
-            
+
             try
             {
                 // Build the expected keychain reference based on our predictable account name pattern
@@ -167,7 +167,7 @@ public class SecureStorageManager : ISecureStorageManager
                 var accountName = $"credential-{Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(key)).Replace("/", "_").Replace("+", "-")}";
                 var keychainReference = $"{service}:{accountName}";
                 var keychainReferenceBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(keychainReference));
-                
+
                 // Try to decrypt using the expected keychain reference
                 var directDecryptResult = await _credentialEncryption.DecryptAsync(keychainReferenceBase64, key);
                 if (directDecryptResult.IsSuccess && !string.IsNullOrEmpty(directDecryptResult.Value))
