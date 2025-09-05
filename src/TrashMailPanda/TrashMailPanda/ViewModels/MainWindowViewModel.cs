@@ -222,9 +222,7 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 case "gmail":
                     _logger.LogInformation("Opening Gmail OAuth setup dialog");
-                    NavigationStatus = "Gmail setup - OAuth flow not yet implemented";
-                    // TODO: Implement Gmail OAuth setup dialog
-                    await Task.Delay(2000);
+                    await OpenGmailSetupDialogAsync();
                     break;
 
                 case "openai":
@@ -347,6 +345,49 @@ public partial class MainWindowViewModel : ViewModelBase
         // In a real implementation, this would need to get the actual main window
         // For now, we'll return null which will center the dialog on screen
         return null;
+    }
+
+    /// <summary>
+    /// Open Gmail OAuth setup dialog
+    /// </summary>
+    private async Task OpenGmailSetupDialogAsync()
+    {
+        try
+        {
+            var viewModel = _serviceProvider.GetRequiredService<GmailSetupViewModel>();
+
+            var dialog = new Views.GmailSetupDialog(viewModel);
+
+            // Show dialog (modal)
+            var mainWindow = GetMainWindow();
+            if (mainWindow != null)
+            {
+                await dialog.ShowDialog(mainWindow);
+            }
+            else
+            {
+                dialog.Show(); // Show as regular window if no parent
+            }
+
+            if (viewModel.DialogResult)
+            {
+                _logger.LogInformation("Gmail OAuth setup completed successfully");
+                NavigationStatus = "Gmail OAuth credentials saved successfully";
+
+                // Refresh provider status to reflect the change
+                await _providerDashboardViewModel.RefreshAllProvidersCommand.ExecuteAsync(null);
+            }
+            else
+            {
+                _logger.LogInformation("Gmail OAuth setup was cancelled");
+                NavigationStatus = "Gmail setup cancelled";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception opening Gmail setup dialog");
+            NavigationStatus = "Failed to open Gmail setup";
+        }
     }
 
     /// <summary>

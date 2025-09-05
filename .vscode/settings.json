@@ -80,5 +80,8 @@
 
   // Workspace trust
   "security.workspace.trust.untrustedFiles": "open",
-  "kiroAgent.configureMCP": "Disabled"
+  "kiroAgent.configureMCP": "Disabled",
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  }
 }
