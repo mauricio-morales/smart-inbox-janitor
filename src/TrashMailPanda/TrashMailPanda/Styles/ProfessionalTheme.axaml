@@ -28,6 +28,24 @@
     <SolidColorBrush x:Key="StatusWarning">#FFB300</SolidColorBrush>
     <SolidColorBrush x:Key="StatusError">#E57373</SolidColorBrush>
     <SolidColorBrush x:Key="StatusInfo">#3A7BD5</SolidColorBrush>
+    
+    <!-- Status Background Colors (light variants for card backgrounds) -->
+    <SolidColorBrush x:Key="StatusSuccessBackground">#E8F5E8</SolidColorBrush>
+    <SolidColorBrush x:Key="StatusWarningBackground">#FFF8E1</SolidColorBrush>
+    <SolidColorBrush x:Key="StatusErrorBackground">#FFEBEE</SolidColorBrush>
+    <SolidColorBrush x:Key="StatusInfoBackground">#E3F2FD</SolidColorBrush>
+    
+    <!-- Status Text Colors (dark variants for good contrast) -->
+    <SolidColorBrush x:Key="StatusSuccessText">#2E7D32</SolidColorBrush>
+    <SolidColorBrush x:Key="StatusWarningText">#F57C00</SolidColorBrush>
+    <SolidColorBrush x:Key="StatusErrorText">#C62828</SolidColorBrush>
+    <SolidColorBrush x:Key="StatusInfoText">#1976D2</SolidColorBrush>
+    
+    <!-- Status Text Colors (darker for emphasis) -->
+    <SolidColorBrush x:Key="StatusSuccessTextStrong">#1B5E20</SolidColorBrush>
+    <SolidColorBrush x:Key="StatusWarningTextStrong">#E65100</SolidColorBrush>
+    <SolidColorBrush x:Key="StatusErrorTextStrong">#B71C1C</SolidColorBrush>
+    <SolidColorBrush x:Key="StatusInfoTextStrong">#0D47A1</SolidColorBrush>
 
 
     <!-- Professional Box Shadows -->

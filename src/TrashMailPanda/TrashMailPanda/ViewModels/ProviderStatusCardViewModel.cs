@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using TrashMailPanda.Models;
 using TrashMailPanda.Services;
 using TrashMailPanda.Shared;
+using TrashMailPanda.Shared.Models;
 
 namespace TrashMailPanda.ViewModels;
 
@@ -47,6 +48,12 @@ public partial class ProviderStatusCardViewModel : ViewModelBase
     public bool IsInitialized => Status.IsInitialized;
     public string CurrentStatus => Status.Status ?? "Unknown";
     public string? ErrorMessage => Status.ErrorMessage;
+
+    // Authenticated user information
+    public AuthenticatedUserInfo? AuthenticatedUser => Status.AuthenticatedUser;
+    public bool HasAuthenticatedUser => AuthenticatedUser != null;
+    public string AuthenticatedUserEmail => AuthenticatedUser?.Email ?? string.Empty;
+    public string AuthenticatedUserDisplayName => AuthenticatedUser?.DisplayName ?? string.Empty;
 
     // Setup information
     public string SetupComplexity => DisplayInfo.Complexity switch
@@ -117,6 +124,7 @@ public partial class ProviderStatusCardViewModel : ViewModelBase
     // Events for parent communication
     public event EventHandler<string>? SetupRequested;
     public event EventHandler<string>? ConfigurationRequested;
+    public event EventHandler<string>? AuthenticationRequested;
     public event EventHandler<string>? RefreshRequested;
 
     /// <summary>
@@ -170,6 +178,9 @@ public partial class ProviderStatusCardViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsInitialized));
         OnPropertyChanged(nameof(CurrentStatus));
         OnPropertyChanged(nameof(ErrorMessage));
+        OnPropertyChanged(nameof(HasAuthenticatedUser));
+        OnPropertyChanged(nameof(AuthenticatedUserEmail));
+        OnPropertyChanged(nameof(AuthenticatedUserDisplayName));
         OnPropertyChanged(nameof(ShowSetupButton));
         OnPropertyChanged(nameof(ShowStatusDetails));
         OnPropertyChanged(nameof(ActionButtonText));
@@ -210,22 +221,38 @@ public partial class ProviderStatusCardViewModel : ViewModelBase
 
         try
         {
-            if (RequiresSetup)
+            if (CurrentStatus == "Authentication Required")
+            {
+                StatusMessage = "Initiating authentication...";
+                AuthenticationRequested?.Invoke(this, ProviderName);
+                
+                // For authentication, we can immediately trigger a refresh instead of the delay
+                await Task.Delay(500); // Brief pause for UI feedback
+                RefreshRequested?.Invoke(this, ProviderName);
+                
+                IsLoading = false;
+                StatusMessage = "Authentication started";
+            }
+            else if (RequiresSetup)
             {
                 StatusMessage = "Starting setup...";
                 SetupRequested?.Invoke(this, ProviderName);
+                
+                // Reset loading state after a reasonable delay since we're not implementing
+                // actual dialogs yet - this prevents the button from staying stuck
+                await Task.Delay(2000);
+                IsLoading = false;
+                StatusMessage = "Setup requested";
             }
             else
             {
                 StatusMessage = "Opening configuration...";
                 ConfigurationRequested?.Invoke(this, ProviderName);
+                
+                await Task.Delay(2000);
+                IsLoading = false;
+                StatusMessage = "Configuration requested";
             }
-
-            // Reset loading state after a reasonable delay since we're not implementing
-            // actual dialogs yet - this prevents the button from staying stuck
-            await Task.Delay(2000);
-            IsLoading = false;
-            StatusMessage = RequiresSetup ? "Setup requested" : "Configuration requested";
         }
         catch (Exception ex)
         {
@@ -369,6 +396,9 @@ public partial class ProviderStatusCardViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsInitialized));
         OnPropertyChanged(nameof(CurrentStatus));
         OnPropertyChanged(nameof(ErrorMessage));
+        OnPropertyChanged(nameof(HasAuthenticatedUser));
+        OnPropertyChanged(nameof(AuthenticatedUserEmail));
+        OnPropertyChanged(nameof(AuthenticatedUserDisplayName));
         OnPropertyChanged(nameof(ShowSetupButton));
         OnPropertyChanged(nameof(ShowStatusDetails));
         OnPropertyChanged(nameof(ActionButtonText));

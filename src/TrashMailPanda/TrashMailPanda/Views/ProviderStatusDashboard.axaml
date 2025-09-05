@@ -62,17 +62,6 @@
                        Spacing="8"
                        VerticalAlignment="Center">
                 
-                <!-- Refresh All Button -->
-                <Button Command="{Binding RefreshAllProvidersCommand}"
-                        IsEnabled="{Binding !IsRefreshing}"
-                        Classes="secondary"
-                        HorizontalAlignment="Stretch">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="🔄" FontSize="14"/>
-                        <TextBlock Text="Refresh All" FontSize="13"/>
-                    </StackPanel>
-                </Button>
-
                 <!-- Main Dashboard Access Button -->
                 <Button Command="{Binding AccessMainDashboardCommand}"
                         IsVisible="{Binding CanAccessMainDashboard}"

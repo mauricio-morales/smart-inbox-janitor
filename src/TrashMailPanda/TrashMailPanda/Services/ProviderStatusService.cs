@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using TrashMailPanda.Shared;
+using TrashMailPanda.Shared.Models;
+using TrashMailPanda.Providers.Email;
 
 namespace TrashMailPanda.Services;
 
@@ -140,17 +142,34 @@ public class ProviderStatusService : IProviderStatusService
         switch (provider)
         {
             case IEmailProvider emailProvider:
-                // For now, assume it's initialized and healthy
+                // Get authenticated user info if it's a Gmail provider
+                AuthenticatedUserInfo? authenticatedUser = null;
+                if (emailProvider is GmailEmailProvider gmailProvider)
+                {
+                    try
+                    {
+                        authenticatedUser = await gmailProvider.GetAuthenticatedUserAsync();
+                        _logger.LogDebug("Retrieved authenticated user info for Gmail: {Email}", 
+                            authenticatedUser?.Email ?? "None");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to get authenticated user info from Gmail provider");
+                    }
+                }
+
                 status = status with
                 {
                     IsHealthy = true,
                     IsInitialized = true,
                     RequiresSetup = false,
                     Status = "Connected",
+                    AuthenticatedUser = authenticatedUser,
                     Details = new Dictionary<string, object>
                     {
                         { "type", "Gmail" },
-                        { "last_check", DateTime.UtcNow }
+                        { "last_check", DateTime.UtcNow },
+                        { "authenticated_user", authenticatedUser?.Email ?? "Not available" }
                     }
                 };
                 break;
@@ -216,7 +235,15 @@ public class ProviderStatusService : IProviderStatusService
                status1.IsInitialized == status2.IsInitialized &&
                status1.RequiresSetup == status2.RequiresSetup &&
                status1.Status == status2.Status &&
-               status1.ErrorMessage == status2.ErrorMessage;
+               status1.ErrorMessage == status2.ErrorMessage &&
+               AuthenticatedUserEqual(status1.AuthenticatedUser, status2.AuthenticatedUser);
+    }
+
+    private static bool AuthenticatedUserEqual(AuthenticatedUserInfo? user1, AuthenticatedUserInfo? user2)
+    {
+        if (user1 == null && user2 == null) return true;
+        if (user1 == null || user2 == null) return false;
+        return user1.Email == user2.Email;
     }
 
     private void OnProviderStatusChanged(string providerName, ProviderStatus newStatus, ProviderStatus? previousStatus)

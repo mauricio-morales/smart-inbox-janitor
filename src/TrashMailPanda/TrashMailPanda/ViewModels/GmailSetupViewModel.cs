@@ -36,7 +36,7 @@ public partial class GmailSetupViewModel : ViewModelBase
     private string? _validationMessage;
 
     [ObservableProperty]
-    private string _statusMessage = string.Empty;
+    private string _statusMessage = "Please setup the OAuth client credentials to continue";
 
     [ObservableProperty]
     private bool _isValidating = false;
@@ -58,6 +58,7 @@ public partial class GmailSetupViewModel : ViewModelBase
 
     // Events
     public event EventHandler? RequestClose;
+    public event EventHandler? RequestGmailSignIn;
 
     public string SaveButtonText => IsValidating 
         ? "Validating..." 
@@ -120,7 +121,7 @@ public partial class GmailSetupViewModel : ViewModelBase
             else
             {
                 HasExistingCredentials = false;
-                StatusMessage = "No existing credentials found - new setup required";
+                StatusMessage = "Please setup the OAuth client credentials to continue";
                 _logger.LogDebug("No existing Gmail OAuth client credentials found");
             }
 
@@ -202,9 +203,12 @@ public partial class GmailSetupViewModel : ViewModelBase
             // Wait a moment to show success message
             await Task.Delay(1500);
 
-            // Close dialog with success
+            // Close dialog with success and trigger Gmail sign-in
             DialogResult = true;
             RequestClose?.Invoke(this, EventArgs.Empty);
+            
+            // Trigger Gmail sign-in after dialog closes
+            RequestGmailSignIn?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
