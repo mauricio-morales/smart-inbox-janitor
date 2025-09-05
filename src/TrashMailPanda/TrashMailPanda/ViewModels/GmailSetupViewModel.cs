@@ -60,14 +60,14 @@ public partial class GmailSetupViewModel : ViewModelBase
     public event EventHandler? RequestClose;
     public event EventHandler? RequestGmailSignIn;
 
-    public string SaveButtonText => IsValidating 
-        ? "Validating..." 
-        : HasExistingCredentials 
-            ? "Test & Save" 
+    public string SaveButtonText => IsValidating
+        ? "Validating..."
+        : HasExistingCredentials
+            ? "Test & Save"
             : "Save & Test Connection";
 
-    public string ClientCredentialsStatusText => HasExistingCredentials 
-        ? "✅ OAuth client credentials are already saved" 
+    public string ClientCredentialsStatusText => HasExistingCredentials
+        ? "✅ OAuth client credentials are already saved"
         : "Enter your Gmail OAuth client credentials";
 
     public GmailSetupViewModel(ISecureStorageManager secureStorage, ILogger<GmailSetupViewModel> logger)
@@ -92,8 +92,8 @@ public partial class GmailSetupViewModel : ViewModelBase
 
     private void UpdateCanSaveState()
     {
-        CanSave = !string.IsNullOrWhiteSpace(ClientId) && 
-                  !string.IsNullOrWhiteSpace(ClientSecret) && 
+        CanSave = !string.IsNullOrWhiteSpace(ClientId) &&
+                  !string.IsNullOrWhiteSpace(ClientSecret) &&
                   !IsValidating;
     }
 
@@ -115,7 +115,7 @@ public partial class GmailSetupViewModel : ViewModelBase
                 ClientSecret = clientSecretResult.Value ?? string.Empty;
                 HasExistingCredentials = true;
                 StatusMessage = "Found existing OAuth client credentials";
-                
+
                 _logger.LogInformation("Loaded existing Gmail OAuth client credentials");
             }
             else
@@ -197,7 +197,7 @@ public partial class GmailSetupViewModel : ViewModelBase
             StatusMessage = "OAuth client credentials saved successfully!";
             IsValidated = true;
             HasExistingCredentials = true;
-            
+
             _logger.LogInformation("Gmail OAuth client credentials saved successfully");
 
             // Wait a moment to show success message
@@ -206,7 +206,7 @@ public partial class GmailSetupViewModel : ViewModelBase
             // Close dialog with success and trigger Gmail sign-in
             DialogResult = true;
             RequestClose?.Invoke(this, EventArgs.Empty);
-            
+
             // Trigger Gmail sign-in after dialog closes
             RequestGmailSignIn?.Invoke(this, EventArgs.Empty);
         }
@@ -230,15 +230,15 @@ public partial class GmailSetupViewModel : ViewModelBase
         try
         {
             const string url = "https://console.cloud.google.com/apis/credentials";
-            
+
             _logger.LogInformation("Opening Google Cloud Console for OAuth credential setup");
-            
+
             var processInfo = new ProcessStartInfo
             {
                 FileName = url,
                 UseShellExecute = true
             };
-            
+
             Process.Start(processInfo);
             StatusMessage = "Opened Google Cloud Console in your browser";
         }
@@ -258,15 +258,15 @@ public partial class GmailSetupViewModel : ViewModelBase
         try
         {
             const string url = "https://developers.google.com/gmail/api/guides";
-            
+
             _logger.LogInformation("Opening Gmail API documentation");
-            
+
             var processInfo = new ProcessStartInfo
             {
                 FileName = url,
                 UseShellExecute = true
             };
-            
+
             Process.Start(processInfo);
             StatusMessage = "Opened Gmail API documentation in your browser";
         }
@@ -297,16 +297,16 @@ public partial class GmailSetupViewModel : ViewModelBase
         try
         {
             _logger.LogInformation("Clearing all Gmail OAuth credentials");
-            
+
             // Clear OAuth client credentials
             await _secureStorage.RemoveCredentialAsync("gmail_client_id");
             await _secureStorage.RemoveCredentialAsync("gmail_client_secret");
             await _secureStorage.RemoveCredentialAsync("gmail_redirect_uri");
-            
+
             // Clear user access tokens
             await _secureStorage.RemoveCredentialAsync("gmail_access_token");
             await _secureStorage.RemoveCredentialAsync("gmail_refresh_token");
-            
+
             // Reset UI state
             ClientId = string.Empty;
             ClientSecret = string.Empty;
@@ -314,9 +314,9 @@ public partial class GmailSetupViewModel : ViewModelBase
             IsValidated = false;
             ValidationMessage = null;
             StatusMessage = "All Gmail credentials cleared - setup from scratch";
-            
+
             UpdateCanSaveState();
-            
+
             _logger.LogInformation("All Gmail OAuth credentials cleared successfully");
         }
         catch (Exception ex)

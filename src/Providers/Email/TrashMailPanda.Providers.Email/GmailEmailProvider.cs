@@ -216,7 +216,7 @@ public class GmailEmailProvider : IEmailProvider
 
             // Try to get user profile as a simple health check
             var profile = await _service.Users.GetProfile("me").ExecuteAsync();
-            
+
             if (profile == null || string.IsNullOrEmpty(profile.EmailAddress))
             {
                 return Result<bool>.Failure(new ValidationError("Unable to retrieve user profile"));

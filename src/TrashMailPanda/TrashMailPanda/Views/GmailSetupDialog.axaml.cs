@@ -13,7 +13,7 @@ public partial class GmailSetupDialog : Window
     public GmailSetupDialog(GmailSetupViewModel viewModel) : this()
     {
         DataContext = viewModel;
-        
+
         // Subscribe to close request
         viewModel.RequestClose += (_, _) => Close(viewModel.DialogResult);
     }
