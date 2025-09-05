@@ -54,12 +54,38 @@
                         BorderBrush="{DynamicResource BorderLight}"
                         BorderThickness="1"
                         VerticalAlignment="Center">
-                    <!-- Provider Logo - try Image first, fallback to TextBlock for emojis -->
-                    <Image Source="{Binding ProviderDisplayName, Converter={StaticResource ProviderNameToLogoConverter}}"
-                           Width="20" Height="20"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Stretch="Uniform"/>
+                    <!-- Provider Logo - Use MultiDataTrigger to show different images -->
+                    <Panel>
+                        <!-- Gmail Logo -->
+                        <Image Source="/Assets/Logos/gmail-logo.png" Width="20" Height="20"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform">
+                            <Image.IsVisible>
+                                <Binding Path="ProviderDisplayName" Converter="{x:Static conv:StringEqualsConverter.Instance}" ConverterParameter="Gmail"/>
+                            </Image.IsVisible>
+                        </Image>
+                        
+                        <!-- OpenAI Logo -->
+                        <Image Source="/Assets/Logos/openai-logo.png" Width="20" Height="20"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform">
+                            <Image.IsVisible>
+                                <Binding Path="ProviderDisplayName" Converter="{x:Static conv:StringEqualsConverter.Instance}" ConverterParameter="OpenAI GPT"/>
+                            </Image.IsVisible>
+                        </Image>
+                        
+                        <!-- SQLite Logo -->
+                        <Image Source="/Assets/Logos/sqlite-logo.png" Width="20" Height="20"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform">
+                            <Image.IsVisible>
+                                <Binding Path="ProviderDisplayName" Converter="{x:Static conv:StringEqualsConverter.Instance}" ConverterParameter="Local Storage"/>
+                            </Image.IsVisible>
+                        </Image>
+                        
+                        <!-- Fallback emoji -->
+                        <TextBlock Text="⚙️" FontSize="16"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  Foreground="{DynamicResource ChromeMediumColor}"
+                                  IsVisible="False"/>
+                    </Panel>
                 </Border>
 
                 <!-- Provider Info -->
