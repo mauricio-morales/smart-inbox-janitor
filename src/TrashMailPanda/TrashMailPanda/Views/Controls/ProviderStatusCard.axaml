@@ -32,13 +32,13 @@
             CornerRadius="8"
             Padding="20"
             Margin="8"
-            BoxShadow="0 2 8 0 #00000010">
+            BoxShadow="{DynamicResource ProviderCardShadow}">
         
         <!-- Hover effect -->
         <Border.Styles>
             <Style Selector="Border:pointerover">
-                <Setter Property="BorderBrush" Value="{DynamicResource AltMediumColor}"/>
-                <Setter Property="BoxShadow" Value="0 6 16 0 #00000020"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderMedium}"/>
+                <Setter Property="BoxShadow" Value="{DynamicResource ProviderCardHoverShadow}"/>
             </Style>
         </Border.Styles>
 
@@ -84,10 +84,10 @@
                     <TextBlock Text="{Binding ProviderDisplayName}"
                               FontSize="16"
                               FontWeight="SemiBold"
-                              Foreground="{DynamicResource ChromeMediumColor}"/>
+                              Foreground="{DynamicResource TextPrimary}"/>
                     <TextBlock Text="{Binding ProviderDescription}"
                               FontSize="11"
-                              Foreground="{DynamicResource ChromeLowColor}"
+                              Foreground="{DynamicResource TextTertiary}"
                               TextWrapping="Wrap"
                               MaxLines="2"/>
                 </StackPanel>
@@ -110,27 +110,27 @@
             <StackPanel Grid.Row="1" Spacing="8">
                 
                 <!-- Current Status Display -->
-                <Border Background="{DynamicResource ListLowColor}" 
+                <Border Background="{DynamicResource HoverBackground}"
                         Padding="10" 
                         CornerRadius="4">
                     <StackPanel Spacing="4">
                         <TextBlock Text="{Binding StatusDisplayText}"
                                   FontSize="13"
                                   FontWeight="Medium"
-                                  Foreground="{DynamicResource ChromeMediumColor}"
+                                  Foreground="{DynamicResource TextPrimary}"
                                   TextWrapping="Wrap"/>
                         
                         <!-- Error Message (if any) -->
                         <TextBlock Text="{Binding ErrorMessage}"
                                   FontSize="11"
-                                  Foreground="{DynamicResource ErrorText}"
+                                  Foreground="{DynamicResource StatusErrorText}"
                                   TextWrapping="Wrap"
                                   IsVisible="{Binding !!ErrorMessage}"/>
                         
                         <!-- Last Refresh Time -->
                         <TextBlock Text="{Binding LastRefreshTime, StringFormat='Last checked: {0}'}"
                                   FontSize="10"
-                                  Foreground="{DynamicResource ChromeLowColor}"
+                                  Foreground="{DynamicResource TextTertiary}"
                                   IsVisible="{Binding !IsLoading}"/>
                     </StackPanel>
                 </Border>
@@ -168,16 +168,16 @@
                             <TextBlock Text="{Binding SetupComplexity}"
                                       FontSize="12"
                                       FontWeight="Medium"
-                                      Foreground="{DynamicResource ChromeMediumColor}"/>
-                            <TextBlock Text="•" FontSize="12" Foreground="{DynamicResource ChromeLowColor}"/>
+                                      Foreground="{DynamicResource TextPrimary}"/>
+                            <TextBlock Text="•" FontSize="12" Foreground="{DynamicResource TextTertiary}"/>
                             <TextBlock Text="{Binding EstimatedTime}"
                                       FontSize="12"
-                                      Foreground="{DynamicResource ChromeLowColor}"/>
+                                      Foreground="{DynamicResource TextTertiary}"/>
                         </StackPanel>
                         
                         <TextBlock Text="{Binding DisplayInfo.Prerequisites}"
                                   FontSize="11"
-                                  Foreground="{DynamicResource ChromeMediumColor}"
+                                  Foreground="{DynamicResource TextPrimary}"
                                   TextWrapping="Wrap"
                                   IsVisible="{Binding !!DisplayInfo.Prerequisites}"/>
                     </StackPanel>
@@ -192,11 +192,11 @@
                         <!-- Loading Animation -->
                         <Border Width="16" Height="16" 
                                 CornerRadius="8"
-                                Background="{DynamicResource SystemAccentColor}"
+                                Background="{DynamicResource AccentBlue}"
                                 Classes="loading-pulse"/>
                         <TextBlock Text="Please wait..."
                                   FontSize="12"
-                                  Foreground="{DynamicResource ChromeMediumColor}"
+                                  Foreground="{DynamicResource TextPrimary}"
                                   VerticalAlignment="Center"/>
                     </StackPanel>
                 </Border>
@@ -235,7 +235,7 @@
                         <TextBlock Text="Connected and working" 
                                   FontSize="13"
                                   FontWeight="Medium"
-                                  Foreground="{DynamicResource SystemAccentColor}"/>
+                                  Foreground="{DynamicResource AccentBlue}"/>
                     </StackPanel>
                 </Button>
 
@@ -257,10 +257,10 @@
     <UserControl.Styles>
         <!-- Provider Status Button (for healthy providers) -->
         <Style Selector="Button.provider-status">
-            <Setter Property="Background" Value="{DynamicResource ListLowColor}"/>
-            <Setter Property="Foreground" Value="{DynamicResource ChromeMediumColor}"/>
+            <Setter Property="Background" Value="{DynamicResource HoverBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource AltMediumHighColor}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderMedium}"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="12,8"/>
         </Style>
@@ -269,13 +269,13 @@
         <Style Selector="Button.provider-refresh">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource AltMediumHighColor}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderMedium}"/>
             <Setter Property="CornerRadius" Value="6"/>
         </Style>
         
         <Style Selector="Button.provider-refresh:pointerover">
-            <Setter Property="Background" Value="{DynamicResource ListLowColor}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource AltMediumColor}"/>
+            <Setter Property="Background" Value="{DynamicResource HoverBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderMedium}"/>
         </Style>
         
         <Style Selector="Button.provider-refresh:disabled">
