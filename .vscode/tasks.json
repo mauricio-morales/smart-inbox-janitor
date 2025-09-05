@@ -154,10 +154,10 @@
     },
     {
       "label": "🔥 Dev Mode",
-      "detail": "Start development with hot reload (watch mode)",
+      "detail": "Start development mode",
       "type": "shell", 
       "command": "dotnet",
-      "args": ["watch", "run", "--project", "src/TrashMailPanda/TrashMailPanda/TrashMailPanda.csproj"],
+      "args": ["run", "--project", "src/TrashMailPanda/TrashMailPanda/TrashMailPanda.csproj"],
       "group": {
         "kind": "build",
         "isDefault": false

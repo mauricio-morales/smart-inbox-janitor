@@ -9,6 +9,29 @@ using TrashMailPanda.Theming;
 namespace TrashMailPanda.Converters;
 
 /// <summary>
+/// Converts string values to boolean equality comparison
+/// </summary>
+public class StringEqualsConverter : IValueConverter
+{
+    public static readonly StringEqualsConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string stringValue && parameter is string compareValue)
+        {
+            return string.Equals(stringValue, compareValue, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return false;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException("ConvertBack not supported for StringEqualsConverter");
+    }
+}
+
+/// <summary>
 /// Converts boolean health status to user-friendly display text
 /// </summary>
 public class BoolToHealthConverter : IValueConverter
@@ -321,7 +344,7 @@ public class SetupTimeToTextConverter : IValueConverter
 }
 
 /// <summary>
-/// Converts provider name to appropriate logo SVG path
+/// Converts provider name to appropriate PNG logo URI for Avalonia
 /// </summary>
 public class ProviderNameToLogoConverter : IValueConverter
 {
@@ -329,20 +352,27 @@ public class ProviderNameToLogoConverter : IValueConverter
     {
         if (value is string providerName)
         {
-            return providerName?.ToLowerInvariant() switch
+            var logoPath = providerName?.ToLowerInvariant() switch
             {
-                "gmail" => "/Assets/Logos/gmail-logo.svg",
-                "google" => "/Assets/Logos/gmail-logo.svg", 
-                "openai" => "/Assets/Logos/openai-logo.svg",
-                "gpt" => "/Assets/Logos/openai-logo.svg",
-                "sqlite" => "/Assets/Logos/sqlite-logo.svg",
-                "storage" => "/Assets/Logos/sqlite-logo.svg",
-                "database" => "/Assets/Logos/sqlite-logo.svg",
-                _ => "⚙️" // Generic gear for unknown providers (fallback to emoji)
+                "gmail" => "/Assets/Logos/gmail-logo.png",
+                "google" => "/Assets/Logos/gmail-logo.png",
+                "openai gpt" => "/Assets/Logos/openai-logo.png",
+                "openai" => "/Assets/Logos/openai-logo.png",
+                "gpt" => "/Assets/Logos/openai-logo.png",
+                "local storage" => "/Assets/Logos/sqlite-logo.png",
+                "sqlite" => "/Assets/Logos/sqlite-logo.png",
+                "storage" => "/Assets/Logos/sqlite-logo.png",
+                "database" => "/Assets/Logos/sqlite-logo.png",
+                _ => null // Return null for unknown providers so we can use fallback
             };
+
+            if (logoPath != null)
+            {
+                return logoPath; // Return the path directly as string
+            }
         }
 
-        return "⚙️";
+        return null; // Return null to trigger text fallback
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

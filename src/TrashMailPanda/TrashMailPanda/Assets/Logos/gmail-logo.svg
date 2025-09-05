@@ -1,17 +1,7 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Gmail-inspired envelope logo -->
-  <rect x="2" y="4" width="20" height="16" rx="2" fill="#EA4335" stroke="#D93025" stroke-width="1"/>
-  <path d="M2 6 L12 13 L22 6" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M2 6 L12 13 L22 6" stroke="#34A853" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Gmail colors gradient effect -->
-  <defs>
-    <linearGradient id="gmailGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#EA4335;stop-opacity:1" />
-      <stop offset="33%" style="stop-color:#FBBC04;stop-opacity:1" />
-      <stop offset="66%" style="stop-color:#34A853;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#4285F4;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  <rect x="2" y="4" width="20" height="16" rx="2" fill="url(#gmailGradient)" opacity="0.8"/>
-  <path d="M2 6 L12 13 L22 6" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="52 42 88 66">
+<path fill="#4285f4" d="M58 108h14V74L52 59v43c0 3.32 2.69 6 6 6"/>
+<path fill="#34a853" d="M120 108h14c3.32 0 6-2.69 6-6V59l-20 15"/>
+<path fill="#fbbc04" d="M120 48v26l20-15v-8c0-7.42-8.47-11.65-14.4-7.2"/>
+<path fill="#ea4335" d="M72 74V48l24 18 24-18v26L96 92"/>
+<path fill="#c5221f" d="M52 51v8l20 15V48l-5.6-4.2c-5.94-4.45-14.4-.22-14.4 7.2"/>
 </svg>
