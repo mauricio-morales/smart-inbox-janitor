@@ -103,14 +103,14 @@ const { codeVerifier, codeChallenge } = generatePKCEPair();
 | Scope                    | Description                            | Use Case                                |
 | ------------------------ | -------------------------------------- | --------------------------------------- |
 | `gmail.readonly`         | Read all resources and metadata        | Safe read-only access                   |
-| `gmail.modify`           | Read/write operations (no deletion)    | **Recommended for Smart Inbox Janitor** |
+| `gmail.modify`           | Read/write operations (no deletion)    | **Recommended for TrashMail Panda** |
 | `gmail.compose`          | Create, read, update drafts and send   | Draft management and sending            |
 | `gmail.metadata`         | Read metadata excluding message bodies | Headers, labels, thread info            |
 | `gmail.settings.basic`   | Manage basic mail settings             | Filter and forwarding rules             |
 | `gmail.settings.sharing` | Manage sensitive mail settings         | Advanced settings management            |
 | `mail.google.com/`       | Full mailbox access including deletion | **Use with extreme caution**            |
 
-### Recommended Scope Combination for Smart Inbox Janitor
+### Recommended Scope Combination for TrashMail Panda
 
 ```typescript
 const RECOMMENDED_SCOPES = [

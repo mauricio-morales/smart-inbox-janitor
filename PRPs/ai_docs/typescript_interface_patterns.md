@@ -1,6 +1,6 @@
 # TypeScript Interface Patterns for Provider Abstractions
 
-This document provides specific patterns and examples for implementing high-quality TypeScript interfaces for provider-agnostic abstractions in the Smart Inbox Janitor project.
+This document provides specific patterns and examples for implementing high-quality TypeScript interfaces for provider-agnostic abstractions in the TrashMail Panda project.
 
 ## Core Interface Design Principles
 
@@ -391,4 +391,4 @@ interface Provider<TConfig = Record<string, unknown>> {
 }
 ```
 
-This pattern guide ensures consistent, type-safe, and maintainable provider interfaces throughout the Smart Inbox Janitor codebase.
+This pattern guide ensures consistent, type-safe, and maintainable provider interfaces throughout the TrashMail Panda codebase.

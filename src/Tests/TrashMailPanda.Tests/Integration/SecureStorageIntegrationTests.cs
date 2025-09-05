@@ -25,7 +25,7 @@ public class SecureStorageIntegrationTests : IDisposable
         _tokenRotationServiceLogger = loggerFactory.CreateLogger<TokenRotationService>();
     }
 
-    [Fact]
+    [Fact(Timeout = 60000)]  // 60 second timeout for keychain operations
     public async Task FullSecurityStack_EndToEnd_ShouldWork()
     {
         // Arrange
@@ -72,7 +72,7 @@ public class SecureStorageIntegrationTests : IDisposable
         tokenRotationService.Dispose();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)]  // 30 second timeout
     public async Task CrossPlatformEncryption_ShouldWorkCorrectly()
     {
         // Arrange
@@ -99,7 +99,7 @@ public class SecureStorageIntegrationTests : IDisposable
         }
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)]  // 30 second timeout
     public async Task ApplicationRestart_Simulation_ShouldPersistCredentials()
     {
         const string testCredential = "persistent-test-credential";
@@ -138,7 +138,7 @@ public class SecureStorageIntegrationTests : IDisposable
         }
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)]  // 30 second timeout
     public async Task TokenRotationService_SchedulerIntegration_ShouldWork()
     {
         // Arrange
@@ -172,7 +172,7 @@ public class SecureStorageIntegrationTests : IDisposable
         tokenRotationService.Dispose();
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)]  // 30 second timeout
     public async Task PlatformSpecific_EncryptionMethods_ShouldReportCorrectly()
     {
         // Arrange
@@ -209,7 +209,7 @@ public class SecureStorageIntegrationTests : IDisposable
         }
     }
 
-    [Fact]
+    [Fact(Timeout = 60000)]  // 60 second timeout for multiple keychain operations
     public async Task SecureStorageManager_MultipleProviderTokens_ShouldHandleCorrectly()
     {
         // Arrange
@@ -254,7 +254,7 @@ public class SecureStorageIntegrationTests : IDisposable
         Assert.Contains("openai_api_key", keysResult.Value);
     }
 
-    [Fact]
+    [Fact(Timeout = 30000)]  // 30 second timeout
     public async Task CorruptedCredential_ShouldHandleGracefully()
     {
         // Arrange
@@ -276,7 +276,7 @@ public class SecureStorageIntegrationTests : IDisposable
         Assert.Contains("not found", retrieveResult.ErrorMessage!);
     }
 
-    [Fact]
+    [Fact(Timeout = 90000)]  // 90 second timeout for concurrent operations
     public async Task ConcurrentAccess_ToSecureStorage_ShouldBeThreadSafe()
     {
         // Arrange
@@ -321,7 +321,7 @@ public class SecureStorageIntegrationTests : IDisposable
         Assert.Empty(keysResult.Value!);
     }
 
-    [Fact]
+    [Fact(Timeout = 120000)]  // 120 second timeout for load testing
     public async Task HealthChecks_UnderLoad_ShouldRemainHealthy()
     {
         // Arrange

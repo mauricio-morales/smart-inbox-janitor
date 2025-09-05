@@ -4,6 +4,7 @@ using TrashMailPanda.Converters;
 using TrashMailPanda.Models;
 using TrashMailPanda.Services;
 using TrashMailPanda.Shared;
+using TrashMailPanda.Theming;
 using Xunit;
 
 namespace TrashMailPanda.Tests.Converters;
@@ -79,9 +80,9 @@ public class ProviderStatusToColorConverterTests
         var brush = (SolidColorBrush)result!;
 
         if (isHealthy)
-            Assert.Equal(Colors.Green, brush.Color);
+            Assert.Equal(ProfessionalColors.StatusSuccess, brush.Color);
         else
-            Assert.Equal(Colors.Red, brush.Color);
+            Assert.Equal(ProfessionalColors.StatusError, brush.Color);
     }
 
     [Theory]
@@ -96,7 +97,7 @@ public class ProviderStatusToColorConverterTests
         // Assert
         Assert.IsType<SolidColorBrush>(result);
         var brush = (SolidColorBrush)result!;
-        Assert.Equal(Colors.Green, brush.Color);
+        Assert.Equal(ProfessionalColors.StatusSuccess, brush.Color);
     }
 
     [Theory]
@@ -112,7 +113,7 @@ public class ProviderStatusToColorConverterTests
         // Assert
         Assert.IsType<SolidColorBrush>(result);
         var brush = (SolidColorBrush)result!;
-        Assert.Equal(Colors.Orange, brush.Color);
+        Assert.Equal(ProfessionalColors.StatusWarning, brush.Color);
     }
 
     [Theory]
@@ -129,7 +130,7 @@ public class ProviderStatusToColorConverterTests
         // Assert
         Assert.IsType<SolidColorBrush>(result);
         var brush = (SolidColorBrush)result!;
-        Assert.Equal(Colors.Red, brush.Color);
+        Assert.Equal(ProfessionalColors.StatusError, brush.Color);
     }
 
     [Theory]
@@ -144,7 +145,7 @@ public class ProviderStatusToColorConverterTests
         // Assert
         Assert.IsType<SolidColorBrush>(result);
         var brush = (SolidColorBrush)result!;
-        Assert.Equal(Colors.Blue, brush.Color);
+        Assert.Equal(ProfessionalColors.StatusInfo, brush.Color);
     }
 
     [Fact]
@@ -182,9 +183,9 @@ public class ProviderStatusToColorConverterTests
         var errorResult = _converter.Convert(errorStatus, typeof(IBrush), null, _culture);
 
         // Assert
-        Assert.Equal(Colors.Green, ((SolidColorBrush)healthyResult!).Color);
-        Assert.Equal(Colors.Orange, ((SolidColorBrush)setupResult!).Color);
-        Assert.Equal(Colors.Red, ((SolidColorBrush)errorResult!).Color);
+        Assert.Equal(ProfessionalColors.StatusSuccess, ((SolidColorBrush)healthyResult!).Color);
+        Assert.Equal(ProfessionalColors.StatusWarning, ((SolidColorBrush)setupResult!).Color);
+        Assert.Equal(ProfessionalColors.StatusError, ((SolidColorBrush)errorResult!).Color);
     }
 
     [Fact]
@@ -502,5 +503,61 @@ public class SetupTimeToTextConverterTests
         // Act & Assert
         Assert.Throws<NotSupportedException>(() =>
             _converter.ConvertBack("5 minutes", typeof(int), null, _culture));
+    }
+}
+
+public class ProviderNameToLogoConverterTests
+{
+    private readonly ProviderNameToLogoConverter _converter = new();
+    private readonly CultureInfo _culture = CultureInfo.InvariantCulture;
+
+    [Theory]
+    [InlineData("gmail", "/Assets/Logos/gmail-logo.png")]
+    [InlineData("Google", "/Assets/Logos/gmail-logo.png")]
+    [InlineData("GMAIL", "/Assets/Logos/gmail-logo.png")]
+    [InlineData("openai", "/Assets/Logos/openai-logo.png")]
+    [InlineData("OpenAI", "/Assets/Logos/openai-logo.png")]
+    [InlineData("gpt", "/Assets/Logos/openai-logo.png")]
+    [InlineData("sqlite", "/Assets/Logos/sqlite-logo.png")]
+    [InlineData("SQLite", "/Assets/Logos/sqlite-logo.png")]
+    [InlineData("storage", "/Assets/Logos/sqlite-logo.png")]
+    [InlineData("database", "/Assets/Logos/sqlite-logo.png")]
+    [InlineData("unknown", "/Assets/Logos/sqlite-logo.png")]
+    [InlineData("", "/Assets/Logos/sqlite-logo.png")]
+    public void Convert_WithProviderName_ShouldReturnCorrectLogo(string providerName, string expectedLogo)
+    {
+        // Act
+        var result = _converter.Convert(providerName, typeof(string), null, _culture);
+
+        // Assert
+        Assert.Equal(expectedLogo, result);
+    }
+
+    [Fact]
+    public void Convert_WithNullValue_ShouldReturnGenericLogo()
+    {
+        // Act
+        var result = _converter.Convert(null, typeof(string), null, _culture);
+
+        // Assert
+        Assert.Equal("/Assets/Logos/sqlite-logo.png", result);
+    }
+
+    [Fact]
+    public void Convert_WithNonStringValue_ShouldReturnGenericLogo()
+    {
+        // Act
+        var result = _converter.Convert(123, typeof(string), null, _culture);
+
+        // Assert
+        Assert.Equal("/Assets/Logos/sqlite-logo.png", result);
+    }
+
+    [Fact]
+    public void ConvertBack_ShouldThrowNotSupportedException()
+    {
+        // Act & Assert
+        Assert.Throws<NotSupportedException>(() =>
+            _converter.ConvertBack("/Assets/Logos/gmail-logo.png", typeof(string), null, _culture));
     }
 }
