@@ -132,7 +132,7 @@ public static class LinuxSecretHelper
 
             string result = Marshal.PtrToStringUTF8(secretPtr) ?? string.Empty;
             secret_password_free(secretPtr);
-            
+
             return result;
         }
         catch

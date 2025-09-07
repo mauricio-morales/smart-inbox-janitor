@@ -248,7 +248,7 @@ public class SecureStorageManagerTests : IDisposable
         // Arrange
         SetupSuccessfulInitialization();
         await _secureStorageManager.InitializeAsync();
-        
+
         // Setup DecryptAsync to return failure for nonexistent key
         _mockCredentialEncryption
             .Setup(x => x.DecryptAsync("nonexistent-key", "nonexistent-key"))
@@ -312,10 +312,15 @@ public class SecureStorageManagerTests : IDisposable
 
         await _secureStorageManager.StoreCredentialAsync(key, credential);
 
+        // Setup decryption failure for cached credential (simulating corruption)
+        _mockCredentialEncryption
+            .Setup(x => x.DecryptAsync(encryptedCredential, key))
+            .Returns(Task.FromResult(EncryptionResult<string>.Failure("Decryption failed - corrupted data", EncryptionErrorType.DecryptionFailed)));
+
         // Setup decryption failure for the direct database retrieval
         _mockCredentialEncryption
             .Setup(x => x.DecryptAsync(key, key))
-            .Returns(Task.FromResult(EncryptionResult<string>.Failure("Database corruption detected", EncryptionErrorType.DecryptionFailed)));
+            .Returns(Task.FromResult(EncryptionResult<string>.Failure("Credential not found in database", EncryptionErrorType.DecryptionFailed)));
 
         // Act
         var result = await _secureStorageManager.RetrieveCredentialAsync(key);

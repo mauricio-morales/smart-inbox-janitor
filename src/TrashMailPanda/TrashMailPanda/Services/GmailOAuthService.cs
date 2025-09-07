@@ -165,7 +165,7 @@ public class SecureTokenDataStore : IDataStore, IDisposable
     public async Task StoreAsync<T>(string key, T value)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        
+
         await _semaphore.WaitAsync();
         try
         {
@@ -205,7 +205,7 @@ public class SecureTokenDataStore : IDataStore, IDisposable
     public async Task<T> GetAsync<T>(string key)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        
+
         await _semaphore.WaitAsync();
         try
         {
@@ -249,7 +249,7 @@ public class SecureTokenDataStore : IDataStore, IDisposable
     public async Task DeleteAsync<T>(string key)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        
+
         await _semaphore.WaitAsync();
         try
         {

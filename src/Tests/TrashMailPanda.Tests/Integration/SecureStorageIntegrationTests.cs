@@ -1,3 +1,4 @@
+using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using TrashMailPanda.Shared;
@@ -120,47 +121,58 @@ public class SecureStorageIntegrationTests : IDisposable
     {
         const string testCredential = "persistent-test-credential";
         const string testKey = "persistent-test-key";
+        var tempDbPath = Path.GetTempFileName();
 
-        // Simulate first application session
+        try
         {
-            var masterKeyManager1 = new MasterKeyManager(_masterKeyManagerLogger);
-            var storageProvider1 = new SqliteStorageProvider(":memory:", "test-password1");
-            var credentialEncryption1 = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager1, storageProvider1);
-            await storageProvider1.InitAsync();
-            var secureStorageManager1 = new SecureStorageManager(credentialEncryption1, _secureStorageManagerLogger);
+            // Simulate first application session
+            {
+                var masterKeyManager1 = new MasterKeyManager(_masterKeyManagerLogger);
+                var storageProvider1 = new SqliteStorageProvider(tempDbPath, "test-password");
+                var credentialEncryption1 = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager1, storageProvider1);
+                await storageProvider1.InitAsync();
+                var secureStorageManager1 = new SecureStorageManager(credentialEncryption1, _secureStorageManagerLogger);
 
-            await secureStorageManager1.InitializeAsync();
-            var storeResult = await secureStorageManager1.StoreCredentialAsync(testKey, testCredential);
-            Assert.True(storeResult.IsSuccess);
+                await secureStorageManager1.InitializeAsync();
+                var storeResult = await secureStorageManager1.StoreCredentialAsync(testKey, testCredential);
+                Assert.True(storeResult.IsSuccess);
 
-            // Simulate application shutdown
-            credentialEncryption1.Dispose();
+                // Simulate application shutdown
+                credentialEncryption1.Dispose();
+            }
+
+            // Simulate second application session (restart)
+            {
+                var masterKeyManager2 = new MasterKeyManager(_masterKeyManagerLogger);
+                var storageProvider2 = new SqliteStorageProvider(tempDbPath, "test-password");
+                var credentialEncryption2 = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager2, storageProvider2);
+                await storageProvider2.InitAsync();
+                var secureStorageManager2 = new SecureStorageManager(credentialEncryption2, _secureStorageManagerLogger);
+
+                await secureStorageManager2.InitializeAsync();
+
+                // On restart, in-memory cache would be empty, but persistent storage should be available
+                // This validates that our implementation correctly uses persistent storage across app restarts
+                var retrieveResult = await secureStorageManager2.RetrieveCredentialAsync(testKey);
+
+                // This should succeed because credentials persist in database and OS keychain across app restarts
+                Assert.True(retrieveResult.IsSuccess, $"Credential should persist across app restart: {retrieveResult.ErrorMessage}");
+                Assert.Equal(testCredential, retrieveResult.Value);
+
+                // Cleanup - remove the test credential
+                var removeResult = await secureStorageManager2.RemoveCredentialAsync(testKey);
+                Assert.True(removeResult.IsSuccess, "Cleanup should succeed");
+
+                credentialEncryption2.Dispose();
+            }
         }
-
-        // Simulate second application session (restart)
+        finally
         {
-            var masterKeyManager2 = new MasterKeyManager(_masterKeyManagerLogger);
-            var storageProvider2 = new SqliteStorageProvider(":memory:", "test-password2");
-            var credentialEncryption2 = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager2, storageProvider2);
-            await storageProvider2.InitAsync();
-            var secureStorageManager2 = new SecureStorageManager(credentialEncryption2, _secureStorageManagerLogger);
-
-            await secureStorageManager2.InitializeAsync();
-
-            // On restart, in-memory cache would be empty, but OS keychain should persist
-            // This validates that our implementation correctly uses persistent OS keychain storage
-            // Credentials should be available after app restart via direct keychain retrieval
-            var retrieveResult = await secureStorageManager2.RetrieveCredentialAsync(testKey);
-
-            // This should succeed because credentials persist in OS keychain across app restarts
-            Assert.True(retrieveResult.IsSuccess, $"Credential should persist across app restart: {retrieveResult.ErrorMessage}");
-            Assert.Equal(testCredential, retrieveResult.Value);
-
-            // Cleanup - remove the test credential
-            var removeResult = await secureStorageManager2.RemoveCredentialAsync(testKey);
-            Assert.True(removeResult.IsSuccess, "Cleanup should succeed");
-
-            credentialEncryption2.Dispose();
+            // Clean up temp database file
+            if (File.Exists(tempDbPath))
+            {
+                File.Delete(tempDbPath);
+            }
         }
     }
 

@@ -182,7 +182,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         {
             // Try to retrieve existing master key from OS keychain using fixed service name
             const string masterKeyContext = "TrashMail Panda";
-            
+
             // Create the expected account identifier for master key retrieval
             var masterKeyAccount = $"credential-{Convert.ToBase64String(Encoding.UTF8.GetBytes(masterKeyContext)).Replace("/", "_").Replace("+", "-")}";
             var expectedKeyReference = $"TrashMail Panda:{masterKeyAccount}";
@@ -206,10 +206,10 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             {
                 // If decryption failed, clear the corrupted keychain entry and proceed to generate new master key
                 _logger.LogWarning("Failed to decrypt existing master key (possibly corrupted), clearing keychain and generating new key");
-                
+
                 // Clear the corrupted keychain entry
                 await ClearCorruptedKeychainEntryAsync(masterKeyContext);
-                
+
                 // Also clear any existing encrypted credentials in database since they're tied to the corrupted master key
                 await ClearCorruptedDatabaseCredentialsAsync();
             }
@@ -352,25 +352,25 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         // to prevent predictable overwrite patterns that could be used for data recovery
         using var rng = RandomNumberGenerator.Create();
         var randomBytes = new byte[sensitiveData.Length * sizeof(char)];
-        
+
         try
         {
             // First pass: overwrite with cryptographically secure random data
             rng.GetBytes(randomBytes);
             var randomChars = MemoryMarshal.Cast<byte, char>(randomBytes);
             randomChars.CopyTo(sensitiveData);
-            
+
             // Second pass: overwrite with different random pattern
             rng.GetBytes(randomBytes);
             randomChars = MemoryMarshal.Cast<byte, char>(randomBytes);
             randomChars.CopyTo(sensitiveData);
-            
+
             // Third pass: fill with zeros
             sensitiveData.Clear();
-            
+
             // Fourth pass: overwrite with 0xFF pattern (all bits set)
             sensitiveData.Fill((char)0xFFFF);
-            
+
             // Final pass: clear to zeros with platform-specific secure clearing
             SecureClearPlatformSpecific(sensitiveData);
         }
@@ -394,7 +394,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         {
             // Convert char span to byte span for platform-specific clearing
             var byteSpan = MemoryMarshal.AsBytes(sensitiveData);
-            
+
             if (_platform == "Windows" && OperatingSystem.IsWindows())
             {
                 SecureClearWindows(byteSpan);
@@ -462,7 +462,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                 {
                     Volatile.Write(ref ptr[i], 0);
                 }
-                
+
                 // Additional barrier using Marshal.Copy
                 var zeroBytes = new byte[Math.Min(data.Length, 1024)];
                 for (int i = 0; i < data.Length; i += zeroBytes.Length)
@@ -481,7 +481,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
     {
         // Use Marshal.Copy with zero buffer to create memory barriers
         var zeroBytes = new byte[Math.Min(data.Length, 1024)];
-        
+
         unsafe
         {
             fixed (byte* ptr = data)
@@ -491,7 +491,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                     int chunkSize = Math.Min(zeroBytes.Length, data.Length - i);
                     Marshal.Copy(zeroBytes, 0, (IntPtr)(ptr + i), chunkSize);
                 }
-                
+
                 // Additional volatile writes to prevent optimization
                 for (int i = 0; i < data.Length; i++)
                 {
@@ -513,21 +513,21 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         // Use cryptographically secure random number generator instead of System.Random
         // to prevent predictable overwrite patterns that could be used for data recovery
         using var rng = RandomNumberGenerator.Create();
-        
+
         try
         {
             // First pass: overwrite with cryptographically secure random data
             rng.GetBytes(sensitiveData);
-            
+
             // Second pass: overwrite with different random pattern
             rng.GetBytes(sensitiveData);
-            
+
             // Third pass: fill with zeros
             Array.Clear(sensitiveData, 0, sensitiveData.Length);
-            
+
             // Fourth pass: overwrite with 0xFF pattern (all bits set)
             Array.Fill(sensitiveData, (byte)0xFF);
-            
+
             // Final pass: platform-specific secure clearing
             SecureClearPlatformSpecific(sensitiveData.AsSpan());
         }
@@ -1008,7 +1008,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         try
         {
             var masterKeyAccount = $"credential-{Convert.ToBase64String(Encoding.UTF8.GetBytes(masterKeyContext)).Replace("/", "_").Replace("+", "-")}";
-            
+
             Task<bool> result = _platform switch
             {
                 "Windows" when OperatingSystem.IsWindows() => ClearWindowsEntryAsync(masterKeyContext),
@@ -1016,7 +1016,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                 "Linux" when OperatingSystem.IsLinux() => ClearLinuxEntryAsync("TrashMail Panda", masterKeyAccount),
                 _ => Task.FromResult(true)
             };
-            
+
             var success = await result;
 
             if (success)
@@ -1047,7 +1047,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             {
                 await _storageProvider.RemoveEncryptedCredentialAsync(key);
             }
-            
+
             _logger.LogInformation("Cleared {Count} corrupted encrypted credentials from database", allKeys.Count);
         }
         catch (Exception ex)
@@ -1089,15 +1089,15 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                 {
                     MacOSKeychain.SecKeychainItemDelete(itemRef);
                     MacOSKeychain.CFRelease(itemRef);
-                    
+
                     if (passwordData != IntPtr.Zero)
                     {
                         MacOSKeychain.SecKeychainItemFreeContent(IntPtr.Zero, passwordData);
                     }
-                    
+
                     return Task.FromResult(true);
                 }
-                
+
                 return Task.FromResult(true); // Already cleared or doesn't exist
             }
             finally

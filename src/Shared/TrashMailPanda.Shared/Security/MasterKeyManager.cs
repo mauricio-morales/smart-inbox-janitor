@@ -287,7 +287,7 @@ public class MasterKeyManager : IMasterKeyManager
             using var rng = RandomNumberGenerator.Create();
             var entropyBytes = new byte[64]; // Use 64 bytes of secure entropy
             rng.GetBytes(entropyBytes);
-            
+
             _logger.LogDebug("Generated {ByteCount} bytes of Windows system entropy", entropyBytes.Length);
             return entropyBytes;
         }
@@ -315,7 +315,7 @@ public class MasterKeyManager : IMasterKeyManager
                         throw new InvalidOperationException("Unexpected end of /dev/urandom stream");
                     totalBytesRead += bytesRead;
                 }
-                
+
                 _logger.LogDebug("Read {ByteCount} bytes from /dev/urandom on macOS", entropyBytes.Length);
                 return entropyBytes;
             }
@@ -349,7 +349,7 @@ public class MasterKeyManager : IMasterKeyManager
                         throw new InvalidOperationException("Unexpected end of /dev/urandom stream");
                     totalBytesRead += bytesRead;
                 }
-                
+
                 _logger.LogDebug("Read {ByteCount} bytes from /dev/urandom on Linux", entropyBytes.Length);
                 return entropyBytes;
             }
@@ -382,7 +382,7 @@ public class MasterKeyManager : IMasterKeyManager
         using var rng = RandomNumberGenerator.Create();
         var entropyBytes = new byte[64]; // Use 64 bytes of secure entropy
         rng.GetBytes(entropyBytes);
-        
+
         _logger.LogDebug("Generated {ByteCount} bytes of secure fallback entropy", entropyBytes.Length);
         return entropyBytes;
     }
@@ -457,21 +457,21 @@ public class MasterKeyManager : IMasterKeyManager
         // Use cryptographically secure random number generator instead of System.Random
         // to prevent predictable overwrite patterns that could be used for data recovery
         using var rng = RandomNumberGenerator.Create();
-        
+
         try
         {
             // First pass: overwrite with cryptographically secure random data
             rng.GetBytes(data);
-            
+
             // Second pass: overwrite with different random pattern
             rng.GetBytes(data);
-            
+
             // Third pass: fill with zeros
             Array.Clear(data, 0, data.Length);
-            
+
             // Fourth pass: overwrite with 0xFF pattern (all bits set)
             Array.Fill(data, (byte)0xFF);
-            
+
             // Final pass: platform-specific secure clearing to prevent compiler optimization
             SecureClearPlatformSpecific(data.AsSpan());
         }
@@ -492,7 +492,7 @@ public class MasterKeyManager : IMasterKeyManager
         if (sensitiveData.IsEmpty) return;
 
         var platform = GetPlatformName();
-        
+
         try
         {
             if (platform == "Windows" && OperatingSystem.IsWindows())
@@ -560,7 +560,7 @@ public class MasterKeyManager : IMasterKeyManager
                 {
                     Volatile.Write(ref ptr[i], 0);
                 }
-                
+
                 // Additional barrier using Marshal.Copy
                 var zeroBytes = new byte[Math.Min(data.Length, 1024)];
                 for (int i = 0; i < data.Length; i += zeroBytes.Length)
@@ -579,7 +579,7 @@ public class MasterKeyManager : IMasterKeyManager
     {
         // Use Marshal.Copy with zero buffer to create memory barriers
         var zeroBytes = new byte[Math.Min(data.Length, 1024)];
-        
+
         unsafe
         {
             fixed (byte* ptr = data)
@@ -589,7 +589,7 @@ public class MasterKeyManager : IMasterKeyManager
                     int chunkSize = Math.Min(zeroBytes.Length, data.Length - i);
                     Marshal.Copy(zeroBytes, 0, (IntPtr)(ptr + i), chunkSize);
                 }
-                
+
                 // Additional volatile writes to prevent optimization
                 for (int i = 0; i < data.Length; i++)
                 {

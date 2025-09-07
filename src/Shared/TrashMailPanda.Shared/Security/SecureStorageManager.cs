@@ -170,6 +170,13 @@ public class SecureStorageManager : ISecureStorageManager
                 return SecureStorageResult<string>.Success(directDecryptResult.Value);
             }
 
+            // If decryption failed or credential doesn't exist
+            if (!directDecryptResult.IsSuccess)
+            {
+                _logger.LogDebug("Credential not found or corrupted for key: {Key}, error: {Error}", MaskKey(key), directDecryptResult.ErrorMessage);
+                return SecureStorageResult<string>.Failure("Credential not found", SecureStorageErrorType.CredentialNotFound);
+            }
+
             // Credential doesn't exist
             _logger.LogDebug("Credential not found for key: {Key}", MaskKey(key));
             return SecureStorageResult<string>.Failure("Credential not found", SecureStorageErrorType.CredentialNotFound);

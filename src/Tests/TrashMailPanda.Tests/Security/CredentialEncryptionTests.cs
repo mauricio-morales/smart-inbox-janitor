@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -40,11 +41,16 @@ public class CredentialEncryptionTests : IDisposable
                 EncryptionResult<string>.Success(encData.Substring(10)) :
                 EncryptionResult<string>.Failure("Invalid encrypted data", EncryptionErrorType.DecryptionFailed)));
 
-        // Setup mock storage provider
+        // Setup mock storage provider with in-memory storage simulation
+        var inMemoryStorage = new Dictionary<string, string>();
         _mockStorageProvider.Setup(x => x.GetEncryptedCredentialAsync(It.IsAny<string>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync((string key) => inMemoryStorage.TryGetValue(key, out var value) ? value : null);
         _mockStorageProvider.Setup(x => x.SetEncryptedCredentialAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime?>()))
-            .Returns(Task.CompletedTask);
+            .Returns((string key, string value, DateTime? expiration) =>
+            {
+                inMemoryStorage[key] = value;
+                return Task.CompletedTask;
+            });
 
         _credentialEncryption = new CredentialEncryption(_mockLogger.Object, _mockMasterKeyManager.Object, _mockStorageProvider.Object);
     }
