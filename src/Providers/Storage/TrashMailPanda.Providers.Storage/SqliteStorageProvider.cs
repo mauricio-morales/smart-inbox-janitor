@@ -379,6 +379,97 @@ public class SqliteStorageProvider : IStorageProvider
         await command.ExecuteNonQueryAsync();
     }
 
+    public async Task<string?> GetEncryptedCredentialAsync(string key)
+    {
+        EnsureInitialized();
+
+        const string sql = "SELECT encrypted_value FROM encrypted_credentials WHERE key = @key";
+
+        using var command = _connection!.CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("@key", key);
+
+        using var reader = await command.ExecuteReaderAsync();
+        if (await reader.ReadAsync())
+        {
+            return reader.GetString(0);
+        }
+
+        return null;
+    }
+
+    public async Task SetEncryptedCredentialAsync(string key, string encryptedValue, DateTime? expiresAt = null)
+    {
+        EnsureInitialized();
+
+        const string sql = @"
+            INSERT OR REPLACE INTO encrypted_credentials (key, encrypted_value, created_at, expires_at)
+            VALUES (@key, @encryptedValue, @createdAt, @expiresAt)";
+
+        using var command = _connection!.CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("@key", key);
+        command.Parameters.AddWithValue("@encryptedValue", encryptedValue);
+        command.Parameters.AddWithValue("@createdAt", DateTime.UtcNow.ToString("O"));
+        command.Parameters.AddWithValue("@expiresAt", expiresAt?.ToString("O") ?? (object)DBNull.Value);
+
+        await command.ExecuteNonQueryAsync();
+    }
+
+    public async Task RemoveEncryptedCredentialAsync(string key)
+    {
+        EnsureInitialized();
+
+        const string sql = "DELETE FROM encrypted_credentials WHERE key = @key";
+
+        using var command = _connection!.CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("@key", key);
+
+        await command.ExecuteNonQueryAsync();
+    }
+
+    public async Task<IReadOnlyList<string>> GetExpiredCredentialKeysAsync()
+    {
+        EnsureInitialized();
+
+        const string sql = @"
+            SELECT key FROM encrypted_credentials 
+            WHERE expires_at IS NOT NULL AND expires_at <= @currentTime";
+
+        var keys = new List<string>();
+        using var command = _connection!.CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("@currentTime", DateTime.UtcNow.ToString("O"));
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            keys.Add(reader.GetString(0));
+        }
+
+        return keys;
+    }
+
+    public async Task<IReadOnlyList<string>> GetAllEncryptedCredentialKeysAsync()
+    {
+        EnsureInitialized();
+
+        const string sql = "SELECT key FROM encrypted_credentials";
+
+        var keys = new List<string>();
+        using var command = _connection!.CreateCommand();
+        command.CommandText = sql;
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            keys.Add(reader.GetString(0));
+        }
+
+        return keys;
+    }
+
     public async Task<AppConfig> GetConfigAsync()
     {
         EnsureInitialized();
@@ -502,6 +593,13 @@ public class SqliteStorageProvider : IStorageProvider
                 provider TEXT PRIMARY KEY,
                 encrypted_token TEXT NOT NULL,
                 created_at TEXT NOT NULL
+            )",
+
+            @"CREATE TABLE IF NOT EXISTS encrypted_credentials (
+                key TEXT PRIMARY KEY,
+                encrypted_value TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT
             )"
         };
 

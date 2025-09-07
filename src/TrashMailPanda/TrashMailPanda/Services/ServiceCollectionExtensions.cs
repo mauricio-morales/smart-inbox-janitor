@@ -55,6 +55,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     private static IServiceCollection AddSecurityServices(this IServiceCollection services)
     {
+        services.AddSingleton<IMasterKeyManager, MasterKeyManager>();
         services.AddSingleton<ICredentialEncryption, CredentialEncryption>();
         services.AddSingleton<ISecureStorageManager, SecureStorageManager>();
         services.AddSingleton<ISecurityAuditLogger, SecurityAuditLogger>();

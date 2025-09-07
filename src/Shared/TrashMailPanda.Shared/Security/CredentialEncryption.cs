@@ -15,12 +15,17 @@ namespace TrashMailPanda.Shared.Security;
 public class CredentialEncryption : ICredentialEncryption, IDisposable
 {
     private readonly ILogger<CredentialEncryption> _logger;
+    private readonly IMasterKeyManager _masterKeyManager;
+    private readonly IStorageProvider _storageProvider;
     private bool _isInitialized = false;
     private string _platform = string.Empty;
+    private string? _masterKey = null;
 
-    public CredentialEncryption(ILogger<CredentialEncryption> logger)
+    public CredentialEncryption(ILogger<CredentialEncryption> logger, IMasterKeyManager masterKeyManager, IStorageProvider storageProvider)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _masterKeyManager = masterKeyManager ?? throw new ArgumentNullException(nameof(masterKeyManager));
+        _storageProvider = storageProvider ?? throw new ArgumentNullException(nameof(storageProvider));
         _platform = GetPlatformName();
     }
 
@@ -72,13 +77,26 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
 
         try
         {
-            return _platform switch
+            // Get or ensure master key exists
+            var masterKeyResult = await EnsureMasterKeyAsync();
+            if (!masterKeyResult.IsSuccess)
             {
-                "Windows" when OperatingSystem.IsWindows() => await EncryptWindowsAsync(plainText, context),
-                "macOS" when OperatingSystem.IsMacOS() => await EncryptMacOSAsync(plainText, context),
-                "Linux" when OperatingSystem.IsLinux() => await EncryptLinuxAsync(plainText, context),
-                _ => EncryptionResult<string>.Failure("Unsupported platform", EncryptionErrorType.PlatformNotSupported)
-            };
+                return EncryptionResult<string>.Failure($"Failed to get master key: {masterKeyResult.ErrorMessage}", EncryptionErrorType.KeyGenerationFailed);
+            }
+
+            // Encrypt with master key
+            var encryptResult = await _masterKeyManager.EncryptWithMasterKeyAsync(plainText, _masterKey!);
+            if (!encryptResult.IsSuccess)
+            {
+                return EncryptionResult<string>.Failure($"Master key encryption failed: {encryptResult.ErrorMessage}", EncryptionErrorType.EncryptionFailed);
+            }
+
+            // Store encrypted credential in database
+            var credentialKey = context ?? "default";
+            await _storageProvider.SetEncryptedCredentialAsync(credentialKey, encryptResult.Value!);
+
+            // Return the credential key as the "encrypted" reference
+            return EncryptionResult<string>.Success(credentialKey);
         }
         catch (Exception ex)
         {
@@ -101,13 +119,31 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
 
         try
         {
-            return _platform switch
+            // Get or ensure master key exists
+            var masterKeyResult = await EnsureMasterKeyAsync();
+            if (!masterKeyResult.IsSuccess)
             {
-                "Windows" when OperatingSystem.IsWindows() => await DecryptWindowsAsync(encryptedText, context),
-                "macOS" when OperatingSystem.IsMacOS() => await DecryptMacOSAsync(encryptedText, context),
-                "Linux" when OperatingSystem.IsLinux() => await DecryptLinuxAsync(encryptedText, context),
-                _ => EncryptionResult<string>.Failure("Unsupported platform", EncryptionErrorType.PlatformNotSupported)
-            };
+                return EncryptionResult<string>.Failure($"Failed to get master key: {masterKeyResult.ErrorMessage}", EncryptionErrorType.KeyGenerationFailed);
+            }
+
+            // The encryptedText is actually the credential key
+            var credentialKey = encryptedText;
+
+            // Retrieve encrypted credential from database
+            var encryptedCredential = await _storageProvider.GetEncryptedCredentialAsync(credentialKey);
+            if (string.IsNullOrEmpty(encryptedCredential))
+            {
+                return EncryptionResult<string>.Failure("Credential not found in database", EncryptionErrorType.DecryptionFailed);
+            }
+
+            // Decrypt with master key
+            var decryptResult = await _masterKeyManager.DecryptWithMasterKeyAsync(encryptedCredential, _masterKey!);
+            if (!decryptResult.IsSuccess)
+            {
+                return EncryptionResult<string>.Failure($"Master key decryption failed: {decryptResult.ErrorMessage}", EncryptionErrorType.DecryptionFailed);
+            }
+
+            return EncryptionResult<string>.Success(decryptResult.Value!);
         }
         catch (Exception ex)
         {
@@ -132,6 +168,83 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         {
             _logger.LogError(ex, "Failed to generate master key");
             return EncryptionResult<byte[]>.Failure($"Key generation failed: {ex.Message}", EncryptionErrorType.KeyGenerationFailed);
+        }
+    }
+
+    private async Task<EncryptionResult> EnsureMasterKeyAsync()
+    {
+        if (_masterKey != null)
+        {
+            return EncryptionResult.Success();
+        }
+
+        try
+        {
+            // Try to retrieve existing master key from OS keychain using fixed service name
+            const string masterKeyContext = "TrashMail Panda";
+            
+            // Create the expected account identifier for master key retrieval
+            var masterKeyAccount = $"credential-{Convert.ToBase64String(Encoding.UTF8.GetBytes(masterKeyContext)).Replace("/", "_").Replace("+", "-")}";
+            var expectedKeyReference = $"TrashMail Panda:{masterKeyAccount}";
+            var encodedReference = Convert.ToBase64String(Encoding.UTF8.GetBytes(expectedKeyReference));
+
+            var existingKeyResult = _platform switch
+            {
+                "Windows" when OperatingSystem.IsWindows() => await DecryptWindowsAsync(encodedReference, masterKeyContext),
+                "macOS" when OperatingSystem.IsMacOS() => await DecryptMacOSAsync(encodedReference, masterKeyContext),
+                "Linux" when OperatingSystem.IsLinux() => await DecryptLinuxAsync(encodedReference, masterKeyContext),
+                _ => EncryptionResult<string>.Failure("Unsupported platform", EncryptionErrorType.PlatformNotSupported)
+            };
+
+            if (existingKeyResult.IsSuccess && !string.IsNullOrEmpty(existingKeyResult.Value))
+            {
+                _masterKey = existingKeyResult.Value;
+                _logger.LogDebug("Retrieved existing master key from OS keychain");
+                return EncryptionResult.Success();
+            }
+            else if (existingKeyResult.ErrorType == EncryptionErrorType.DecryptionFailed)
+            {
+                // If decryption failed, clear the corrupted keychain entry and proceed to generate new master key
+                _logger.LogWarning("Failed to decrypt existing master key (possibly corrupted), clearing keychain and generating new key");
+                
+                // Clear the corrupted keychain entry
+                await ClearCorruptedKeychainEntryAsync(masterKeyContext);
+                
+                // Also clear any existing encrypted credentials in database since they're tied to the corrupted master key
+                await ClearCorruptedDatabaseCredentialsAsync();
+            }
+
+            // Generate new master key if none exists
+            var masterKeyResult = await _masterKeyManager.GenerateMasterKeyAsync();
+            if (!masterKeyResult.IsSuccess)
+            {
+                return EncryptionResult.Failure($"Failed to generate master key: {masterKeyResult.ErrorMessage}", EncryptionErrorType.KeyGenerationFailed);
+            }
+
+            _masterKey = masterKeyResult.Value!;
+
+            // Store master key in OS keychain using existing encrypt methods with fixed context
+            var storeResult = _platform switch
+            {
+                "Windows" when OperatingSystem.IsWindows() => await EncryptWindowsAsync(_masterKey, masterKeyContext),
+                "macOS" when OperatingSystem.IsMacOS() => await EncryptMacOSAsync(_masterKey, masterKeyContext),
+                "Linux" when OperatingSystem.IsLinux() => await EncryptLinuxAsync(_masterKey, masterKeyContext),
+                _ => EncryptionResult<string>.Failure("Unsupported platform", EncryptionErrorType.PlatformNotSupported)
+            };
+
+            if (!storeResult.IsSuccess)
+            {
+                _masterKey = null;
+                return EncryptionResult.Failure($"Failed to store master key: {storeResult.ErrorMessage}", EncryptionErrorType.EncryptionFailed);
+            }
+
+            _logger.LogInformation("Generated and stored new master key in OS keychain with 'TrashMail Panda' service name");
+            return EncryptionResult.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception while ensuring master key");
+            return EncryptionResult.Failure($"Master key setup failed: {ex.Message}", EncryptionErrorType.ConfigurationError);
         }
     }
 
@@ -666,6 +779,139 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         }
 
         return features;
+    }
+
+    /// <summary>
+    /// Clear corrupted keychain entry for master key
+    /// </summary>
+    private async Task ClearCorruptedKeychainEntryAsync(string masterKeyContext)
+    {
+        try
+        {
+            var masterKeyAccount = $"credential-{Convert.ToBase64String(Encoding.UTF8.GetBytes(masterKeyContext)).Replace("/", "_").Replace("+", "-")}";
+            
+            Task<bool> result = _platform switch
+            {
+                "Windows" when OperatingSystem.IsWindows() => ClearWindowsEntryAsync(masterKeyContext),
+                "macOS" when OperatingSystem.IsMacOS() => ClearMacOSEntryAsync("TrashMail Panda", masterKeyAccount),
+                "Linux" when OperatingSystem.IsLinux() => ClearLinuxEntryAsync("TrashMail Panda", masterKeyAccount),
+                _ => Task.FromResult(true)
+            };
+            
+            var success = await result;
+
+            if (success)
+            {
+                _logger.LogInformation("Cleared corrupted master key from OS keychain");
+            }
+            else
+            {
+                _logger.LogWarning("Failed to clear corrupted master key from OS keychain");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception while clearing corrupted keychain entry");
+        }
+    }
+
+    /// <summary>
+    /// Clear all encrypted credentials from database since they're tied to the corrupted master key
+    /// </summary>
+    private async Task ClearCorruptedDatabaseCredentialsAsync()
+    {
+        try
+        {
+            // Get all encrypted credentials and remove them
+            var allKeys = await _storageProvider.GetAllEncryptedCredentialKeysAsync();
+            foreach (var key in allKeys)
+            {
+                await _storageProvider.RemoveEncryptedCredentialAsync(key);
+            }
+            
+            _logger.LogInformation("Cleared {Count} corrupted encrypted credentials from database", allKeys.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception while clearing corrupted database credentials");
+        }
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private Task<bool> ClearWindowsEntryAsync(string context)
+    {
+        // Windows DPAPI doesn't store entries that can be individually cleared
+        // The master key will be regenerated and overwrite any existing data
+        return Task.FromResult(true);
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("osx")]
+    private Task<bool> ClearMacOSEntryAsync(string service, string account)
+    {
+        try
+        {
+            var status = MacOSKeychain.SecKeychainCopyDefault(out var defaultKeychain);
+            if (status != MacOSKeychain.OSStatus.NoErr)
+            {
+                return Task.FromResult(false);
+            }
+
+            try
+            {
+                // Find and delete the keychain item
+                status = MacOSKeychain.SecKeychainFindGenericPassword(
+                    defaultKeychain,
+                    (uint)Encoding.UTF8.GetByteCount(service), service,
+                    (uint)Encoding.UTF8.GetByteCount(account), account,
+                    out _, out var passwordData,
+                    out var itemRef);
+
+                if (status == MacOSKeychain.OSStatus.NoErr && itemRef != IntPtr.Zero)
+                {
+                    MacOSKeychain.SecKeychainItemDelete(itemRef);
+                    MacOSKeychain.CFRelease(itemRef);
+                    
+                    if (passwordData != IntPtr.Zero)
+                    {
+                        MacOSKeychain.SecKeychainItemFreeContent(IntPtr.Zero, passwordData);
+                    }
+                    
+                    return Task.FromResult(true);
+                }
+                
+                return Task.FromResult(true); // Already cleared or doesn't exist
+            }
+            finally
+            {
+                if (defaultKeychain != IntPtr.Zero)
+                {
+                    MacOSKeychain.CFRelease(defaultKeychain);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
+    private Task<bool> ClearLinuxEntryAsync(string service, string account)
+    {
+        try
+        {
+            if (!LinuxSecretHelper.IsLibSecretAvailable())
+            {
+                return Task.FromResult(false);
+            }
+
+            var removed = LinuxSecretHelper.RemoveSecret(service, account);
+            return Task.FromResult(removed);
+        }
+        catch (Exception)
+        {
+            return Task.FromResult(false);
+        }
     }
 
     #endregion

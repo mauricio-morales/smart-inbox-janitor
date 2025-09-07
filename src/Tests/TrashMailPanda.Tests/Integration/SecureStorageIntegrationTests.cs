@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
+using TrashMailPanda.Shared;
 using TrashMailPanda.Shared.Security;
+using TrashMailPanda.Providers.Storage;
 using Xunit;
 
 namespace TrashMailPanda.Tests.Integration;
@@ -16,6 +18,8 @@ public class SecureStorageIntegrationTests : IDisposable
     private readonly ILogger<CredentialEncryption> _credentialEncryptionLogger;
     private readonly ILogger<SecureStorageManager> _secureStorageManagerLogger;
     private readonly ILogger<TokenRotationService> _tokenRotationServiceLogger;
+    private readonly ILogger<MasterKeyManager> _masterKeyManagerLogger;
+    private readonly ILogger<SqliteStorageProvider> _storageProviderLogger;
 
     public SecureStorageIntegrationTests()
     {
@@ -23,13 +27,20 @@ public class SecureStorageIntegrationTests : IDisposable
         _credentialEncryptionLogger = loggerFactory.CreateLogger<CredentialEncryption>();
         _secureStorageManagerLogger = loggerFactory.CreateLogger<SecureStorageManager>();
         _tokenRotationServiceLogger = loggerFactory.CreateLogger<TokenRotationService>();
+        _masterKeyManagerLogger = loggerFactory.CreateLogger<MasterKeyManager>();
+        _storageProviderLogger = loggerFactory.CreateLogger<SqliteStorageProvider>();
     }
 
     [Fact(Timeout = 60000)]  // 60 second timeout for keychain operations
     public async Task FullSecurityStack_EndToEnd_ShouldWork()
     {
         // Arrange
-        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger);
+        var masterKeyManager = new MasterKeyManager(_masterKeyManagerLogger);
+        var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
+        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager, storageProvider);
+
+        // Initialize the storage provider first
+        await storageProvider.InitAsync();
         var secureStorageManager = new SecureStorageManager(credentialEncryption, _secureStorageManagerLogger);
         var tokenRotationService = new TokenRotationService(secureStorageManager, _tokenRotationServiceLogger);
 
@@ -76,7 +87,12 @@ public class SecureStorageIntegrationTests : IDisposable
     public async Task CrossPlatformEncryption_ShouldWorkCorrectly()
     {
         // Arrange
-        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger);
+        var masterKeyManager = new MasterKeyManager(_masterKeyManagerLogger);
+        var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
+        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager, storageProvider);
+
+        // Initialize the storage provider first
+        await storageProvider.InitAsync();
         await credentialEncryption.InitializeAsync();
 
         var testCredentials = new[]
@@ -107,7 +123,10 @@ public class SecureStorageIntegrationTests : IDisposable
 
         // Simulate first application session
         {
-            var credentialEncryption1 = new CredentialEncryption(_credentialEncryptionLogger);
+            var masterKeyManager1 = new MasterKeyManager(_masterKeyManagerLogger);
+            var storageProvider1 = new SqliteStorageProvider(":memory:", "test-password1");
+            var credentialEncryption1 = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager1, storageProvider1);
+            await storageProvider1.InitAsync();
             var secureStorageManager1 = new SecureStorageManager(credentialEncryption1, _secureStorageManagerLogger);
 
             await secureStorageManager1.InitializeAsync();
@@ -120,7 +139,10 @@ public class SecureStorageIntegrationTests : IDisposable
 
         // Simulate second application session (restart)
         {
-            var credentialEncryption2 = new CredentialEncryption(_credentialEncryptionLogger);
+            var masterKeyManager2 = new MasterKeyManager(_masterKeyManagerLogger);
+            var storageProvider2 = new SqliteStorageProvider(":memory:", "test-password2");
+            var credentialEncryption2 = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager2, storageProvider2);
+            await storageProvider2.InitAsync();
             var secureStorageManager2 = new SecureStorageManager(credentialEncryption2, _secureStorageManagerLogger);
 
             await secureStorageManager2.InitializeAsync();
@@ -146,7 +168,12 @@ public class SecureStorageIntegrationTests : IDisposable
     public async Task TokenRotationService_SchedulerIntegration_ShouldWork()
     {
         // Arrange
-        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger);
+        var masterKeyManager = new MasterKeyManager(_masterKeyManagerLogger);
+        var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
+        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager, storageProvider);
+
+        // Initialize the storage provider first
+        await storageProvider.InitAsync();
         var secureStorageManager = new SecureStorageManager(credentialEncryption, _secureStorageManagerLogger);
         var tokenRotationService = new TokenRotationService(secureStorageManager, _tokenRotationServiceLogger);
 
@@ -180,7 +207,12 @@ public class SecureStorageIntegrationTests : IDisposable
     public async Task PlatformSpecific_EncryptionMethods_ShouldReportCorrectly()
     {
         // Arrange
-        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger);
+        var masterKeyManager = new MasterKeyManager(_masterKeyManagerLogger);
+        var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
+        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager, storageProvider);
+
+        // Initialize the storage provider first
+        await storageProvider.InitAsync();
         await credentialEncryption.InitializeAsync();
 
         // Act
@@ -217,7 +249,12 @@ public class SecureStorageIntegrationTests : IDisposable
     public async Task SecureStorageManager_MultipleProviderTokens_ShouldHandleCorrectly()
     {
         // Arrange
-        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger);
+        var masterKeyManager = new MasterKeyManager(_masterKeyManagerLogger);
+        var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
+        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager, storageProvider);
+
+        // Initialize the storage provider first
+        await storageProvider.InitAsync();
         var secureStorageManager = new SecureStorageManager(credentialEncryption, _secureStorageManagerLogger);
         await secureStorageManager.InitializeAsync();
 
@@ -262,7 +299,12 @@ public class SecureStorageIntegrationTests : IDisposable
     public async Task CorruptedCredential_ShouldHandleGracefully()
     {
         // Arrange
-        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger);
+        var masterKeyManager = new MasterKeyManager(_masterKeyManagerLogger);
+        var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
+        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager, storageProvider);
+
+        // Initialize the storage provider first
+        await storageProvider.InitAsync();
         var secureStorageManager = new SecureStorageManager(credentialEncryption, _secureStorageManagerLogger);
         await secureStorageManager.InitializeAsync();
 
@@ -284,7 +326,12 @@ public class SecureStorageIntegrationTests : IDisposable
     public async Task ConcurrentAccess_ToSecureStorage_ShouldBeThreadSafe()
     {
         // Arrange
-        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger);
+        var masterKeyManager = new MasterKeyManager(_masterKeyManagerLogger);
+        var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
+        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager, storageProvider);
+
+        // Initialize the storage provider first
+        await storageProvider.InitAsync();
         var secureStorageManager = new SecureStorageManager(credentialEncryption, _secureStorageManagerLogger);
         await secureStorageManager.InitializeAsync();
 
@@ -329,7 +376,12 @@ public class SecureStorageIntegrationTests : IDisposable
     public async Task HealthChecks_UnderLoad_ShouldRemainHealthy()
     {
         // Arrange
-        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger);
+        var masterKeyManager = new MasterKeyManager(_masterKeyManagerLogger);
+        var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
+        var credentialEncryption = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager, storageProvider);
+
+        // Initialize the storage provider first
+        await storageProvider.InitAsync();
         var secureStorageManager = new SecureStorageManager(credentialEncryption, _secureStorageManagerLogger);
         await secureStorageManager.InitializeAsync();
 
