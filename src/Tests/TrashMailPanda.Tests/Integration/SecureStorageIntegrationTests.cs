@@ -14,6 +14,7 @@ namespace TrashMailPanda.Tests.Integration;
 /// </summary>
 [Trait("Category", "Integration")]
 [Trait("Category", "Security")]
+[Trait("Category", "CrossPlatform")]
 public class SecureStorageIntegrationTests : IDisposable
 {
     private readonly ILogger<CredentialEncryption> _credentialEncryptionLogger;
