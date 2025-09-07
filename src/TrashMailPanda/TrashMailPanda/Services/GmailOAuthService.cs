@@ -78,7 +78,14 @@ public class GmailOAuthService : IGmailOAuthService
                 try
                 {
                     var profile = await gmailService.Users.GetProfile("me").ExecuteAsync();
-                    await _secureStorageManager.StoreCredentialAsync(ProviderCredentialTypes.GmailUserEmail, profile.EmailAddress);
+                    if (profile?.EmailAddress != null)
+                    {
+                        await _secureStorageManager.StoreCredentialAsync(ProviderCredentialTypes.GmailUserEmail, profile.EmailAddress);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Gmail profile or email address was null during OAuth flow");
+                    }
                 }
                 catch (Exception ex)
                 {
