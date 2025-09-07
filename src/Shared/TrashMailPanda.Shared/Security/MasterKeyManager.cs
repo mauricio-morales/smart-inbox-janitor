@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -280,94 +281,110 @@ public class MasterKeyManager : IMasterKeyManager
 
     private async Task<byte[]> GetWindowsEntropyAsync()
     {
-        // Use machine name, user name, and system entropy
-        var machineBytes = Encoding.UTF8.GetBytes(Environment.MachineName);
-        var userBytes = Encoding.UTF8.GetBytes(Environment.UserName);
-
-        using var rng = RandomNumberGenerator.Create();
-        var randomBytes = new byte[16];
-        rng.GetBytes(randomBytes);
-
-        var combined = new byte[machineBytes.Length + userBytes.Length + randomBytes.Length];
-        var offset = 0;
-
-        Array.Copy(machineBytes, 0, combined, offset, machineBytes.Length);
-        offset += machineBytes.Length;
-        Array.Copy(userBytes, 0, combined, offset, userBytes.Length);
-        offset += userBytes.Length;
-        Array.Copy(randomBytes, 0, combined, offset, randomBytes.Length);
-
-        SecureClear(randomBytes);
-        return combined;
+        try
+        {
+            // Use Windows CryptoAPI for secure random bytes
+            using var rng = RandomNumberGenerator.Create();
+            var entropyBytes = new byte[64]; // Use 64 bytes of secure entropy
+            rng.GetBytes(entropyBytes);
+            
+            _logger.LogDebug("Generated {ByteCount} bytes of Windows system entropy", entropyBytes.Length);
+            return entropyBytes;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get Windows-specific entropy, falling back to secure random");
+            return await GetSecureFallbackEntropyAsync();
+        }
     }
 
     private async Task<byte[]> GetMacOSEntropyAsync()
     {
-        // Use system information and hardware UUID if available
-        var machineBytes = Encoding.UTF8.GetBytes(Environment.MachineName);
-        var userBytes = Encoding.UTF8.GetBytes(Environment.UserName);
-
-        using var rng = RandomNumberGenerator.Create();
-        var randomBytes = new byte[16];
-        rng.GetBytes(randomBytes);
-
-        var combined = new byte[machineBytes.Length + userBytes.Length + randomBytes.Length];
-        var offset = 0;
-
-        Array.Copy(machineBytes, 0, combined, offset, machineBytes.Length);
-        offset += machineBytes.Length;
-        Array.Copy(userBytes, 0, combined, offset, userBytes.Length);
-        offset += userBytes.Length;
-        Array.Copy(randomBytes, 0, combined, offset, randomBytes.Length);
-
-        SecureClear(randomBytes);
-        return combined;
+        try
+        {
+            // Use /dev/urandom for cryptographically secure random bytes on macOS
+            if (File.Exists("/dev/urandom"))
+            {
+                var entropyBytes = new byte[64];
+                using var urandom = File.OpenRead("/dev/urandom");
+                var totalBytesRead = 0;
+                while (totalBytesRead < entropyBytes.Length)
+                {
+                    var bytesRead = await urandom.ReadAsync(entropyBytes, totalBytesRead, entropyBytes.Length - totalBytesRead);
+                    if (bytesRead == 0)
+                        throw new InvalidOperationException("Unexpected end of /dev/urandom stream");
+                    totalBytesRead += bytesRead;
+                }
+                
+                _logger.LogDebug("Read {ByteCount} bytes from /dev/urandom on macOS", entropyBytes.Length);
+                return entropyBytes;
+            }
+            else
+            {
+                _logger.LogWarning("/dev/urandom not available, using secure fallback");
+                return await GetSecureFallbackEntropyAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read from /dev/urandom, using secure fallback");
+            return await GetSecureFallbackEntropyAsync();
+        }
     }
 
     private async Task<byte[]> GetLinuxEntropyAsync()
     {
-        // Use system information and machine ID if available
-        var machineBytes = Encoding.UTF8.GetBytes(Environment.MachineName);
-        var userBytes = Encoding.UTF8.GetBytes(Environment.UserName);
-
-        using var rng = RandomNumberGenerator.Create();
-        var randomBytes = new byte[16];
-        rng.GetBytes(randomBytes);
-
-        var combined = new byte[machineBytes.Length + userBytes.Length + randomBytes.Length];
-        var offset = 0;
-
-        Array.Copy(machineBytes, 0, combined, offset, machineBytes.Length);
-        offset += machineBytes.Length;
-        Array.Copy(userBytes, 0, combined, offset, userBytes.Length);
-        offset += userBytes.Length;
-        Array.Copy(randomBytes, 0, combined, offset, randomBytes.Length);
-
-        SecureClear(randomBytes);
-        return combined;
+        try
+        {
+            // Use /dev/urandom for cryptographically secure random bytes on Linux
+            if (File.Exists("/dev/urandom"))
+            {
+                var entropyBytes = new byte[64];
+                using var urandom = File.OpenRead("/dev/urandom");
+                var totalBytesRead = 0;
+                while (totalBytesRead < entropyBytes.Length)
+                {
+                    var bytesRead = await urandom.ReadAsync(entropyBytes, totalBytesRead, entropyBytes.Length - totalBytesRead);
+                    if (bytesRead == 0)
+                        throw new InvalidOperationException("Unexpected end of /dev/urandom stream");
+                    totalBytesRead += bytesRead;
+                }
+                
+                _logger.LogDebug("Read {ByteCount} bytes from /dev/urandom on Linux", entropyBytes.Length);
+                return entropyBytes;
+            }
+            else
+            {
+                _logger.LogWarning("/dev/urandom not available, using secure fallback");
+                return await GetSecureFallbackEntropyAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read from /dev/urandom, using secure fallback");
+            return await GetSecureFallbackEntropyAsync();
+        }
     }
 
     private async Task<byte[]> GetGenericEntropyAsync()
     {
-        // Fallback entropy generation
-        var machineBytes = Encoding.UTF8.GetBytes(Environment.MachineName);
-        var userBytes = Encoding.UTF8.GetBytes(Environment.UserName);
+        // Fallback to secure random number generation
+        _logger.LogInformation("Using generic secure entropy generation");
+        return await GetSecureFallbackEntropyAsync();
+    }
 
+    /// <summary>
+    /// Generate cryptographically secure entropy using .NET's RandomNumberGenerator
+    /// This is used as fallback when platform-specific entropy sources are unavailable
+    /// </summary>
+    private async Task<byte[]> GetSecureFallbackEntropyAsync()
+    {
         using var rng = RandomNumberGenerator.Create();
-        var randomBytes = new byte[32];
-        rng.GetBytes(randomBytes);
-
-        var combined = new byte[machineBytes.Length + userBytes.Length + randomBytes.Length];
-        var offset = 0;
-
-        Array.Copy(machineBytes, 0, combined, offset, machineBytes.Length);
-        offset += machineBytes.Length;
-        Array.Copy(userBytes, 0, combined, offset, userBytes.Length);
-        offset += userBytes.Length;
-        Array.Copy(randomBytes, 0, combined, offset, randomBytes.Length);
-
-        SecureClear(randomBytes);
-        return combined;
+        var entropyBytes = new byte[64]; // Use 64 bytes of secure entropy
+        rng.GetBytes(entropyBytes);
+        
+        _logger.LogDebug("Generated {ByteCount} bytes of secure fallback entropy", entropyBytes.Length);
+        return entropyBytes;
     }
 
     private async Task<string> DeriveKeyFromEntropyAsync(byte[] entropy)
