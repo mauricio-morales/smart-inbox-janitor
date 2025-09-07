@@ -149,10 +149,12 @@ public class GmailOAuthService : IGmailOAuthService
 /// <summary>
 /// Custom data store that integrates with our secure storage system
 /// </summary>
-public class SecureTokenDataStore : IDataStore
+public class SecureTokenDataStore : IDataStore, IDisposable
 {
     private readonly ISecureStorageManager _secureStorageManager;
     private readonly ILogger _logger;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private bool _disposed;
 
     public SecureTokenDataStore(ISecureStorageManager secureStorageManager, ILogger logger)
     {
@@ -162,6 +164,9 @@ public class SecureTokenDataStore : IDataStore
 
     public async Task StoreAsync<T>(string key, T value)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        
+        await _semaphore.WaitAsync();
         try
         {
             if (value is Google.Apis.Auth.OAuth2.Responses.TokenResponse token)
@@ -191,10 +196,17 @@ public class SecureTokenDataStore : IDataStore
             _logger.LogError(ex, "Failed to store OAuth token for key {Key}", key);
             throw;
         }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 
     public async Task<T> GetAsync<T>(string key)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        
+        await _semaphore.WaitAsync();
         try
         {
             if (typeof(T) == typeof(Google.Apis.Auth.OAuth2.Responses.TokenResponse))
@@ -228,10 +240,17 @@ public class SecureTokenDataStore : IDataStore
             _logger.LogError(ex, "Failed to retrieve OAuth token for key {Key}", key);
             return default(T);
         }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 
     public async Task DeleteAsync<T>(string key)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        
+        await _semaphore.WaitAsync();
         try
         {
             await _secureStorageManager.RemoveCredentialAsync(ProviderCredentialTypes.GmailAccessToken);
@@ -244,12 +263,26 @@ public class SecureTokenDataStore : IDataStore
             _logger.LogError(ex, "Failed to delete OAuth token for key {Key}", key);
             throw;
         }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 
     public Task ClearAsync()
     {
         // Clear all stored tokens
         return DeleteAsync<object>("user");
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _semaphore?.Dispose();
+            _disposed = true;
+        }
+        GC.SuppressFinalize(this);
     }
 }
 
