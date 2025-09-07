@@ -100,7 +100,7 @@
                         BorderThickness="1"
                         Padding="24"
                         CornerRadius="8"
-                        BoxShadow="0 4 12 0 #00000015"
+                        BoxShadow="{DynamicResource DashboardCardShadow}"
                         HorizontalAlignment="Stretch">
                     <StackPanel Orientation="Horizontal" 
                                Spacing="12"

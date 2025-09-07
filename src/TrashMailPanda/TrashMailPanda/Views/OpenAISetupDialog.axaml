@@ -25,7 +25,7 @@
 
         <!-- Header -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="15" Margin="0,0,0,20">
-            <Border Background="#FF6F00" Width="40" Height="40" CornerRadius="20">
+            <Border Background="{DynamicResource StatusWarning}" Width="40" Height="40" CornerRadius="20">
                 <TextBlock Text="🔑" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <StackPanel VerticalAlignment="Center">
@@ -125,7 +125,7 @@
 
                     <!-- Success Message -->
                     <Border IsVisible="{Binding IsValidated}"
-                            Background="#E8F5E8" 
+                            Background="{DynamicResource StatusSuccessBackground}" 
                             Padding="16" 
                             CornerRadius="6"
                             BorderBrush="{DynamicResource StatusSuccess}" 

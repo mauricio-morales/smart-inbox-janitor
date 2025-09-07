@@ -26,7 +26,7 @@
         <!-- Header -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="15" Margin="0,0,0,30">
             <!-- Logo/Icon placeholder -->
-            <Border Background="#4CAF50" Width="50" Height="50" CornerRadius="25">
+            <Border Background="{DynamicResource StatusSuccess}" Width="50" Height="50" CornerRadius="25">
                 <TextBlock Text="🐼" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <StackPanel VerticalAlignment="Center">
@@ -43,7 +43,7 @@
                 <TextBlock Text="{Binding GmailStepTitle}" FontSize="20" FontWeight="SemiBold"/>
                 <TextBlock Text="{Binding GmailStepMessage}" FontSize="14" TextWrapping="Wrap" Foreground="Gray"/>
                 
-                <Border Background="#F5F5F5" Padding="20" CornerRadius="8">
+                <Border Background="{DynamicResource BackgroundPrimary}" Padding="20" CornerRadius="8">
                     <StackPanel Spacing="15">
                         <!-- Gmail Connection Status -->
                         <StackPanel IsVisible="{Binding IsGmailConnected}" Spacing="10">
@@ -83,7 +83,7 @@
                 <TextBlock Text="{Binding OpenAiStepTitle}" FontSize="20" FontWeight="SemiBold"/>
                 <TextBlock Text="{Binding OpenAiStepMessage}" FontSize="14" TextWrapping="Wrap" Foreground="Gray"/>
                 
-                <Border Background="#F5F5F5" Padding="20" CornerRadius="8">
+                <Border Background="{DynamicResource BackgroundPrimary}" Padding="20" CornerRadius="8">
                     <StackPanel Spacing="15">
                         
                         <!-- Step-by-step guide -->
@@ -146,7 +146,7 @@
                             </StackPanel>
 
                             <!-- Cost Information -->
-                            <Border Background="#E8F5E8" Padding="12" CornerRadius="4" Margin="0,10,0,0">
+                            <Border Background="{DynamicResource StatusSuccessBackground}" Padding="12" CornerRadius="4" Margin="0,10,0,0">
                                 <StackPanel Spacing="5">
                                     <TextBlock Text="💰 Estimated Costs" FontWeight="SemiBold" FontSize="12"/>
                                     <TextBlock Text="• Typical cleanup: $1-5 total cost" FontSize="11" Foreground="DarkGreen"/>
@@ -171,7 +171,7 @@
                 <TextBlock Text="{Binding ReadyTitle}" FontSize="20" FontWeight="SemiBold"/>
                 <TextBlock Text="{Binding ReadyMessage}" FontSize="14" TextWrapping="Wrap" Foreground="Gray"/>
                 
-                <Border Background="#E8F5E8" Padding="20" CornerRadius="8">
+                <Border Background="{DynamicResource StatusSuccessBackground}" Padding="20" CornerRadius="8">
                     <StackPanel Spacing="15">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <TextBlock Text="🎉" FontSize="24"/>
@@ -254,13 +254,13 @@
     <!-- Styles -->
     <Window.Styles>
         <Style Selector="Button.accent">
-            <Setter Property="Background" Value="#4CAF50"/>
+            <Setter Property="Background" Value="{DynamicResource StatusSuccess}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="CornerRadius" Value="6"/>
         </Style>
         
         <Style Selector="Button.accent:pointerover">
-            <Setter Property="Background" Value="#45A049"/>
+            <Setter Property="Background" Value="{DynamicResource StatusSuccess}"/>
         </Style>
 
         <Style Selector="Border.loading">

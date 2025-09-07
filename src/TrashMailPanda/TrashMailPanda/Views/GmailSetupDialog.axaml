@@ -25,7 +25,7 @@
 
         <!-- Header -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="15" Margin="0,0,0,20">
-            <Border Background="#DB4437" Width="40" Height="40" CornerRadius="20">
+            <Border Background="{DynamicResource StatusError}" Width="40" Height="40" CornerRadius="20">
                 <Image Source="/Assets/Logos/gmail-logo.png" Width="20" Height="20"
                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
@@ -77,7 +77,7 @@
                     <!-- Important Notes -->
                     <StackPanel Spacing="15">
                         <TextBlock Text="Important Notes:" FontWeight="SemiBold" FontSize="16" Foreground="{DynamicResource TextPrimary}"/>
-                        <Border Background="#FFF3E0" Padding="12" CornerRadius="6" BorderBrush="{DynamicResource StatusWarning}" BorderThickness="1">
+                        <Border Background="{DynamicResource StatusWarningBackground}" Padding="12" CornerRadius="6" BorderBrush="{DynamicResource StatusWarning}" BorderThickness="1">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="• Select 'Desktop application' as application type" FontSize="13" Foreground="{DynamicResource TextSecondary}" FontWeight="Medium"/>
                                 <TextBlock Text="• No need to configure redirect URIs in Console" FontSize="13" Foreground="{DynamicResource TextSecondary}"/>
@@ -192,7 +192,7 @@
 
                     <!-- Success Message -->
                     <Border IsVisible="{Binding IsValidated}"
-                            Background="#E8F5E8" 
+                            Background="{DynamicResource StatusSuccessBackground}" 
                             Padding="16" 
                             CornerRadius="6"
                             BorderBrush="{DynamicResource StatusSuccess}" 
