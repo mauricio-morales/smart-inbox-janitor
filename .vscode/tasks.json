@@ -122,6 +122,24 @@
       "dependsOn": ["🎨 Format Code"]
     },
     {
+      "label": "⚡ Quick CI Check + Docker",
+      "detail": "Fast validation including Docker-based cross-platform tests",
+      "type": "shell",
+      "command": "echo",
+      "args": ["Quick CI Check with Docker platform testing..."],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new",
+        "focus": true,
+        "clear": true
+      },
+      "problemMatcher": "$msCompile",
+      "dependsOrder": "sequence",
+      "dependsOn": ["🎨 Format Code", "🏗️ Build All Targets", "🧪 Run Unit Tests", "🐳 Multi-Platform Docker Tests"]
+    },
+    {
       "label": "📱 Build macOS App",
       "detail": "Build macOS application bundle",
       "type": "shell",
@@ -225,6 +243,170 @@
       "presentation": {
         "echo": true,
         "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🐳 Multi-Platform Docker Tests",
+      "detail": "Run tests across multiple platforms using Docker containers",
+      "type": "shell",
+      "command": "./scripts/run-cross-platform-tests.sh",
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "dependsOn": ["🐳 Check Docker Environment"]
+    },
+    {
+      "label": "🐧 Linux Platform Tests",
+      "detail": "Run Linux-specific tests with libsecret in Docker container",
+      "type": "shell",
+      "command": "./scripts/run-linux-tests.sh",
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "dependsOn": ["🐳 Check Docker Environment"]
+    },
+    {
+      "label": "🪟 Windows Platform Tests",
+      "detail": "Run Windows-specific DPAPI tests in Windows Docker container",
+      "type": "shell",
+      "command": "powershell",
+      "args": ["-ExecutionPolicy", "Bypass", "-File", "./scripts/run-windows-tests.ps1"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "windows": {
+        "command": "powershell"
+      },
+      "linux": {
+        "command": "echo",
+        "args": ["Windows platform tests can only run on Windows hosts with Docker Desktop"]
+      },
+      "osx": {
+        "command": "echo",
+        "args": ["Windows platform tests can only run on Windows hosts with Docker Desktop"]
+      }
+    },
+    {
+      "label": "🍎 macOS Platform Tests",
+      "detail": "Run macOS-specific Keychain tests (requires macOS host)",
+      "type": "shell",
+      "command": "./scripts/run-macos-tests.sh",
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "osx": {
+        "command": "./scripts/run-macos-tests.sh"
+      },
+      "windows": {
+        "command": "echo",
+        "args": ["macOS platform tests can only run on macOS hosts. Use GitHub Actions for macOS testing."]
+      },
+      "linux": {
+        "command": "echo",
+        "args": ["macOS platform tests can only run on macOS hosts. Use GitHub Actions for macOS testing."]
+      }
+    },
+    {
+      "label": "🔄 Full Platform Test Suite",
+      "detail": "Run comprehensive tests across all supported platforms",
+      "type": "shell",
+      "command": "echo",
+      "args": ["Running full platform test suite..."],
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "🐳 Multi-Platform Docker Tests",
+        "🐧 Linux Platform Tests"
+      ]
+    },
+    {
+      "label": "🐳 Check Docker Environment",
+      "detail": "Verify Docker is available and ready for container testing",
+      "type": "shell",
+      "command": "docker",
+      "args": ["--version"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🏗️ Build Docker Test Images",
+      "detail": "Build all Docker test containers",
+      "type": "shell",
+      "command": "docker-compose",
+      "args": ["-f", "docker-compose.tests.yml", "build", "--parallel"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true
+      },
+      "problemMatcher": [],
+      "dependsOn": ["🐳 Check Docker Environment"]
+    },
+    {
+      "label": "🧹 Clean Docker Test Environment",
+      "detail": "Clean up Docker test containers and images",
+      "type": "shell",
+      "command": "docker-compose",
+      "args": ["-f", "docker-compose.tests.yml", "down", "--rmi", "local", "--volumes"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
         "panel": "shared"
       },
       "problemMatcher": []

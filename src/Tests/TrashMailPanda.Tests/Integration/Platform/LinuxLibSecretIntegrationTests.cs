@@ -362,17 +362,30 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         var initResult = await credentialEncryption.InitializeAsync();
 
-        // This test runs even if initialization failed to test error handling
+        if (initResult.IsSuccess)
+        {
+            // If initialization succeeded, test input validation
+            var emptyResult = await credentialEncryption.EncryptAsync("", "TrashMail Panda");
+            Assert.False(emptyResult.IsSuccess);
+            Assert.Contains("cannot be null or empty", emptyResult.ErrorMessage!);
 
-        // Test empty/null data handling
-        var emptyResult = await credentialEncryption.EncryptAsync("", "TrashMail Panda");
-        Assert.False(emptyResult.IsSuccess);
-        Assert.Contains("cannot be null or empty", emptyResult.ErrorMessage!);
+            var nullResult = await credentialEncryption.EncryptAsync(null!, "TrashMail Panda");
+            Assert.False(nullResult.IsSuccess);
+            Assert.Contains("cannot be null or empty", nullResult.ErrorMessage!);
+        }
+        else
+        {
+            // If initialization failed, operations should return initialization error
+            var emptyResult = await credentialEncryption.EncryptAsync("", "TrashMail Panda");
+            Assert.False(emptyResult.IsSuccess);
+            Assert.Contains("Encryption not initialized", emptyResult.ErrorMessage!);
 
-        var nullResult = await credentialEncryption.EncryptAsync(null!, "TrashMail Panda");
-        Assert.False(nullResult.IsSuccess);
+            var nullResult = await credentialEncryption.EncryptAsync(null!, "TrashMail Panda");
+            Assert.False(nullResult.IsSuccess);
+            Assert.Contains("Encryption not initialized", nullResult.ErrorMessage!);
+        }
 
-        // Test decryption of non-existent data
+        // Test decryption of non-existent data (should fail regardless of init status)
         var nonExistentResult = await credentialEncryption.DecryptAsync("nonexistent-key", "TrashMail Panda");
         Assert.False(nonExistentResult.IsSuccess);
 
