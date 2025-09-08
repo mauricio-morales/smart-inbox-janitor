@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -202,16 +203,14 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                 _logger.LogDebug("Retrieved existing master key from OS keychain");
                 return EncryptionResult.Success();
             }
-            else if (existingKeyResult.ErrorType == EncryptionErrorType.DecryptionFailed)
+            else if (ShouldRecoverFromError(existingKeyResult.ErrorType))
             {
-                // If decryption failed, clear the corrupted keychain entry and proceed to generate new master key
-                _logger.LogWarning("Failed to decrypt existing master key (possibly corrupted), clearing keychain and generating new key");
-
-                // Clear the corrupted keychain entry
-                await ClearCorruptedKeychainEntryAsync(masterKeyContext);
-
-                // Also clear any existing encrypted credentials in database since they're tied to the corrupted master key
-                await ClearCorruptedDatabaseCredentialsAsync();
+                var recoveryResult = await HandleMasterKeyRecoveryWithRetryAsync(existingKeyResult.ErrorType, masterKeyContext, encodedReference);
+                if (!recoveryResult.IsSuccess)
+                {
+                    return recoveryResult;
+                }
+                // If recovery succeeded, continue to generate a new master key
             }
 
             // Generate new master key if none exists
@@ -752,6 +751,21 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
 
             return Task.FromResult(EncryptionResult<string>.Success(plainText));
         }
+        catch (FormatException ex)
+        {
+            return Task.FromResult(EncryptionResult<string>.Failure($"Windows decryption failed - invalid data format: {ex.Message}", EncryptionErrorType.KeychainCorrupted));
+        }
+        catch (CryptographicException ex)
+        {
+            var errorType = ex.Message.Contains("The parameter is incorrect") || ex.Message.Contains("Bad Data") 
+                ? EncryptionErrorType.KeychainCorrupted 
+                : EncryptionErrorType.DecryptionFailed;
+            return Task.FromResult(EncryptionResult<string>.Failure($"Windows DPAPI decryption failed: {ex.Message}", errorType));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Task.FromResult(EncryptionResult<string>.Failure($"Windows decryption failed - access denied: {ex.Message}", EncryptionErrorType.KeychainAccessDenied));
+        }
         catch (Exception ex)
         {
             return Task.FromResult(EncryptionResult<string>.Failure($"Windows decryption failed: {ex.Message}", EncryptionErrorType.DecryptionFailed));
@@ -838,7 +852,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             var parts = encryptedData.Split(':', 2);
             if (parts.Length != 2)
             {
-                return Task.FromResult(EncryptionResult<string>.Failure("Invalid encrypted data format", EncryptionErrorType.DecryptionFailed));
+                return Task.FromResult(EncryptionResult<string>.Failure("Invalid encrypted data format", EncryptionErrorType.KeychainCorrupted));
             }
 
             var service = parts[0];
@@ -847,7 +861,13 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             var status = MacOSKeychain.SecKeychainCopyDefault(out var defaultKeychain);
             if (status != MacOSKeychain.OSStatus.NoErr)
             {
-                return Task.FromResult(EncryptionResult<string>.Failure($"Failed to get default keychain: {status}", EncryptionErrorType.DecryptionFailed));
+                var errorType = status switch
+                {
+                    MacOSKeychain.OSStatus.AuthFailed => EncryptionErrorType.KeychainAccessDenied,
+                    MacOSKeychain.OSStatus.UserCanceled => EncryptionErrorType.KeychainAccessDenied,
+                    _ => EncryptionErrorType.KeychainError
+                };
+                return Task.FromResult(EncryptionResult<string>.Failure($"Failed to get default keychain: {status}", errorType));
             }
 
             try
@@ -863,7 +883,14 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
 
                 if (status != MacOSKeychain.OSStatus.NoErr)
                 {
-                    return Task.FromResult(EncryptionResult<string>.Failure($"Failed to retrieve credential from keychain: {status}", EncryptionErrorType.DecryptionFailed));
+                    var errorType = status switch
+                    {
+                        MacOSKeychain.OSStatus.ItemNotFound => EncryptionErrorType.DecryptionFailed,
+                        MacOSKeychain.OSStatus.AuthFailed => EncryptionErrorType.KeychainAccessDenied,
+                        MacOSKeychain.OSStatus.UserCanceled => EncryptionErrorType.KeychainAccessDenied,
+                        _ => EncryptionErrorType.KeychainError
+                    };
+                    return Task.FromResult(EncryptionResult<string>.Failure($"Failed to retrieve credential from keychain: {status}", errorType));
                 }
 
                 try
@@ -899,6 +926,10 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                     MacOSKeychain.CFRelease(defaultKeychain);
                 }
             }
+        }
+        catch (FormatException ex)
+        {
+            return Task.FromResult(EncryptionResult<string>.Failure($"macOS decryption failed - invalid data format: {ex.Message}", EncryptionErrorType.KeychainCorrupted));
         }
         catch (Exception ex)
         {
@@ -959,7 +990,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             var parts = encryptedData.Split(':', 2);
             if (parts.Length != 2)
             {
-                return Task.FromResult(EncryptionResult<string>.Failure("Invalid encrypted data format", EncryptionErrorType.DecryptionFailed));
+                return Task.FromResult(EncryptionResult<string>.Failure("Invalid encrypted data format", EncryptionErrorType.KeychainCorrupted));
             }
 
             var service = parts[0];
@@ -973,6 +1004,14 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             }
 
             return Task.FromResult(EncryptionResult<string>.Success(plainText));
+        }
+        catch (FormatException ex)
+        {
+            return Task.FromResult(EncryptionResult<string>.Failure($"Linux decryption failed - invalid data format: {ex.Message}", EncryptionErrorType.KeychainCorrupted));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Task.FromResult(EncryptionResult<string>.Failure($"Linux decryption failed - access denied: {ex.Message}", EncryptionErrorType.KeychainAccessDenied));
         }
         catch (Exception ex)
         {
@@ -998,6 +1037,260 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         }
 
         return features;
+    }
+
+    /// <summary>
+    /// Determines if we should attempt recovery from the given error type
+    /// </summary>
+    private static bool ShouldRecoverFromError(EncryptionErrorType? errorType)
+    {
+        return errorType switch
+        {
+            EncryptionErrorType.DecryptionFailed => true,
+            EncryptionErrorType.KeychainCorrupted => true,
+            EncryptionErrorType.KeychainAccessDenied => true,
+            EncryptionErrorType.TransientError => true,
+            EncryptionErrorType.NetworkError => true,
+            EncryptionErrorType.KeychainError => true,
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Handles master key recovery with retry logic and enhanced error classification
+    /// </summary>
+    private async Task<EncryptionResult> HandleMasterKeyRecoveryWithRetryAsync(
+        EncryptionErrorType? originalErrorType, 
+        string masterKeyContext, 
+        string encodedReference)
+    {
+        _logger.LogWarning("Master key recovery initiated due to error: {ErrorType}", originalErrorType);
+
+        // For transient errors, try retry logic before giving up
+        if (IsTransientError(originalErrorType))
+        {
+            var retryResult = await AttemptMasterKeyRetrievalWithRetryAsync(encodedReference, masterKeyContext);
+            if (retryResult.IsSuccess)
+            {
+                _masterKey = retryResult.Value;
+                _logger.LogInformation("Master key successfully recovered after retry attempts");
+                return EncryptionResult.Success();
+            }
+            
+            // If retry failed, continue with recovery process
+            _logger.LogWarning("Master key retry attempts failed, proceeding with recovery");
+        }
+
+        // Classify the error more specifically
+        var classifiedError = await ClassifyRecoveryErrorAsync(originalErrorType, masterKeyContext);
+        
+        _logger.LogWarning("Master key recovery: {ErrorType} - {ErrorMessage}", 
+            classifiedError.ErrorType, classifiedError.ErrorMessage);
+
+        // For non-transient errors or failed retries, clear corrupted data
+        try
+        {
+            // Clear the corrupted keychain entry
+            await ClearCorruptedKeychainEntryAsync(masterKeyContext);
+
+            // Also clear any existing encrypted credentials in database since they're tied to the corrupted master key
+            await ClearCorruptedDatabaseCredentialsAsync();
+
+            _logger.LogInformation("Successfully cleared corrupted master key data");
+            return EncryptionResult.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to clear corrupted master key data during recovery");
+            return EncryptionResult.Failure($"Master key recovery failed: {ex.Message}", EncryptionErrorType.ConfigurationError);
+        }
+    }
+
+    /// <summary>
+    /// Determines if an error is transient and worth retrying
+    /// </summary>
+    private static bool IsTransientError(EncryptionErrorType? errorType)
+    {
+        return errorType switch
+        {
+            EncryptionErrorType.TransientError => true,
+            EncryptionErrorType.NetworkError => true,
+            EncryptionErrorType.KeychainAccessDenied => true, // May be temporary access issues
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Attempts to retrieve master key with exponential backoff retry logic
+    /// </summary>
+    private async Task<EncryptionResult<string>> AttemptMasterKeyRetrievalWithRetryAsync(
+        string encodedReference, 
+        string masterKeyContext)
+    {
+        const int maxRetries = 3;
+        const int baseDelayMs = 100;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            _logger.LogDebug("Master key retrieval attempt {Attempt}/{MaxRetries}", attempt, maxRetries);
+
+            var result = _platform switch
+            {
+                "Windows" when OperatingSystem.IsWindows() => await DecryptWindowsAsync(encodedReference, masterKeyContext),
+                "macOS" when OperatingSystem.IsMacOS() => await DecryptMacOSAsync(encodedReference, masterKeyContext),
+                "Linux" when OperatingSystem.IsLinux() => await DecryptLinuxAsync(encodedReference, masterKeyContext),
+                _ => EncryptionResult<string>.Failure("Unsupported platform", EncryptionErrorType.PlatformNotSupported)
+            };
+
+            if (result.IsSuccess && !string.IsNullOrEmpty(result.Value))
+            {
+                _logger.LogDebug("Master key successfully retrieved on attempt {Attempt}", attempt);
+                return result;
+            }
+
+            // If this is the last attempt, return the error
+            if (attempt == maxRetries)
+            {
+                _logger.LogWarning("Master key retrieval failed after {MaxRetries} attempts", maxRetries);
+                return result;
+            }
+
+            // Calculate exponential backoff delay
+            var delay = TimeSpan.FromMilliseconds(baseDelayMs * Math.Pow(2, attempt - 1));
+            _logger.LogDebug("Retrying master key retrieval after {Delay}ms delay", delay.TotalMilliseconds);
+            
+            await Task.Delay(delay);
+        }
+
+        return EncryptionResult<string>.Failure("Master key retrieval failed after all retry attempts", EncryptionErrorType.TransientError);
+    }
+
+    /// <summary>
+    /// Classifies recovery errors more specifically based on the original error and platform diagnostics
+    /// </summary>
+    private async Task<EncryptionResult> ClassifyRecoveryErrorAsync(EncryptionErrorType? originalErrorType, string masterKeyContext)
+    {
+        // Start with the original error type
+        var errorType = originalErrorType ?? EncryptionErrorType.UnknownError;
+        var errorMessage = $"Master key recovery needed due to {errorType}";
+
+        try
+        {
+            // Perform platform-specific diagnostics to better classify the error
+            var diagnosticResult = _platform switch
+            {
+                "Windows" when OperatingSystem.IsWindows() => await DiagnoseWindowsKeychainAsync(),
+                "macOS" when OperatingSystem.IsMacOS() => await DiagnoseMacOSKeychainAsync(),
+                "Linux" when OperatingSystem.IsLinux() => await DiagnoseLinuxKeychainAsync(),
+                _ => (EncryptionErrorType.PlatformNotSupported, "Unsupported platform for diagnostics")
+            };
+
+            errorType = diagnosticResult.Item1;
+            errorMessage = diagnosticResult.Item2;
+
+            _logger.LogInformation("Recovery error classification: {ErrorType} - {ErrorMessage}", errorType, errorMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to classify recovery error, using original error type");
+            errorMessage = $"Failed to diagnose error: {ex.Message}";
+        }
+
+        return EncryptionResult.Failure(errorMessage, errorType);
+    }
+
+    /// <summary>
+    /// Diagnoses Windows DPAPI keychain issues
+    /// </summary>
+    private async Task<(EncryptionErrorType, string)> DiagnoseWindowsKeychainAsync()
+    {
+        await Task.Yield(); // Make async for consistency
+        
+        try
+        {
+            // Test DPAPI access with a simple encrypt/decrypt operation
+            var testData = "test-data";
+            var testBytes = Encoding.UTF8.GetBytes(testData);
+            var encryptedTest = ProtectedData.Protect(testBytes, null, DataProtectionScope.CurrentUser);
+            var decryptedTest = ProtectedData.Unprotect(encryptedTest, null, DataProtectionScope.CurrentUser);
+            
+            if (Encoding.UTF8.GetString(decryptedTest) == testData)
+            {
+                return (EncryptionErrorType.KeychainCorrupted, "DPAPI is functional but stored master key is corrupted");
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return (EncryptionErrorType.KeychainAccessDenied, "DPAPI access denied - insufficient permissions");
+        }
+        catch (Exception ex)
+        {
+            return (EncryptionErrorType.KeychainError, $"DPAPI error: {ex.Message}");
+        }
+
+        return (EncryptionErrorType.KeychainError, "DPAPI diagnostics inconclusive");
+    }
+
+    /// <summary>
+    /// Diagnoses macOS Keychain issues
+    /// </summary>
+    private async Task<(EncryptionErrorType, string)> DiagnoseMacOSKeychainAsync()
+    {
+        await Task.Yield(); // Make async for consistency
+        
+        try
+        {
+            // Test keychain access
+            var status = MacOSKeychain.SecKeychainCopyDefault(out var defaultKeychain);
+            if (status != MacOSKeychain.OSStatus.NoErr)
+            {
+                return status switch
+                {
+                    MacOSKeychain.OSStatus.AuthFailed => (EncryptionErrorType.KeychainAccessDenied, "Keychain authentication failed"),
+                    MacOSKeychain.OSStatus.UserCanceled => (EncryptionErrorType.KeychainAccessDenied, "User canceled keychain access"),
+                    _ => (EncryptionErrorType.KeychainError, $"Keychain access failed: {status}")
+                };
+            }
+
+            return (EncryptionErrorType.KeychainCorrupted, "Keychain is accessible but stored master key is corrupted");
+        }
+        catch (Exception ex)
+        {
+            return (EncryptionErrorType.KeychainError, $"Keychain diagnostics failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Diagnoses Linux libsecret keychain issues
+    /// </summary>
+    private async Task<(EncryptionErrorType, string)> DiagnoseLinuxKeychainAsync()
+    {
+        await Task.Yield(); // Make async for consistency
+        
+        try
+        {
+            // Test libsecret access
+            if (!LinuxSecretHelper.IsLibSecretAvailable())
+            {
+                return (EncryptionErrorType.PlatformNotSupported, "libsecret not available on this system");
+            }
+
+            // Try to access the keyring
+            var testResult = LinuxSecretHelper.StoreSecret("test-service", "test-account", "test-password");
+            if (testResult)
+            {
+                LinuxSecretHelper.RemoveSecret("test-service", "test-account");
+                return (EncryptionErrorType.KeychainCorrupted, "libsecret is functional but stored master key is corrupted");
+            }
+            else
+            {
+                return (EncryptionErrorType.KeychainAccessDenied, "Failed to write test credential to keyring");
+            }
+        }
+        catch (Exception ex)
+        {
+            return (EncryptionErrorType.KeychainError, $"libsecret diagnostics failed: {ex.Message}");
+        }
     }
 
     /// <summary>
