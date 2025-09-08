@@ -44,12 +44,12 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
 
         // Act
         var initResult = await credentialEncryption.InitializeAsync();
-        
+
         // Note: libsecret initialization might fail in headless CI/CD environments
         // without a desktop session or keyring daemon
         if (!initResult.IsSuccess)
@@ -100,10 +100,10 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         var initResult = await credentialEncryption.InitializeAsync();
-        
+
         // Skip if initialization failed (libsecret not available or daemon not running)
         if (!initResult.IsSuccess)
         {
@@ -116,7 +116,7 @@ public class LinuxLibSecretIntegrationTests : IDisposable
 
         // Assert
         Assert.Equal("Linux", healthResult.Platform);
-        
+
         // libsecret health might be unreliable in CI/CD environments
         if (healthResult.IsHealthy)
         {
@@ -146,10 +146,10 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         var initResult = await credentialEncryption.InitializeAsync();
-        
+
         // Skip if initialization failed
         if (!initResult.IsSuccess)
         {
@@ -202,10 +202,10 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         var initResult = await credentialEncryption.InitializeAsync();
-        
+
         // Skip if initialization failed
         if (!initResult.IsSuccess)
         {
@@ -245,10 +245,10 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         var initResult = await credentialEncryption.InitializeAsync();
-        
+
         // Skip if initialization failed
         if (!initResult.IsSuccess)
         {
@@ -296,10 +296,10 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         var initResult = await credentialEncryption.InitializeAsync();
-        
+
         // Skip if initialization failed
         if (!initResult.IsSuccess)
         {
@@ -358,12 +358,12 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         var initResult = await credentialEncryption.InitializeAsync();
-        
+
         // This test runs even if initialization failed to test error handling
-        
+
         // Test empty/null data handling
         var emptyResult = await credentialEncryption.EncryptAsync("", "TrashMail Panda");
         Assert.False(emptyResult.IsSuccess);
@@ -392,10 +392,10 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         var initResult = await credentialEncryption.InitializeAsync();
-        
+
         // Skip if initialization failed
         if (!initResult.IsSuccess)
         {

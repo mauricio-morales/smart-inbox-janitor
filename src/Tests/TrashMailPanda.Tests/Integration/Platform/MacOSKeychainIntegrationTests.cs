@@ -44,7 +44,7 @@ public class MacOSKeychainIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
 
         // Act
@@ -85,7 +85,7 @@ public class MacOSKeychainIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         await credentialEncryption.InitializeAsync();
 
@@ -96,7 +96,7 @@ public class MacOSKeychainIntegrationTests : IDisposable
         // Note: Keychain health check might fail in CI/CD if keychain is locked
         // So we check if it either passes or fails gracefully
         Assert.Equal("macOS", healthResult.Platform);
-        
+
         if (healthResult.IsHealthy)
         {
             Assert.True(healthResult.CanEncrypt);
@@ -126,10 +126,10 @@ public class MacOSKeychainIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         var initResult = await credentialEncryption.InitializeAsync();
-        
+
         // Skip if initialization failed (keychain locked)
         if (!initResult.IsSuccess)
         {
@@ -182,10 +182,10 @@ public class MacOSKeychainIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         var initResult = await credentialEncryption.InitializeAsync();
-        
+
         // Skip if initialization failed (keychain locked)
         if (!initResult.IsSuccess)
         {
@@ -225,10 +225,10 @@ public class MacOSKeychainIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         var initResult = await credentialEncryption.InitializeAsync();
-        
+
         // Skip if initialization failed (keychain locked)
         if (!initResult.IsSuccess)
         {
@@ -277,10 +277,10 @@ public class MacOSKeychainIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         var initResult = await credentialEncryption.InitializeAsync();
-        
+
         // Skip if initialization failed (keychain locked)
         if (!initResult.IsSuccess)
         {
@@ -344,10 +344,10 @@ public class MacOSKeychainIntegrationTests : IDisposable
             var masterKeyManager1 = new MasterKeyManager(_masterKeyLogger);
             var storageProvider1 = new SqliteStorageProvider(":memory:", "test-password");
             await storageProvider1.InitAsync();
-            
+
             var credentialEncryption1 = new CredentialEncryption(_credentialLogger, masterKeyManager1, storageProvider1);
             var initResult = await credentialEncryption1.InitializeAsync();
-            
+
             if (initResult.IsSuccess)
             {
                 var encryptResult = await credentialEncryption1.EncryptAsync(testData, context);
@@ -371,17 +371,17 @@ public class MacOSKeychainIntegrationTests : IDisposable
             var masterKeyManager2 = new MasterKeyManager(_masterKeyLogger);
             var storageProvider2 = new SqliteStorageProvider(":memory:", "test-password");
             await storageProvider2.InitAsync();
-            
+
             var credentialEncryption2 = new CredentialEncryption(_credentialLogger, masterKeyManager2, storageProvider2);
             var initResult = await credentialEncryption2.InitializeAsync();
-            
+
             if (initResult.IsSuccess)
             {
                 // Note: This test might fail because we're using in-memory storage
                 // In real scenarios, the database would persist across restarts
                 // The keychain entry should persist, but our in-memory DB won't
                 var decryptResult = await credentialEncryption2.DecryptAsync(encryptedValue, context);
-                
+
                 // We expect this to fail with in-memory storage, but keychain entry persists
                 // This test primarily verifies that keychain operations don't crash
             }

@@ -748,8 +748,8 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         }
         catch (CryptographicException ex)
         {
-            var errorType = ex.Message.Contains("The parameter is incorrect") || ex.Message.Contains("Bad Data") 
-                ? EncryptionErrorType.KeychainCorrupted 
+            var errorType = ex.Message.Contains("The parameter is incorrect") || ex.Message.Contains("Bad Data")
+                ? EncryptionErrorType.KeychainCorrupted
                 : EncryptionErrorType.DecryptionFailed;
             return Task.FromResult(EncryptionResult<string>.Failure($"Windows DPAPI decryption failed: {ex.Message}", errorType));
         }
@@ -1051,8 +1051,8 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
     /// Handles master key recovery with retry logic and enhanced error classification
     /// </summary>
     private async Task<EncryptionResult> HandleMasterKeyRecoveryWithRetryAsync(
-        EncryptionErrorType? originalErrorType, 
-        string masterKeyContext, 
+        EncryptionErrorType? originalErrorType,
+        string masterKeyContext,
         string encodedReference)
     {
         _logger.LogWarning("Master key recovery initiated due to error: {ErrorType}", originalErrorType);
@@ -1067,15 +1067,15 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                 _logger.LogInformation("Master key successfully recovered after retry attempts");
                 return EncryptionResult.Success();
             }
-            
+
             // If retry failed, continue with recovery process
             _logger.LogWarning("Master key retry attempts failed, proceeding with recovery");
         }
 
         // Classify the error more specifically
         var classifiedError = await ClassifyRecoveryErrorAsync(originalErrorType, masterKeyContext);
-        
-        _logger.LogWarning("Master key recovery: {ErrorType} - {ErrorMessage}", 
+
+        _logger.LogWarning("Master key recovery: {ErrorType} - {ErrorMessage}",
             classifiedError.ErrorType, classifiedError.ErrorMessage);
 
         // For non-transient errors or failed retries, clear corrupted data
@@ -1115,7 +1115,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
     /// Attempts to retrieve master key with exponential backoff retry logic
     /// </summary>
     private async Task<EncryptionResult<string>> AttemptMasterKeyRetrievalWithRetryAsync(
-        string encodedReference, 
+        string encodedReference,
         string masterKeyContext)
     {
         const int maxRetries = 3;
@@ -1149,7 +1149,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             // Calculate exponential backoff delay
             var delay = TimeSpan.FromMilliseconds(baseDelayMs * Math.Pow(2, attempt - 1));
             _logger.LogDebug("Retrying master key retrieval after {Delay}ms delay", delay.TotalMilliseconds);
-            
+
             await Task.Delay(delay);
         }
 
@@ -1196,15 +1196,17 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
     private async Task<(EncryptionErrorType, string)> DiagnoseWindowsKeychainAsync()
     {
         await Task.Yield(); // Make async for consistency
-        
+
         try
         {
             // Test DPAPI access with a simple encrypt/decrypt operation
             var testData = "test-data";
             var testBytes = Encoding.UTF8.GetBytes(testData);
+#pragma warning disable CA1416 // Platform-specific API usage is guarded by PlatformInfo.Current check
             var encryptedTest = ProtectedData.Protect(testBytes, null, DataProtectionScope.CurrentUser);
             var decryptedTest = ProtectedData.Unprotect(encryptedTest, null, DataProtectionScope.CurrentUser);
-            
+#pragma warning restore CA1416
+
             if (Encoding.UTF8.GetString(decryptedTest) == testData)
             {
                 return (EncryptionErrorType.KeychainCorrupted, "DPAPI is functional but stored master key is corrupted");
@@ -1228,10 +1230,11 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
     private async Task<(EncryptionErrorType, string)> DiagnoseMacOSKeychainAsync()
     {
         await Task.Yield(); // Make async for consistency
-        
+
         try
         {
             // Test keychain access
+#pragma warning disable CA1416 // Platform-specific API usage is guarded by PlatformInfo.Current check
             var status = MacOSKeychain.SecKeychainCopyDefault(out var defaultKeychain);
             if (status != MacOSKeychain.OSStatus.NoErr)
             {
@@ -1242,6 +1245,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                     _ => (EncryptionErrorType.KeychainError, $"Keychain access failed: {status}")
                 };
             }
+#pragma warning restore CA1416
 
             return (EncryptionErrorType.KeychainCorrupted, "Keychain is accessible but stored master key is corrupted");
         }
@@ -1257,10 +1261,11 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
     private async Task<(EncryptionErrorType, string)> DiagnoseLinuxKeychainAsync()
     {
         await Task.Yield(); // Make async for consistency
-        
+
         try
         {
             // Test libsecret access
+#pragma warning disable CA1416 // Platform-specific API usage is guarded by PlatformInfo.Current check
             if (!LinuxSecretHelper.IsLibSecretAvailable())
             {
                 return (EncryptionErrorType.PlatformNotSupported, "libsecret not available on this system");
@@ -1273,6 +1278,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                 LinuxSecretHelper.RemoveSecret("test-service", "test-account");
                 return (EncryptionErrorType.KeychainCorrupted, "libsecret is functional but stored master key is corrupted");
             }
+#pragma warning restore CA1416
             else
             {
                 return (EncryptionErrorType.KeychainAccessDenied, "Failed to write test credential to keyring");

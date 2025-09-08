@@ -68,7 +68,7 @@ public static class PlatformTestHelper
         return PlatformInfo.Current switch
         {
             SupportedPlatform.Windows => "DPAPI",
-            SupportedPlatform.MacOS => "Keychain Services", 
+            SupportedPlatform.MacOS => "Keychain Services",
             SupportedPlatform.Linux => "libsecret",
             _ => "Unknown"
         };

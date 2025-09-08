@@ -46,7 +46,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
 
         // Act
@@ -89,12 +89,14 @@ public class WindowsDpapiIntegrationTests : IDisposable
         var entropy = Encoding.UTF8.GetBytes("TrashMail Panda");
 
         // Encrypt using DPAPI directly
+#pragma warning disable CA1416 // Platform-specific API usage is guarded by PlatformSpecificFact attribute
         var encryptedBytes = ProtectedData.Protect(testBytes, entropy, DataProtectionScope.CurrentUser);
         Assert.NotNull(encryptedBytes);
         Assert.NotEqual(testBytes, encryptedBytes);
 
         // Decrypt using DPAPI
         var decryptedBytes = ProtectedData.Unprotect(encryptedBytes, entropy, DataProtectionScope.CurrentUser);
+#pragma warning restore CA1416
         var decryptedText = Encoding.UTF8.GetString(decryptedBytes);
 
         Assert.Equal(testData, decryptedText);
@@ -114,10 +116,12 @@ public class WindowsDpapiIntegrationTests : IDisposable
         var entropy = Encoding.UTF8.GetBytes("TrashMail Panda");
 
         // Encrypt with CurrentUser scope
+#pragma warning disable CA1416 // Platform-specific API usage is guarded by PlatformSpecificFact attribute
         var encryptedCurrentUser = ProtectedData.Protect(testBytes, entropy, DataProtectionScope.CurrentUser);
 
         // Should be able to decrypt with CurrentUser scope
         var decryptedCurrentUser = ProtectedData.Unprotect(encryptedCurrentUser, entropy, DataProtectionScope.CurrentUser);
+#pragma warning restore CA1416
         Assert.Equal(testData, Encoding.UTF8.GetString(decryptedCurrentUser));
 
         // Note: LocalMachine scope requires elevated permissions in CI/CD
@@ -137,7 +141,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         await credentialEncryption.InitializeAsync();
 
@@ -168,7 +172,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         await credentialEncryption.InitializeAsync();
 
@@ -212,7 +216,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         await credentialEncryption.InitializeAsync();
 
@@ -244,7 +248,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         await credentialEncryption.InitializeAsync();
 
@@ -284,7 +288,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         var masterKeyManager = new MasterKeyManager(_masterKeyLogger);
         var storageProvider = new SqliteStorageProvider(":memory:", "test-password");
         await storageProvider.InitAsync();
-        
+
         var credentialEncryption = new CredentialEncryption(_credentialLogger, masterKeyManager, storageProvider);
         await credentialEncryption.InitializeAsync();
 

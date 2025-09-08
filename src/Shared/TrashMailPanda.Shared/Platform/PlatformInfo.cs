@@ -61,19 +61,19 @@ public static class PlatformInfo
     /// <summary>
     /// Checks if Windows DPAPI is available on the current platform
     /// </summary>
-    public static bool IsWindowsDpapiAvailable => 
+    public static bool IsWindowsDpapiAvailable =>
         Is(SupportedPlatform.Windows) && OperatingSystem.IsWindows();
 
     /// <summary>
     /// Checks if macOS Keychain Services are available on the current platform
     /// </summary>
-    public static bool IsMacOSKeychainAvailable => 
+    public static bool IsMacOSKeychainAvailable =>
         Is(SupportedPlatform.MacOS) && OperatingSystem.IsMacOS();
 
     /// <summary>
     /// Checks if Linux libsecret is available on the current platform
     /// </summary>
-    public static bool IsLinuxLibSecretAvailable => 
+    public static bool IsLinuxLibSecretAvailable =>
         Is(SupportedPlatform.Linux) && OperatingSystem.IsLinux();
 
     /// <summary>
@@ -89,7 +89,7 @@ public static class PlatformInfo
             return SupportedPlatform.MacOS;
         if (osPlatform == OSPlatform.Linux)
             return SupportedPlatform.Linux;
-        
+
         return SupportedPlatform.Unknown;
     }
 
@@ -149,7 +149,7 @@ public static class PlatformInfo
             return SupportedPlatform.MacOS;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             return SupportedPlatform.Linux;
-        
+
         return SupportedPlatform.Unknown;
     }
 
