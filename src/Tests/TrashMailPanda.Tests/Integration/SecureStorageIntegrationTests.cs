@@ -1,7 +1,7 @@
 using System.IO;
-using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using TrashMailPanda.Shared;
+using TrashMailPanda.Shared.Platform;
 using TrashMailPanda.Shared.Security;
 using TrashMailPanda.Providers.Storage;
 using Xunit;
@@ -237,19 +237,19 @@ public class SecureStorageIntegrationTests : IDisposable
         Assert.NotEmpty(status.Platform);
         Assert.NotEmpty(status.EncryptionMethod);
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (PlatformInfo.Is(SupportedPlatform.Windows))
         {
             Assert.Equal("Windows", status.Platform);
             Assert.Equal("DPAPI", status.EncryptionMethod);
             Assert.True(healthCheck.IsHealthy); // Windows DPAPI should always work
         }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        else if (PlatformInfo.Is(SupportedPlatform.MacOS))
         {
             Assert.Equal("macOS", status.Platform);
             Assert.Equal("Keychain Services", status.EncryptionMethod);
             Assert.True(healthCheck.IsHealthy); // macOS Keychain should work in most cases
         }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        else if (PlatformInfo.Is(SupportedPlatform.Linux))
         {
             Assert.Equal("Linux", status.Platform);
             Assert.Equal("libsecret", status.EncryptionMethod);

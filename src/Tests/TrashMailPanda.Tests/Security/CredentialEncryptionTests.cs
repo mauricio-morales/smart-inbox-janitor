@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Moq;
 using TrashMailPanda.Shared;
+using TrashMailPanda.Shared.Platform;
 using TrashMailPanda.Shared.Security;
 using Xunit;
 
@@ -210,7 +210,7 @@ public class CredentialEncryptionTests : IDisposable
         var decryptResult = await _credentialEncryption.DecryptAsync(encryptResult.Value!, wrongContext);
 
         // Assert - This might succeed on some platforms, but should fail on Windows
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (PlatformInfo.Is(SupportedPlatform.Windows))
         {
             Assert.False(decryptResult.IsSuccess);
         }
@@ -258,17 +258,17 @@ public class CredentialEncryptionTests : IDisposable
         Assert.NotEmpty(status.Platform);
         Assert.NotEmpty(status.EncryptionMethod);
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (PlatformInfo.Is(SupportedPlatform.Windows))
         {
             Assert.Equal("Windows", status.Platform);
             Assert.Equal("DPAPI", status.EncryptionMethod);
         }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        else if (PlatformInfo.Is(SupportedPlatform.MacOS))
         {
             Assert.Equal("macOS", status.Platform);
             Assert.Equal("Keychain Services", status.EncryptionMethod);
         }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        else if (PlatformInfo.Is(SupportedPlatform.Linux))
         {
             Assert.Equal("Linux", status.Platform);
             Assert.Equal("libsecret", status.EncryptionMethod);
@@ -295,7 +295,7 @@ public class CredentialEncryptionTests : IDisposable
     public async Task WindowsEncryption_OnWindowsPlatform_ShouldUseDPAPI()
     {
         // Skip if not on Windows
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (!PlatformInfo.Is(SupportedPlatform.Windows))
         {
             return;
         }
@@ -320,7 +320,7 @@ public class CredentialEncryptionTests : IDisposable
     public async Task MacOSEncryption_OnMacOSPlatform_ShouldUseKeychain()
     {
         // Skip if not on macOS
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        if (!PlatformInfo.Is(SupportedPlatform.MacOS))
         {
             return;
         }
@@ -345,7 +345,7 @@ public class CredentialEncryptionTests : IDisposable
     public async Task LinuxEncryption_OnLinuxPlatform_ShouldUseLibSecret()
     {
         // Skip if not on Linux
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        if (!PlatformInfo.Is(SupportedPlatform.Linux))
         {
             return;
         }
@@ -391,7 +391,7 @@ public class CredentialEncryptionTests : IDisposable
         // This is by design to enable reliable credential retrieval across app sessions
 
         // For Windows DPAPI, encrypted results should be different due to entropy
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (PlatformInfo.Is(SupportedPlatform.Windows))
         {
             // Windows DPAPI may produce different results each time
             // But our implementation may be deterministic - either is acceptable

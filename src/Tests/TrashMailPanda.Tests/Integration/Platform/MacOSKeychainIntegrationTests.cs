@@ -1,7 +1,7 @@
 using System;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using TrashMailPanda.Shared.Platform;
 using TrashMailPanda.Shared.Security;
 using TrashMailPanda.Providers.Storage;
 using TrashMailPanda.Tests.Attributes;
@@ -31,7 +31,7 @@ public class MacOSKeychainIntegrationTests : IDisposable
         _storageLogger = loggerFactory.CreateLogger<SqliteStorageProvider>();
     }
 
-    [PlatformSpecificFact(OSPlatform.OSX)]
+    [PlatformSpecificFact(SupportedPlatform.MacOS)]
     public async Task MacOSKeychain_BasicEncryptionDecryption_ShouldWork()
     {
         // Skip if Keychain Services are not available
@@ -72,7 +72,7 @@ public class MacOSKeychainIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.OSX)]
+    [PlatformSpecificFact(SupportedPlatform.MacOS)]
     public async Task MacOSKeychain_HealthCheck_ShouldReportCorrectly()
     {
         // Skip if not on macOS
@@ -113,7 +113,7 @@ public class MacOSKeychainIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.OSX)]
+    [PlatformSpecificFact(SupportedPlatform.MacOS)]
     public async Task MacOSKeychain_ConcurrentOperations_ShouldBeThreadSafe()
     {
         // Skip if not on macOS
@@ -169,7 +169,7 @@ public class MacOSKeychainIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.OSX)]
+    [PlatformSpecificFact(SupportedPlatform.MacOS)]
     public async Task MacOSKeychain_LargeDataEncryption_ShouldWork()
     {
         // Skip if not on macOS
@@ -212,7 +212,7 @@ public class MacOSKeychainIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.OSX)]
+    [PlatformSpecificFact(SupportedPlatform.MacOS)]
     public async Task MacOSKeychain_UnicodeData_ShouldHandleCorrectly()
     {
         // Skip if not on macOS
@@ -264,7 +264,7 @@ public class MacOSKeychainIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.OSX)]
+    [PlatformSpecificFact(SupportedPlatform.MacOS)]
     public async Task MacOSKeychain_MultipleContexts_ShouldIsolate()
     {
         // Skip if not on macOS
@@ -326,7 +326,7 @@ public class MacOSKeychainIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.OSX)]
+    [PlatformSpecificFact(SupportedPlatform.MacOS)]
     public async Task MacOSKeychain_CredentialPersistence_ShouldSurviveRestart()
     {
         // Skip if not on macOS

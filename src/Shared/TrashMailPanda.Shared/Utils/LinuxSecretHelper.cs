@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using TrashMailPanda.Shared.Platform;
 
 namespace TrashMailPanda.Shared.Utils;
 
@@ -20,7 +21,7 @@ public static class LinuxSecretHelper
     /// </summary>
     public static bool IsLibSecretAvailable()
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        if (!PlatformInfo.Is(SupportedPlatform.Linux))
             return false;
 
         try

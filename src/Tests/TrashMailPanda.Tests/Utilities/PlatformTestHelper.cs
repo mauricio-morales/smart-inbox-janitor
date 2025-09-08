@@ -1,63 +1,49 @@
 using System;
 using System.Runtime.InteropServices;
+using TrashMailPanda.Shared.Platform;
 
 namespace TrashMailPanda.Tests.Utilities;
 
 /// <summary>
 /// Helper utilities for platform-specific testing
+/// Uses the centralized platform detection system from TrashMailPanda.Shared.Platform
 /// </summary>
 public static class PlatformTestHelper
 {
     /// <summary>
     /// Gets the current platform as a string
     /// </summary>
-    public static string GetCurrentPlatform()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return "Windows";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return "macOS";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            return "Linux";
-        return "Unknown";
-    }
+    [Obsolete("Use PlatformInfo.CurrentDisplayName instead")]
+    public static string GetCurrentPlatform() => PlatformInfo.CurrentDisplayName;
 
     /// <summary>
     /// Checks if the current platform matches any of the specified platforms
     /// </summary>
+    [Obsolete("Use PlatformInfo.IsOneOf instead")]
     public static bool IsCurrentPlatform(params OSPlatform[] platforms)
     {
-        foreach (var platform in platforms)
+        var supportedPlatforms = new SupportedPlatform[platforms.Length];
+        for (int i = 0; i < platforms.Length; i++)
         {
-            if (RuntimeInformation.IsOSPlatform(platform))
-                return true;
+            supportedPlatforms[i] = PlatformInfo.FromOSPlatform(platforms[i]);
         }
-        return false;
+        return PlatformInfo.IsOneOf(supportedPlatforms);
     }
 
     /// <summary>
     /// Checks if Windows DPAPI is available and functional
     /// </summary>
-    public static bool IsWindowsDpapiAvailable()
-    {
-        return RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && OperatingSystem.IsWindows();
-    }
+    public static bool IsWindowsDpapiAvailable() => PlatformInfo.IsWindowsDpapiAvailable;
 
     /// <summary>
     /// Checks if macOS Keychain Services are available
     /// </summary>
-    public static bool IsMacOSKeychainAvailable()
-    {
-        return RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && OperatingSystem.IsMacOS();
-    }
+    public static bool IsMacOSKeychainAvailable() => PlatformInfo.IsMacOSKeychainAvailable;
 
     /// <summary>
     /// Checks if Linux libsecret is available (basic check)
     /// </summary>
-    public static bool IsLinuxLibSecretAvailable()
-    {
-        return RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && OperatingSystem.IsLinux();
-    }
+    public static bool IsLinuxLibSecretAvailable() => PlatformInfo.IsLinuxLibSecretAvailable;
 
     /// <summary>
     /// Gets a platform-specific test timeout in milliseconds
@@ -65,12 +51,12 @@ public static class PlatformTestHelper
     /// </summary>
     public static int GetPlatformSpecificTimeout()
     {
-        return GetCurrentPlatform() switch
+        return PlatformInfo.Current switch
         {
-            "Windows" => 30000,  // 30 seconds - DPAPI is typically fast
-            "macOS" => 60000,    // 60 seconds - Keychain may require user interaction
-            "Linux" => 45000,    // 45 seconds - libsecret varies by distribution
-            _ => 30000           // Default timeout
+            SupportedPlatform.Windows => 30000,  // 30 seconds - DPAPI is typically fast
+            SupportedPlatform.MacOS => 60000,    // 60 seconds - Keychain may require user interaction
+            SupportedPlatform.Linux => 45000,    // 45 seconds - libsecret varies by distribution
+            _ => 30000                           // Default timeout
         };
     }
 
@@ -79,11 +65,11 @@ public static class PlatformTestHelper
     /// </summary>
     public static string GetExpectedEncryptionMethod()
     {
-        return GetCurrentPlatform() switch
+        return PlatformInfo.Current switch
         {
-            "Windows" => "DPAPI",
-            "macOS" => "Keychain Services", 
-            "Linux" => "libsecret",
+            SupportedPlatform.Windows => "DPAPI",
+            SupportedPlatform.MacOS => "Keychain Services", 
+            SupportedPlatform.Linux => "libsecret",
             _ => "Unknown"
         };
     }
@@ -93,11 +79,11 @@ public static class PlatformTestHelper
     /// </summary>
     public static bool RequiresElevatedPermissions()
     {
-        return GetCurrentPlatform() switch
+        return PlatformInfo.Current switch
         {
-            "macOS" => true,  // May require keychain unlock
-            "Linux" => true,  // May require gnome-keyring unlock
-            "Windows" => false, // DPAPI uses current user context
+            SupportedPlatform.MacOS => true,  // May require keychain unlock
+            SupportedPlatform.Linux => true,  // May require gnome-keyring unlock
+            SupportedPlatform.Windows => false, // DPAPI uses current user context
             _ => false
         };
     }

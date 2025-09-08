@@ -1,9 +1,9 @@
 using System;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using TrashMailPanda.Shared.Platform;
 using TrashMailPanda.Shared.Security;
 using TrashMailPanda.Providers.Storage;
 using TrashMailPanda.Tests.Attributes;
@@ -33,7 +33,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         _storageLogger = loggerFactory.CreateLogger<SqliteStorageProvider>();
     }
 
-    [PlatformSpecificFact(OSPlatform.Windows)]
+    [PlatformSpecificFact(SupportedPlatform.Windows)]
     public async Task WindowsDpapi_BasicEncryptionDecryption_ShouldWork()
     {
         // Skip if DPAPI is not available
@@ -74,7 +74,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.Windows)]
+    [PlatformSpecificFact(SupportedPlatform.Windows)]
     public async Task WindowsDpapi_RawDpapiOperations_ShouldWork()
     {
         // Skip if not on Windows
@@ -100,7 +100,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         Assert.Equal(testData, decryptedText);
     }
 
-    [PlatformSpecificFact(OSPlatform.Windows)]
+    [PlatformSpecificFact(SupportedPlatform.Windows)]
     public async Task WindowsDpapi_DifferentUserScopes_ShouldIsolate()
     {
         // Skip if not on Windows
@@ -124,7 +124,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         // We'll skip testing LocalMachine scope to avoid permission issues
     }
 
-    [PlatformSpecificFact(OSPlatform.Windows)]
+    [PlatformSpecificFact(SupportedPlatform.Windows)]
     public async Task WindowsDpapi_HealthCheck_ShouldReportCorrectly()
     {
         // Skip if not on Windows
@@ -155,7 +155,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.Windows)]
+    [PlatformSpecificFact(SupportedPlatform.Windows)]
     public async Task WindowsDpapi_ConcurrentOperations_ShouldBeThreadSafe()
     {
         // Skip if not on Windows
@@ -199,7 +199,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.Windows)]
+    [PlatformSpecificFact(SupportedPlatform.Windows)]
     public async Task WindowsDpapi_LargeDataEncryption_ShouldWork()
     {
         // Skip if not on Windows
@@ -231,7 +231,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.Windows)]
+    [PlatformSpecificFact(SupportedPlatform.Windows)]
     public async Task WindowsDpapi_UnicodeData_ShouldHandleCorrectly()
     {
         // Skip if not on Windows
@@ -271,7 +271,7 @@ public class WindowsDpapiIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.Windows)]
+    [PlatformSpecificFact(SupportedPlatform.Windows)]
     public async Task WindowsDpapi_SpecialCharactersInContext_ShouldWork()
     {
         // Skip if not on Windows

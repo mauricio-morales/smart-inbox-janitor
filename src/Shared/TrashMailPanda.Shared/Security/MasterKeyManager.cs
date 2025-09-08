@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using TrashMailPanda.Shared.Platform;
 
 namespace TrashMailPanda.Shared.Security;
 
@@ -20,7 +21,7 @@ public class MasterKeyManager : IMasterKeyManager
     public MasterKeyManager(ILogger<MasterKeyManager> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _platform = GetPlatformName();
+        _platform = PlatformInfo.CurrentDisplayName;
     }
 
     /// <summary>
@@ -248,17 +249,7 @@ public class MasterKeyManager : IMasterKeyManager
 
     #region Private Helper Methods
 
-    private static string GetPlatformName()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return "Windows";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return "macOS";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            return "Linux";
-
-        return "Unknown";
-    }
+    // Platform detection now handled by centralized PlatformInfo utility
 
     private async Task<byte[]?> GetSystemEntropyAsync()
     {
@@ -491,7 +482,7 @@ public class MasterKeyManager : IMasterKeyManager
     {
         if (sensitiveData.IsEmpty) return;
 
-        var platform = GetPlatformName();
+        var platform = PlatformInfo.CurrentDisplayName;
 
         try
         {

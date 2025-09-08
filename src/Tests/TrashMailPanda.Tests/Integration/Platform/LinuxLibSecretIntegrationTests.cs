@@ -1,7 +1,7 @@
 using System;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using TrashMailPanda.Shared.Platform;
 using TrashMailPanda.Shared.Security;
 using TrashMailPanda.Providers.Storage;
 using TrashMailPanda.Tests.Attributes;
@@ -31,7 +31,7 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         _storageLogger = loggerFactory.CreateLogger<SqliteStorageProvider>();
     }
 
-    [PlatformSpecificFact(OSPlatform.Linux)]
+    [PlatformSpecificFact(SupportedPlatform.Linux)]
     public async Task LinuxLibSecret_BasicEncryptionDecryption_ShouldWork()
     {
         // Skip if libsecret is not available
@@ -87,7 +87,7 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.Linux)]
+    [PlatformSpecificFact(SupportedPlatform.Linux)]
     public async Task LinuxLibSecret_HealthCheck_ShouldReportCorrectly()
     {
         // Skip if not on Linux
@@ -133,7 +133,7 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.Linux)]
+    [PlatformSpecificFact(SupportedPlatform.Linux)]
     public async Task LinuxLibSecret_ConcurrentOperations_ShouldBeThreadSafe()
     {
         // Skip if not on Linux
@@ -189,7 +189,7 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.Linux)]
+    [PlatformSpecificFact(SupportedPlatform.Linux)]
     public async Task LinuxLibSecret_LargeDataEncryption_ShouldWork()
     {
         // Skip if not on Linux
@@ -232,7 +232,7 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.Linux)]
+    [PlatformSpecificFact(SupportedPlatform.Linux)]
     public async Task LinuxLibSecret_UnicodeData_ShouldHandleCorrectly()
     {
         // Skip if not on Linux
@@ -283,7 +283,7 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.Linux)]
+    [PlatformSpecificFact(SupportedPlatform.Linux)]
     public async Task LinuxLibSecret_MultipleServices_ShouldIsolate()
     {
         // Skip if not on Linux
@@ -345,7 +345,7 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.Linux)]
+    [PlatformSpecificFact(SupportedPlatform.Linux)]
     public async Task LinuxLibSecret_ErrorHandling_ShouldBeGraceful()
     {
         // Skip if not on Linux
@@ -379,7 +379,7 @@ public class LinuxLibSecretIntegrationTests : IDisposable
         credentialEncryption.Dispose();
     }
 
-    [PlatformSpecificFact(OSPlatform.Linux)]
+    [PlatformSpecificFact(SupportedPlatform.Linux)]
     public async Task LinuxLibSecret_SpecialCharactersInContext_ShouldWork()
     {
         // Skip if not on Linux

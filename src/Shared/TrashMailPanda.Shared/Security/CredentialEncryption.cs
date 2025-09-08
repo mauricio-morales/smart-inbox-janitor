@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using TrashMailPanda.Shared.Platform;
 using TrashMailPanda.Shared.Utils;
 
 namespace TrashMailPanda.Shared.Security;
@@ -27,7 +28,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _masterKeyManager = masterKeyManager ?? throw new ArgumentNullException(nameof(masterKeyManager));
         _storageProvider = storageProvider ?? throw new ArgumentNullException(nameof(storageProvider));
-        _platform = GetPlatformName();
+        _platform = PlatformInfo.CurrentDisplayName;
     }
 
     public async Task<EncryptionResult> InitializeAsync()
@@ -572,17 +573,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
 
     #region Platform-Specific Implementations
 
-    private static string GetPlatformName()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return "Windows";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return "macOS";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            return "Linux";
-
-        return "Unknown";
-    }
+    // Platform detection now handled by centralized PlatformInfo utility
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private Task<EncryptionResult> InitializeWindowsAsync()

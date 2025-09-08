@@ -1,42 +1,19 @@
-using System;
-using System.Runtime.InteropServices;
+using TrashMailPanda.Shared.Platform;
 using Xunit;
 
 namespace TrashMailPanda.Tests.Attributes;
 
 /// <summary>
 /// Custom xUnit theory attribute that only runs tests on specific platforms
+/// Uses the centralized platform detection system from TrashMailPanda.Shared.Platform
 /// </summary>
 public class PlatformSpecificTheoryAttribute : TheoryAttribute
 {
-    public PlatformSpecificTheoryAttribute(params OSPlatform[] platforms)
+    public PlatformSpecificTheoryAttribute(params SupportedPlatform[] platforms)
     {
-        var currentPlatform = GetCurrentPlatform();
-        var isSupported = false;
-
-        foreach (var platform in platforms)
+        if (!PlatformInfo.IsOneOf(platforms))
         {
-            if (RuntimeInformation.IsOSPlatform(platform))
-            {
-                isSupported = true;
-                break;
-            }
+            Skip = $"Test only runs on: {string.Join(", ", platforms)}. Current platform: {PlatformInfo.CurrentDisplayName}";
         }
-
-        if (!isSupported)
-        {
-            Skip = $"Test only runs on: {string.Join(", ", platforms)}. Current platform: {currentPlatform}";
-        }
-    }
-
-    private static string GetCurrentPlatform()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return "Windows";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return "macOS";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            return "Linux";
-        return "Unknown";
     }
 }
