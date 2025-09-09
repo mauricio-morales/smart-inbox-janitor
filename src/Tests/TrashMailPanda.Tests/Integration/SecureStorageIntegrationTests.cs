@@ -156,7 +156,12 @@ public class SecureStorageIntegrationTests : IDisposable
                 Assert.True(storeResult.IsSuccess);
 
                 // Simulate application shutdown - resources are disposed by using statements
+                // Explicitly dispose the credential encryption to ensure database connections are closed
+                credentialEncryption1.Dispose();
             }
+
+            // Add a small delay to ensure all resources are fully released
+            await Task.Delay(50);
 
             // Simulate second application session (restart)
             {
@@ -181,15 +186,17 @@ public class SecureStorageIntegrationTests : IDisposable
                 Assert.True(removeResult.IsSuccess, "Cleanup should succeed");
 
                 // Resources are disposed by using statements
+                // Explicitly dispose the credential encryption to ensure database connections are closed
+                credentialEncryption2.Dispose();
             }
+
+            // Add a small delay to ensure all resources are fully released before file cleanup
+            await Task.Delay(50);
         }
         finally
         {
-            // Clean up temp database file
-            if (File.Exists(tempDbPath))
-            {
-                File.Delete(tempDbPath);
-            }
+            // Clean up temp database file with retry logic for Windows file locking issues
+            await CleanupTempFileAsync(tempDbPath);
         }
     }
 
@@ -441,6 +448,46 @@ public class SecureStorageIntegrationTests : IDisposable
         {
             await secureStorageManager.RemoveCredentialAsync($"load-test-{i}");
         }
+    }
+
+    /// <summary>
+    /// Clean up temp database file with retry logic to handle Windows file locking issues
+    /// </summary>
+    private static async Task CleanupTempFileAsync(string filePath)
+    {
+        if (!File.Exists(filePath))
+            return;
+
+        const int maxRetries = 5;
+        const int delayMs = 100;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                // Force garbage collection to help release any lingering file handles
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+
+                File.Delete(filePath);
+                return; // Success
+            }
+            catch (IOException) when (attempt < maxRetries)
+            {
+                // File is still locked, wait and retry
+                await Task.Delay(delayMs * attempt); // Exponential backoff
+            }
+            catch (UnauthorizedAccessException) when (attempt < maxRetries)
+            {
+                // Permission issue, wait and retry
+                await Task.Delay(delayMs * attempt);
+            }
+        }
+
+        // If we get here, all retries failed - log but don't fail the test
+        // The temp file will be cleaned up by the OS eventually
+        Console.WriteLine($"Warning: Could not delete temp file {filePath} after {maxRetries} attempts");
     }
 
     public void Dispose()
