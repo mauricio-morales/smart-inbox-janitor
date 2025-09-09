@@ -675,7 +675,30 @@ public class SqliteStorageProvider : IStorageProvider, IDisposable
         {
             if (_connection != null)
             {
-                // Explicitly close the connection first to release file handles
+                // CRITICAL FIX: Force WAL checkpoint before closing connection to release file locks
+                // This is essential on Windows where SQLite WAL mode can keep auxiliary files locked
+                try
+                {
+                    if (_connection.State == System.Data.ConnectionState.Open)
+                    {
+                        // Execute WAL checkpoint to merge WAL into main database and release locks
+                        using var checkpointCmd = _connection.CreateCommand();
+                        checkpointCmd.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+                        checkpointCmd.ExecuteNonQuery();
+
+                        // Also ensure journal mode is properly closed
+                        using var journalCmd = _connection.CreateCommand();
+                        journalCmd.CommandText = "PRAGMA journal_mode=DELETE;";
+                        journalCmd.ExecuteNonQuery();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't throw - disposal should be robust
+                    System.Diagnostics.Debug.WriteLine($"WAL checkpoint failed during disposal: {ex.Message}");
+                }
+
+                // Now close and dispose the connection
                 try
                 {
                     if (_connection.State != System.Data.ConnectionState.Closed)

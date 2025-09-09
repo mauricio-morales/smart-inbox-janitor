@@ -230,7 +230,22 @@ public class SecureStorageIntegrationTests : IDisposable
             // CRITICAL: Clean up temp database file with Windows-specific retry logic for SQLite file locking issues
             // SQLite on Windows uses WAL (Write-Ahead Logging) mode which creates auxiliary .wal and .shm files
             // that can remain locked even after connection disposal. This requires platform-specific cleanup.
-            await CleanupTempFileAsync(tempDbPath);
+
+            // STRATEGY: Try cleanup but don't fail the test if it fails - this is a known Windows/SQLite limitation
+            try
+            {
+                await CleanupTempFileAsync(tempDbPath);
+            }
+            catch (IOException ex)
+            {
+                // EXPECTED ON WINDOWS: File cleanup can fail due to persistent SQLite locks
+                // This doesn't indicate a functional problem with the actual application code
+                Console.WriteLine($"INFO: Test cleanup encountered expected Windows/SQLite file lock issue: {ex.Message}");
+                Console.WriteLine($"INFO: This is a known testing limitation and does not affect application functionality.");
+                Console.WriteLine($"INFO: Temp files will be cleaned up by OS: {Path.GetFileName(tempDbPath)}");
+
+                // Don't re-throw - let the test pass if the actual functionality worked
+            }
         }
     }
 
@@ -577,11 +592,18 @@ public class SecureStorageIntegrationTests : IDisposable
         }
 
         // STEP 6: If all retries failed, this is a known Windows/SQLite limitation
-        // Log detailed diagnostic info for future debugging but don't fail the test
-        Console.WriteLine($"WARNING: Could not delete SQLite files after {maxRetries} attempts.");
-        Console.WriteLine($"CAUSE: This is a known Windows + SQLite WAL mode limitation where file locks persist.");
-        Console.WriteLine($"IMPACT: Temp files will be cleaned up by OS temp directory cleanup.");
-        Console.WriteLine($"FILES: {string.Join(", ", filesToClean.Where(File.Exists).Select(Path.GetFileName))}");
+        // Throw the exception so the caller can handle it appropriately
+        var remainingFiles = filesToClean.Where(File.Exists).ToList();
+        if (remainingFiles.Any())
+        {
+            Console.WriteLine($"ERROR: Could not delete SQLite files after {maxRetries} attempts.");
+            Console.WriteLine($"CAUSE: This is a known Windows + SQLite WAL mode limitation where file locks persist.");
+            Console.WriteLine($"FILES: {string.Join(", ", remainingFiles.Select(Path.GetFileName))}");
+
+            // Throw IOException to match the pattern expected by the caller
+            throw new IOException($"Could not delete SQLite file after {maxRetries} attempts. " +
+                                $"This is a known Windows/SQLite limitation. Files: {string.Join(", ", remainingFiles.Select(Path.GetFileName))}");
+        }
     }
 
     /// <summary>

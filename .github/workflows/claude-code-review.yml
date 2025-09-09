@@ -1,5 +1,12 @@
 name: Claude Code Review
 
+# This workflow runs Claude Code Review on pull requests
+# To skip the review, include "skip review" (case-insensitive) in any commit message
+# Examples that will skip review:
+#   - "fix bug skip review"
+#   - "Update README - Skip Review"
+#   - "HOTFIX: Skip Review due to emergency"
+
 on:
   pull_request:
     types: [opened, synchronize]
@@ -11,7 +18,39 @@ on:
     #   - "src/**/*.jsx"
 
 jobs:
+  # Check if review should be skipped based on commit messages
+  check-skip-review:
+    runs-on: ubuntu-latest
+    outputs:
+      skip-review: ${{ steps.check-commits.outputs.skip-review }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check commit messages for skip review
+        id: check-commits
+        run: |
+          # Get all commit messages in the PR
+          COMMITS=$(git log --format=%s ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+          
+          # Convert to lowercase for case-insensitive comparison
+          COMMITS_LOWER=$(echo "$COMMITS" | tr '[:upper:]' '[:lower:]')
+          
+          # Check if any commit message contains "skip review"
+          if echo "$COMMITS_LOWER" | grep -q "skip review"; then
+            echo "skip-review=true" >> $GITHUB_OUTPUT
+            echo "Found 'skip review' in commit messages - skipping Claude Code Review"
+          else
+            echo "skip-review=false" >> $GITHUB_OUTPUT
+            echo "No 'skip review' found in commit messages - proceeding with Claude Code Review"
+          fi
+
   claude-review:
+    needs: check-skip-review
+    if: needs.check-skip-review.outputs.skip-review != 'true'
+    
     # Optional: Filter by PR author
     # if: |
     #   github.event.pull_request.user.login == 'external-contributor' ||
