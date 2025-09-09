@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using SQLitePCL;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -510,7 +511,7 @@ public class SqliteStorageProvider : IStorageProvider, IDisposable
             switch (key)
             {
                 case "ConnectionState":
-                    config.ConnectionState = JsonSerializer.Deserialize<ConnectionState>(value);
+                    config.ConnectionState = JsonSerializer.Deserialize<TrashMailPanda.Shared.ConnectionState>(value);
                     break;
                 case "ProcessingSettings":
                     config.ProcessingSettings = JsonSerializer.Deserialize<ProcessingSettings>(value);
@@ -672,8 +673,24 @@ public class SqliteStorageProvider : IStorageProvider, IDisposable
         _connectionLock.Wait();
         try
         {
-            _connection?.Dispose();
-            _connection = null;
+            if (_connection != null)
+            {
+                // Explicitly close the connection first to release file handles
+                try
+                {
+                    if (_connection.State != System.Data.ConnectionState.Closed)
+                    {
+                        _connection.Close();
+                    }
+                }
+                catch
+                {
+                    // Ignore exceptions during close
+                }
+
+                _connection.Dispose();
+                _connection = null;
+            }
             _initialized = false;
             _disposed = true;
         }

@@ -155,13 +155,14 @@ public class SecureStorageIntegrationTests : IDisposable
                 var storeResult = await secureStorageManager1.StoreCredentialAsync(testKey, testCredential);
                 Assert.True(storeResult.IsSuccess);
 
-                // Simulate application shutdown - resources are disposed by using statements
-                // Explicitly dispose the credential encryption to ensure database connections are closed
+                // Simulate application shutdown - explicitly dispose in correct order
+                // Dispose security manager first, then credential encryption, then storage provider
                 credentialEncryption1.Dispose();
+                storageProvider1.Dispose(); // Explicitly dispose to ensure SQLite connection is closed
             }
 
-            // Add a small delay to ensure all resources are fully released
-            await Task.Delay(50);
+            // Add a longer delay to ensure SQLite has fully released file handles on Windows
+            await Task.Delay(500);
 
             // Simulate second application session (restart)
             {
@@ -185,13 +186,13 @@ public class SecureStorageIntegrationTests : IDisposable
                 var removeResult = await secureStorageManager2.RemoveCredentialAsync(testKey);
                 Assert.True(removeResult.IsSuccess, "Cleanup should succeed");
 
-                // Resources are disposed by using statements
-                // Explicitly dispose the credential encryption to ensure database connections are closed
+                // Explicitly dispose in correct order to ensure database connections are closed
                 credentialEncryption2.Dispose();
+                storageProvider2.Dispose(); // Explicitly dispose to ensure SQLite connection is closed
             }
 
-            // Add a small delay to ensure all resources are fully released before file cleanup
-            await Task.Delay(50);
+            // Add a longer delay to ensure SQLite has fully released file handles on Windows
+            await Task.Delay(500);
         }
         finally
         {
@@ -458,36 +459,53 @@ public class SecureStorageIntegrationTests : IDisposable
         if (!File.Exists(filePath))
             return;
 
-        const int maxRetries = 5;
-        const int delayMs = 100;
+        const int maxRetries = 10;
+        const int initialDelayMs = 200;
 
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
-                // Force garbage collection to help release any lingering file handles
+                // Force aggressive garbage collection to help release any lingering file handles
+                for (int i = 0; i < 3; i++)
+                {
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                }
                 GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
+
+                // On Windows, try to release SQLite-specific locks
+                if (OperatingSystem.IsWindows())
+                {
+                    // Additional delay on first attempt to let SQLite finish cleanup
+                    if (attempt == 1)
+                    {
+                        await Task.Delay(300);
+                    }
+                }
 
                 File.Delete(filePath);
                 return; // Success
             }
-            catch (IOException) when (attempt < maxRetries)
+            catch (IOException ex) when (attempt < maxRetries)
             {
-                // File is still locked, wait and retry
-                await Task.Delay(delayMs * attempt); // Exponential backoff
+                // File is still locked, wait and retry with exponential backoff
+                var delay = initialDelayMs * attempt;
+                Console.WriteLine($"Attempt {attempt}/{maxRetries}: File locked ({ex.Message}), retrying in {delay}ms");
+                await Task.Delay(delay);
             }
-            catch (UnauthorizedAccessException) when (attempt < maxRetries)
+            catch (UnauthorizedAccessException ex) when (attempt < maxRetries)
             {
                 // Permission issue, wait and retry
-                await Task.Delay(delayMs * attempt);
+                var delay = initialDelayMs * attempt;
+                Console.WriteLine($"Attempt {attempt}/{maxRetries}: Access denied ({ex.Message}), retrying in {delay}ms");
+                await Task.Delay(delay);
             }
         }
 
         // If we get here, all retries failed - log but don't fail the test
         // The temp file will be cleaned up by the OS eventually
-        Console.WriteLine($"Warning: Could not delete temp file {filePath} after {maxRetries} attempts");
+        Console.WriteLine($"Warning: Could not delete temp file {filePath} after {maxRetries} attempts. File will be cleaned up by OS.");
     }
 
     public void Dispose()
