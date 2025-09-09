@@ -18,6 +18,12 @@ TrashMail Panda is an AI-powered email triage assistant built as a cross-platfor
 - `dotnet format` - Format code with .NET formatter
 - `dotnet test` - Run xUnit tests (use `dotnet test --watch` for watch mode)
 
+### Git Hooks Setup (One-time per developer)
+
+- `./setup-hooks.sh` - Configure git hooks for automatic code formatting on commit
+- **Pre-commit Hook**: Automatically runs `dotnet format` before each commit
+- **Bypass Hook**: Use `git commit --no-verify` to skip formatting check temporarily
+
 ### CI/CD Validation (Before Push)
 
 - `dotnet build --configuration Release` - Fast validation: build + test

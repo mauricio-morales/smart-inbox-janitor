@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Pre-commit hook to run dotnet format
+# This ensures all commits have properly formatted code
+
+echo "Running dotnet format before commit..."
+
+# Run dotnet format and check if any files were changed
+dotnet format --include-generated --verbosity diagnostic
+
+# Check if dotnet format made any changes
+if [ $? -ne 0 ]; then
+    echo "Error: dotnet format failed. Please fix formatting issues and try again."
+    exit 1
+fi
+
+# Check if any files were modified by dotnet format
+if ! git diff --quiet; then
+    echo "Files were formatted by dotnet format. Please stage the changes and commit again."
+    echo "Changed files:"
+    git diff --name-only
+    exit 1
+fi
+
+echo "Code formatting check passed."
+exit 0
