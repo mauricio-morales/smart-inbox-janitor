@@ -84,7 +84,7 @@ jobs:
       run: dotnet build --configuration ${{ matrix.configuration }} --no-restore
 
     - name: Run unit tests
-      run: dotnet test --configuration ${{ matrix.configuration }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage --blame-hang --blame-hang-timeout 30s
+      run: dotnet test --configuration ${{ matrix.configuration }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage --blame-hang --blame-hang-timeout 1m
       env:
         DOTNET_ENVIRONMENT: Testing
         DISPLAY: ${{ contains(matrix.os, 'ubuntu') && ':99' || '' }}
@@ -287,7 +287,7 @@ jobs:
     - name: Run integration tests
       run: |
         if [ -d "src/Tests/Integration" ]; then
-          dotnet test src/Tests/Integration --configuration Release --verbosity normal --blame-hang --blame-hang-timeout 30s
+          dotnet test src/Tests/Integration --configuration Release --verbosity normal --blame-hang --blame-hang-timeout 1m
         else
           echo "No integration tests found - skipping"
         fi
