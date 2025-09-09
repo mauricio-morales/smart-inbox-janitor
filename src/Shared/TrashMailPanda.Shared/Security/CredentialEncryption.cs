@@ -632,7 +632,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
 
         // Check for test-specific arguments
         var args = Environment.GetCommandLineArgs();
-        if (args.Any(arg => arg.Contains("dotnet test", StringComparison.OrdinalIgnoreCase) || 
+        if (args.Any(arg => arg.Contains("dotnet test", StringComparison.OrdinalIgnoreCase) ||
                             arg.Contains("vstest", StringComparison.OrdinalIgnoreCase)))
         {
             return true;
@@ -1052,7 +1052,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                             // Store the encrypted credential in database with a special test key prefix
                             var testKey = $"TEST_LINUX_FALLBACK:{service}:{account}";
                             await _storageProvider.SetEncryptedCredentialAsync(testKey, encryptResult.Value!);
-                            
+
                             // Return the test key as the "encrypted" reference
                             return EncryptionResult<string>.Success(testKey);
                         }
@@ -1083,7 +1083,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                             // Store the encrypted credential in database with a special test key prefix
                             var testKey = $"TEST_LINUX_FALLBACK:{service}:{account}";
                             await _storageProvider.SetEncryptedCredentialAsync(testKey, encryptResult.Value!);
-                            
+
                             // Return the test key as the "encrypted" reference
                             return EncryptionResult<string>.Success(testKey);
                         }

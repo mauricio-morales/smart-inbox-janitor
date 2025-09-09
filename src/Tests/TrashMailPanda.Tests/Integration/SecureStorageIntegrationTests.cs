@@ -181,9 +181,9 @@ public class SecureStorageIntegrationTests : IDisposable
                     // Log detailed error information for debugging
                     var healthCheck = await secureStorageManager2.HealthCheckAsync();
                     var encryptionStatus = credentialEncryption2.GetEncryptionStatus();
-                    
+
                     // If it's a platform-specific keychain issue on Ubuntu, skip the test gracefully
-                    if (retrieveResult.ErrorMessage?.Contains("Credential not found") == true && 
+                    if (retrieveResult.ErrorMessage?.Contains("Credential not found") == true &&
                         (OperatingSystem.IsLinux() || encryptionStatus.Platform == "Linux"))
                     {
                         var skipMessage = $"Ubuntu CI environment may not have proper keychain setup. " +
@@ -206,10 +206,10 @@ public class SecureStorageIntegrationTests : IDisposable
                 // CRITICAL: Explicit disposal order to properly close SQLite connections on Windows
                 // This is essential because SQLite WAL mode can keep file handles open even after disposal
                 credentialEncryption2.Dispose();
-                
+
                 // Force SQLite connection cleanup with platform-specific considerations
                 storageProvider2.Dispose();
-                
+
                 // WINDOWS-SPECIFIC: Give SQLite WAL mode extra time to release file handles
                 // SQLite on Windows needs additional time after disposal to release WAL/SHM file locks
                 if (OperatingSystem.IsWindows())
@@ -509,7 +509,7 @@ public class SecureStorageIntegrationTests : IDisposable
         var filesToClean = new List<string> { filePath };
         var walFile = filePath + "-wal";
         var shmFile = filePath + "-shm";
-        
+
         if (File.Exists(walFile)) filesToClean.Add(walFile);
         if (File.Exists(shmFile)) filesToClean.Add(shmFile);
 
@@ -537,7 +537,7 @@ public class SecureStorageIntegrationTests : IDisposable
                         Console.WriteLine($"DEBUG: Windows platform detected, allowing {500}ms for SQLite WAL cleanup");
                         await Task.Delay(500);
                     }
-                    
+
                     // On subsequent attempts, try to force WAL checkpoint by briefly reconnecting
                     // This is a desperate measure to get SQLite to release WAL file locks
                     if (attempt > 3)
@@ -549,13 +549,13 @@ public class SecureStorageIntegrationTests : IDisposable
                 // STEP 5: Delete all files in reverse order (auxiliary files first, then main database)
                 var filesToDelete = filesToClean.Where(File.Exists).ToList();
                 filesToDelete.Reverse(); // Delete .wal/.shm first, then main .db
-                
+
                 foreach (var file in filesToDelete)
                 {
                     File.Delete(file);
                     Console.WriteLine($"DEBUG: Successfully deleted {Path.GetFileName(file)}");
                 }
-                
+
                 Console.WriteLine($"DEBUG: All SQLite files cleaned up successfully on attempt {attempt}");
                 return; // Success
             }
@@ -593,16 +593,16 @@ public class SecureStorageIntegrationTests : IDisposable
         try
         {
             Console.WriteLine($"DEBUG: Attempting forced WAL checkpoint for {Path.GetFileName(dbPath)}");
-            
+
             // Very briefly reconnect to force SQLite to checkpoint and close WAL files
             using var tempConnection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath};Mode=ReadWrite");
             await tempConnection.OpenAsync();
-            
+
             // Execute WAL checkpoint to force SQLite to merge WAL into main database
             using var checkpointCmd = tempConnection.CreateCommand();
             checkpointCmd.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
             await checkpointCmd.ExecuteNonQueryAsync();
-            
+
             // Explicitly close and dispose to release handles
             tempConnection.Close();
             Console.WriteLine($"DEBUG: WAL checkpoint completed");
