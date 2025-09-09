@@ -111,7 +111,8 @@ public class SecureStorageManager : ISecureStorageManager
                     SecureStorageErrorType.EncryptionError);
             }
 
-            // Store in cache for quick access during session
+            // Store the credential key reference in cache for quick access during session
+            // The encryptionResult.Value contains the credential key that can be used to retrieve from database
             _credentialCache.AddOrUpdate(key, encryptionResult.Value!, (k, v) => encryptionResult.Value!);
 
             _logger.LogInformation("Successfully stored credential for key: {Key}", MaskKey(key));
@@ -158,27 +159,20 @@ public class SecureStorageManager : ISecureStorageManager
             }
 
             // If not in cache, try to retrieve directly from database via CredentialEncryption
+            // The key is the credential reference that CredentialEncryption uses to lookup in database
             _logger.LogDebug("Credential not in cache for key {Key}, attempting database retrieval", MaskKey(key));
 
-            // Use the key as the credential reference for database retrieval
             var directDecryptResult = await _credentialEncryption.DecryptAsync(key, key);
             if (directDecryptResult.IsSuccess && !string.IsNullOrEmpty(directDecryptResult.Value))
             {
-                // Found existing credential, cache it for future use
+                // Found existing credential, cache the credential key reference for future use
                 _credentialCache.AddOrUpdate(key, key, (k, v) => key);
                 _logger.LogInformation("Retrieved credential from database and cached for key: {Key}", MaskKey(key));
                 return SecureStorageResult<string>.Success(directDecryptResult.Value);
             }
 
-            // If decryption failed or credential doesn't exist
-            if (!directDecryptResult.IsSuccess)
-            {
-                _logger.LogDebug("Credential not found or corrupted for key: {Key}, error: {Error}", MaskKey(key), directDecryptResult.ErrorMessage);
-                return SecureStorageResult<string>.Failure("Credential not found", SecureStorageErrorType.CredentialNotFound);
-            }
-
-            // Credential doesn't exist
-            _logger.LogDebug("Credential not found for key: {Key}", MaskKey(key));
+            // If decryption failed, credential doesn't exist or is corrupted
+            _logger.LogDebug("Credential not found for key: {Key}, error: {Error}", MaskKey(key), directDecryptResult.ErrorMessage ?? "Unknown error");
             return SecureStorageResult<string>.Failure("Credential not found", SecureStorageErrorType.CredentialNotFound);
         }
         catch (Exception ex)

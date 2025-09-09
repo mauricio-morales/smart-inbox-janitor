@@ -602,7 +602,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         // Check common testing environment indicators
         var testAssemblyNames = new[] { "xunit", "nunit", "mstest", "testhost" };
         var currentDomain = AppDomain.CurrentDomain;
-        
+
         // Check if any test framework assemblies are loaded
         foreach (var assembly in currentDomain.GetAssemblies())
         {
@@ -612,7 +612,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                 return true;
             }
         }
-        
+
         // Check environment variables commonly set in CI/testing environments
         var testEnvVars = new[] { "CI", "GITHUB_ACTIONS", "AZURE_PIPELINES", "JENKINS_URL", "DOTNET_RUNNING_IN_CONTAINER" };
         foreach (var envVar in testEnvVars)
@@ -622,14 +622,14 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                 return true;
             }
         }
-        
+
         // Check if running in dotnet test
         var entryAssembly = System.Reflection.Assembly.GetEntryAssembly();
         if (entryAssembly?.GetName().Name?.ToLowerInvariant().Contains("testhost") == true)
         {
             return true;
         }
-        
+
         return false;
     }
 
@@ -734,7 +734,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         {
             // Check if we're in a testing environment
             var isTestEnvironment = IsTestingEnvironment();
-            
+
             // Check if libsecret is available
             if (!LinuxSecretHelper.IsLibSecretAvailable())
             {
@@ -743,7 +743,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
                     _logger.LogWarning("libsecret is not available in testing environment, using fallback encryption");
                     return Task.FromResult(EncryptionResult.Success());
                 }
-                
+
                 _logger.LogWarning("libsecret is not available on this Linux system");
                 return Task.FromResult(EncryptionResult.Failure("libsecret not available", EncryptionErrorType.PlatformNotSupported));
             }
@@ -787,14 +787,14 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Linux libsecret initialization failed");
-            
+
             // If we're in a testing environment, allow fallback
             if (IsTestingEnvironment())
             {
                 _logger.LogWarning("libsecret initialization failed in testing environment, using fallback encryption");
                 return Task.FromResult(EncryptionResult.Success());
             }
-            
+
             return Task.FromResult(EncryptionResult.Failure($"libsecret initialization failed: {ex.Message}", EncryptionErrorType.ConfigurationError));
         }
     }

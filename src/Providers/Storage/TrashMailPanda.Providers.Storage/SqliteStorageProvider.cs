@@ -636,7 +636,7 @@ public class SqliteStorageProvider : IStorageProvider, IDisposable
     {
         if (!_initialized || _connection == null)
             throw new InvalidOperationException("Storage provider not initialized. Call InitAsync first.");
-        
+
         if (_disposed)
             throw new ObjectDisposedException(nameof(SqliteStorageProvider));
     }
@@ -645,12 +645,12 @@ public class SqliteStorageProvider : IStorageProvider, IDisposable
     {
         EnsureInitialized();
         await _connectionLock.WaitAsync();
-        
+
         try
         {
             if (_connection == null)
                 throw new InvalidOperationException("Database connection is null");
-                
+
             return _connection.CreateCommand();
         }
         catch
@@ -668,7 +668,7 @@ public class SqliteStorageProvider : IStorageProvider, IDisposable
     public void Dispose()
     {
         if (_disposed) return;
-        
+
         _connectionLock.Wait();
         try
         {
