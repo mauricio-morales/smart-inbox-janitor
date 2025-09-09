@@ -1,7 +1,7 @@
 name: Claude Code Review
 
 # This workflow runs Claude Code Review on pull requests
-# To skip the review, include "skip review" (case-insensitive) in any commit message
+# To skip the review, include "skip review" (case-insensitive) in the latest commit message
 # Examples that will skip review:
 #   - "fix bug skip review"
 #   - "Update README - Skip Review"
@@ -32,19 +32,19 @@ jobs:
       - name: Check commit messages for skip review
         id: check-commits
         run: |
-          # Get all commit messages in the PR
-          COMMITS=$(git log --format=%s ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+          # Get only the latest/current commit message in the PR
+          LATEST_COMMIT=$(git log --format=%s -1 ${{ github.event.pull_request.head.sha }})
           
           # Convert to lowercase for case-insensitive comparison
-          COMMITS_LOWER=$(echo "$COMMITS" | tr '[:upper:]' '[:lower:]')
+          LATEST_COMMIT_LOWER=$(echo "$LATEST_COMMIT" | tr '[:upper:]' '[:lower:]')
           
-          # Check if any commit message contains "skip review"
-          if echo "$COMMITS_LOWER" | grep -q "skip review"; then
+          # Check if the latest commit message contains "skip review"
+          if echo "$LATEST_COMMIT_LOWER" | grep -q "skip review"; then
             echo "skip-review=true" >> $GITHUB_OUTPUT
-            echo "Found 'skip review' in commit messages - skipping Claude Code Review"
+            echo "Found 'skip review' in latest commit message - skipping Claude Code Review"
           else
             echo "skip-review=false" >> $GITHUB_OUTPUT
-            echo "No 'skip review' found in commit messages - proceeding with Claude Code Review"
+            echo "No 'skip review' found in latest commit message - proceeding with Claude Code Review"
           fi
 
   claude-review:
