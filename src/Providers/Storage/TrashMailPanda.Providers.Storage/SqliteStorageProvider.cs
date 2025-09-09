@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using TrashMailPanda.Shared;
 
@@ -13,12 +14,14 @@ namespace TrashMailPanda.Providers.Storage;
 /// SQLite implementation of IStorageProvider with encryption support
 /// Provides encrypted local storage for all application data
 /// </summary>
-public class SqliteStorageProvider : IStorageProvider
+public class SqliteStorageProvider : IStorageProvider, IDisposable
 {
     private SqliteConnection? _connection;
     private readonly string _databasePath;
     private readonly string _password;
     private bool _initialized = false;
+    private bool _disposed = false;
+    private readonly SemaphoreSlim _connectionLock = new(1, 1);
 
     public SqliteStorageProvider(string databasePath, string password)
     {
@@ -381,52 +384,70 @@ public class SqliteStorageProvider : IStorageProvider
 
     public async Task<string?> GetEncryptedCredentialAsync(string key)
     {
-        EnsureInitialized();
-
         const string sql = "SELECT encrypted_value FROM encrypted_credentials WHERE key = @key";
 
-        using var command = _connection!.CreateCommand();
-        command.CommandText = sql;
-        command.Parameters.AddWithValue("@key", key);
-
-        using var reader = await command.ExecuteReaderAsync();
-        if (await reader.ReadAsync())
+        var command = await CreateCommandAsync();
+        try
         {
-            return reader.GetString(0);
-        }
+            command.CommandText = sql;
+            command.Parameters.AddWithValue("@key", key);
 
-        return null;
+            using var reader = await command.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                return reader.GetString(0);
+            }
+
+            return null;
+        }
+        finally
+        {
+            command.Dispose();
+            ReleaseConnection();
+        }
     }
 
     public async Task SetEncryptedCredentialAsync(string key, string encryptedValue, DateTime? expiresAt = null)
     {
-        EnsureInitialized();
-
         const string sql = @"
             INSERT OR REPLACE INTO encrypted_credentials (key, encrypted_value, created_at, expires_at)
             VALUES (@key, @encryptedValue, @createdAt, @expiresAt)";
 
-        using var command = _connection!.CreateCommand();
-        command.CommandText = sql;
-        command.Parameters.AddWithValue("@key", key);
-        command.Parameters.AddWithValue("@encryptedValue", encryptedValue);
-        command.Parameters.AddWithValue("@createdAt", DateTime.UtcNow.ToString("O"));
-        command.Parameters.AddWithValue("@expiresAt", expiresAt?.ToString("O") ?? (object)DBNull.Value);
+        var command = await CreateCommandAsync();
+        try
+        {
+            command.CommandText = sql;
+            command.Parameters.AddWithValue("@key", key);
+            command.Parameters.AddWithValue("@encryptedValue", encryptedValue);
+            command.Parameters.AddWithValue("@createdAt", DateTime.UtcNow.ToString("O"));
+            command.Parameters.AddWithValue("@expiresAt", expiresAt?.ToString("O") ?? (object)DBNull.Value);
 
-        await command.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            command.Dispose();
+            ReleaseConnection();
+        }
     }
 
     public async Task RemoveEncryptedCredentialAsync(string key)
     {
-        EnsureInitialized();
-
         const string sql = "DELETE FROM encrypted_credentials WHERE key = @key";
 
-        using var command = _connection!.CreateCommand();
-        command.CommandText = sql;
-        command.Parameters.AddWithValue("@key", key);
+        var command = await CreateCommandAsync();
+        try
+        {
+            command.CommandText = sql;
+            command.Parameters.AddWithValue("@key", key);
 
-        await command.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            command.Dispose();
+            ReleaseConnection();
+        }
     }
 
     public async Task<IReadOnlyList<string>> GetExpiredCredentialKeysAsync()
@@ -615,10 +636,51 @@ public class SqliteStorageProvider : IStorageProvider
     {
         if (!_initialized || _connection == null)
             throw new InvalidOperationException("Storage provider not initialized. Call InitAsync first.");
+        
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(SqliteStorageProvider));
+    }
+
+    private async Task<SqliteCommand> CreateCommandAsync()
+    {
+        EnsureInitialized();
+        await _connectionLock.WaitAsync();
+        
+        try
+        {
+            if (_connection == null)
+                throw new InvalidOperationException("Database connection is null");
+                
+            return _connection.CreateCommand();
+        }
+        catch
+        {
+            _connectionLock.Release();
+            throw;
+        }
+    }
+
+    private void ReleaseConnection()
+    {
+        _connectionLock.Release();
     }
 
     public void Dispose()
     {
-        _connection?.Dispose();
+        if (_disposed) return;
+        
+        _connectionLock.Wait();
+        try
+        {
+            _connection?.Dispose();
+            _connection = null;
+            _initialized = false;
+            _disposed = true;
+        }
+        finally
+        {
+            _connectionLock.Release();
+            _connectionLock.Dispose();
+        }
     }
 }

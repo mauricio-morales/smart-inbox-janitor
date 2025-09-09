@@ -137,8 +137,8 @@ public class SecureStorageIntegrationTests : IDisposable
             // Simulate first application session
             {
                 var masterKeyManager1 = new MasterKeyManager(_masterKeyManagerLogger);
-                var storageProvider1 = new SqliteStorageProvider(tempDbPath, "test-password");
-                var credentialEncryption1 = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager1, storageProvider1);
+                using var storageProvider1 = new SqliteStorageProvider(tempDbPath, "test-password");
+                using var credentialEncryption1 = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager1, storageProvider1);
                 await storageProvider1.InitAsync();
                 var secureStorageManager1 = new SecureStorageManager(credentialEncryption1, _secureStorageManagerLogger);
 
@@ -155,15 +155,14 @@ public class SecureStorageIntegrationTests : IDisposable
                 var storeResult = await secureStorageManager1.StoreCredentialAsync(testKey, testCredential);
                 Assert.True(storeResult.IsSuccess);
 
-                // Simulate application shutdown
-                credentialEncryption1.Dispose();
+                // Simulate application shutdown - resources are disposed by using statements
             }
 
             // Simulate second application session (restart)
             {
                 var masterKeyManager2 = new MasterKeyManager(_masterKeyManagerLogger);
-                var storageProvider2 = new SqliteStorageProvider(tempDbPath, "test-password");
-                var credentialEncryption2 = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager2, storageProvider2);
+                using var storageProvider2 = new SqliteStorageProvider(tempDbPath, "test-password");
+                using var credentialEncryption2 = new CredentialEncryption(_credentialEncryptionLogger, masterKeyManager2, storageProvider2);
                 await storageProvider2.InitAsync();
                 var secureStorageManager2 = new SecureStorageManager(credentialEncryption2, _secureStorageManagerLogger);
 
@@ -181,7 +180,7 @@ public class SecureStorageIntegrationTests : IDisposable
                 var removeResult = await secureStorageManager2.RemoveCredentialAsync(testKey);
                 Assert.True(removeResult.IsSuccess, "Cleanup should succeed");
 
-                credentialEncryption2.Dispose();
+                // Resources are disposed by using statements
             }
         }
         finally

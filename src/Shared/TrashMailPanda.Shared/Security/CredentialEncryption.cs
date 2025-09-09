@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using TrashMailPanda.Shared.Platform;
@@ -23,6 +24,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
     private bool _isInitialized = false;
     private string _platform = string.Empty;
     private string? _masterKey = null;
+    private readonly SemaphoreSlim _operationLock = new(1, 1);
 
     public CredentialEncryption(ILogger<CredentialEncryption> logger, IMasterKeyManager masterKeyManager, IStorageProvider storageProvider)
     {
@@ -68,6 +70,11 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
 
     public async Task<EncryptionResult<string>> EncryptAsync(string plainText, string? context = null)
     {
+        if (_disposed)
+        {
+            return EncryptionResult<string>.Failure("Object disposed", EncryptionErrorType.ConfigurationError);
+        }
+
         if (!_isInitialized)
         {
             return EncryptionResult<string>.Failure("Encryption not initialized", EncryptionErrorType.ConfigurationError);
@@ -78,6 +85,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             return EncryptionResult<string>.Failure("Plain text cannot be null or empty", EncryptionErrorType.InvalidInput);
         }
 
+        await _operationLock.WaitAsync();
         try
         {
             // Get or ensure master key exists
@@ -95,7 +103,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             }
 
             // Store encrypted credential in database
-            var credentialKey = context ?? "default";
+            var credentialKey = !string.IsNullOrEmpty(context) ? context : "default";
             await _storageProvider.SetEncryptedCredentialAsync(credentialKey, encryptResult.Value!);
 
             // Return the credential key as the "encrypted" reference
@@ -106,10 +114,19 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             _logger.LogError(ex, "Exception during encryption");
             return EncryptionResult<string>.Failure($"Encryption failed: {ex.Message}", EncryptionErrorType.EncryptionFailed);
         }
+        finally
+        {
+            _operationLock.Release();
+        }
     }
 
     public async Task<EncryptionResult<string>> DecryptAsync(string encryptedText, string? context = null)
     {
+        if (_disposed)
+        {
+            return EncryptionResult<string>.Failure("Object disposed", EncryptionErrorType.ConfigurationError);
+        }
+
         if (!_isInitialized)
         {
             return EncryptionResult<string>.Failure("Encryption not initialized", EncryptionErrorType.ConfigurationError);
@@ -120,6 +137,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             return EncryptionResult<string>.Failure("Encrypted text cannot be null or empty", EncryptionErrorType.InvalidInput);
         }
 
+        await _operationLock.WaitAsync();
         try
         {
             // Get or ensure master key exists
@@ -152,6 +170,10 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         {
             _logger.LogError(ex, "Exception during decryption");
             return EncryptionResult<string>.Failure($"Decryption failed: {ex.Message}", EncryptionErrorType.DecryptionFailed);
+        }
+        finally
+        {
+            _operationLock.Release();
         }
     }
 
@@ -1603,11 +1625,16 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             {
                 // Dispose managed resources
                 _logger?.LogDebug("Disposing credential encryption resources");
+                _operationLock?.Dispose();
             }
 
             // Clear any sensitive data
             _isInitialized = false;
             _platform = string.Empty;
+            if (_masterKey != null)
+            {
+                _masterKey = null;
+            }
 
             _disposed = true;
         }
