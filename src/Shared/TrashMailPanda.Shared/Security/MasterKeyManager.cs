@@ -28,7 +28,7 @@ public class MasterKeyManager : IMasterKeyManager
     /// Generate a new 256-bit master key using cryptographically secure randomness
     /// </summary>
     /// <returns>Result containing the base64-encoded master key or error details</returns>
-    public async Task<EncryptionResult<string>> GenerateMasterKeyAsync()
+    public Task<EncryptionResult<string>> GenerateMasterKeyAsync()
     {
         try
         {
@@ -44,12 +44,12 @@ public class MasterKeyManager : IMasterKeyManager
             SecureClear(keyBytes);
 
             _logger.LogInformation("Master key generated successfully");
-            return EncryptionResult<string>.Success(masterKey);
+            return Task.FromResult(EncryptionResult<string>.Success(masterKey));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to generate master key");
-            return EncryptionResult<string>.Failure($"Master key generation failed: {ex.Message}", EncryptionErrorType.KeyGenerationFailed);
+            return Task.FromResult(EncryptionResult<string>.Failure($"Master key generation failed: {ex.Message}", EncryptionErrorType.KeyGenerationFailed));
         }
     }
 
@@ -368,17 +368,17 @@ public class MasterKeyManager : IMasterKeyManager
     /// Generate cryptographically secure entropy using .NET's RandomNumberGenerator
     /// This is used as fallback when platform-specific entropy sources are unavailable
     /// </summary>
-    private async Task<byte[]> GetSecureFallbackEntropyAsync()
+    private Task<byte[]> GetSecureFallbackEntropyAsync()
     {
         using var rng = RandomNumberGenerator.Create();
         var entropyBytes = new byte[64]; // Use 64 bytes of secure entropy
         rng.GetBytes(entropyBytes);
 
         _logger.LogDebug("Generated {ByteCount} bytes of secure fallback entropy", entropyBytes.Length);
-        return entropyBytes;
+        return Task.FromResult(entropyBytes);
     }
 
-    private async Task<string> DeriveKeyFromEntropyAsync(byte[] entropy)
+    private Task<string> DeriveKeyFromEntropyAsync(byte[] entropy)
     {
         using var sha256 = SHA256.Create();
         var hash = sha256.ComputeHash(entropy);
@@ -392,10 +392,10 @@ public class MasterKeyManager : IMasterKeyManager
         SecureClear(hash);
         SecureClear(finalHash);
 
-        return masterKey;
+        return Task.FromResult(masterKey);
     }
 
-    private async Task<EncryptionResult> TestKeyUsabilityAsync(byte[] keyBytes)
+    private Task<EncryptionResult> TestKeyUsabilityAsync(byte[] keyBytes)
     {
         try
         {
@@ -419,7 +419,7 @@ public class MasterKeyManager : IMasterKeyManager
             // Verify round-trip
             if (decryptedText != testData)
             {
-                return EncryptionResult.Failure("Key failed round-trip encryption test", EncryptionErrorType.ConfigurationError);
+                return Task.FromResult(EncryptionResult.Failure("Key failed round-trip encryption test", EncryptionErrorType.ConfigurationError));
             }
 
             // Securely clear test data
@@ -427,11 +427,11 @@ public class MasterKeyManager : IMasterKeyManager
             SecureClear(encryptedBytes);
             SecureClear(decryptedBytes);
 
-            return EncryptionResult.Success();
+            return Task.FromResult(EncryptionResult.Success());
         }
         catch (Exception ex)
         {
-            return EncryptionResult.Failure($"Key usability test failed: {ex.Message}", EncryptionErrorType.ConfigurationError);
+            return Task.FromResult(EncryptionResult.Failure($"Key usability test failed: {ex.Message}", EncryptionErrorType.ConfigurationError));
         }
     }
 

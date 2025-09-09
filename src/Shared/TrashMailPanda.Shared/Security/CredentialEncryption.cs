@@ -177,7 +177,7 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
         }
     }
 
-    public async Task<EncryptionResult<byte[]>> GenerateMasterKeyAsync()
+    public Task<EncryptionResult<byte[]>> GenerateMasterKeyAsync()
     {
         try
         {
@@ -187,12 +187,12 @@ public class CredentialEncryption : ICredentialEncryption, IDisposable
             var key = new byte[32]; // 256-bit key
             rng.GetBytes(key);
 
-            return EncryptionResult<byte[]>.Success(key);
+            return Task.FromResult(EncryptionResult<byte[]>.Success(key));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to generate master key");
-            return EncryptionResult<byte[]>.Failure($"Key generation failed: {ex.Message}", EncryptionErrorType.KeyGenerationFailed);
+            return Task.FromResult(EncryptionResult<byte[]>.Failure($"Key generation failed: {ex.Message}", EncryptionErrorType.KeyGenerationFailed));
         }
     }
 

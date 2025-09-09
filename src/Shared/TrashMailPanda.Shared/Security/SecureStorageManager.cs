@@ -202,6 +202,7 @@ public class SecureStorageManager : ISecureStorageManager
 
         try
         {
+            await Task.CompletedTask; // Ensure method is properly async
             _logger.LogDebug("Removing credential for key: {Key}", MaskKey(key));
 
             // Remove from cache
@@ -317,7 +318,7 @@ public class SecureStorageManager : ISecureStorageManager
 
             // Add system information to details
             details.Add("credential_count", _credentialCache.Count);
-            details.Add("last_health_check", _lastHealthCheck);
+            details.Add("last_health_check", _lastHealthCheck ?? (object)"Never performed");
             details.Add("platform", _credentialEncryption.GetEncryptionStatus().Platform);
 
             result = result with
