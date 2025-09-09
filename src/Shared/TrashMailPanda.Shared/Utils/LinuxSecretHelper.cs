@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using TrashMailPanda.Shared.Platform;
 
 namespace TrashMailPanda.Shared.Utils;
 
@@ -13,13 +14,14 @@ namespace TrashMailPanda.Shared.Utils;
 public static class LinuxSecretHelper
 {
     private const string LibSecretLibrary = "libsecret-1.so.0";
+    private const string TrashMailPandaSchemaName = "com.trashmailpanda.credentials";
 
     /// <summary>
     /// Check if libsecret is available on the system
     /// </summary>
     public static bool IsLibSecretAvailable()
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        if (!PlatformInfo.Is(SupportedPlatform.Linux))
             return false;
 
         try
@@ -60,15 +62,35 @@ public static class LinuxSecretHelper
     /// </summary>
     public static bool StoreSecret(string service, string account, string secret)
     {
+        if (string.IsNullOrEmpty(service) || string.IsNullOrEmpty(account) || string.IsNullOrEmpty(secret))
+            return false;
+
         try
         {
             if (!IsLibSecretAvailable())
                 return false;
 
-            // For now, return true to indicate successful "storage"
-            // In a real implementation, you would call the libsecret APIs
-            // This is a simplified version to fix compilation issues
-            return true;
+            IntPtr schema = GetTrashMailPandaSchema();
+            IntPtr error = IntPtr.Zero;
+            bool result = secret_password_store_sync(
+                schema,
+                SECRET_COLLECTION_DEFAULT,
+                $"TrashMail Panda - {service}:{account}",
+                secret,
+                IntPtr.Zero,
+                ref error,
+                "service", service,
+                "account", account,
+                IntPtr.Zero
+            );
+
+            if (error != IntPtr.Zero)
+            {
+                g_error_free(error);
+                return false;
+            }
+
+            return result;
         }
         catch
         {
@@ -81,15 +103,38 @@ public static class LinuxSecretHelper
     /// </summary>
     public static string? RetrieveSecret(string service, string account)
     {
+        if (string.IsNullOrEmpty(service) || string.IsNullOrEmpty(account))
+            return null;
+
         try
         {
             if (!IsLibSecretAvailable())
                 return null;
 
-            // For now, return null to indicate no secret found
-            // In a real implementation, you would call the libsecret APIs
-            // This is a simplified version to fix compilation issues
-            return null;
+            IntPtr schema = GetTrashMailPandaSchema();
+            IntPtr error = IntPtr.Zero;
+            IntPtr secretPtr = secret_password_lookup_sync(
+                schema,
+                IntPtr.Zero,
+                ref error,
+                "service", service,
+                "account", account,
+                IntPtr.Zero
+            );
+
+            if (error != IntPtr.Zero)
+            {
+                g_error_free(error);
+                return null;
+            }
+
+            if (secretPtr == IntPtr.Zero)
+                return null;
+
+            string result = Marshal.PtrToStringUTF8(secretPtr) ?? string.Empty;
+            secret_password_free(secretPtr);
+
+            return result;
         }
         catch
         {
@@ -102,15 +147,32 @@ public static class LinuxSecretHelper
     /// </summary>
     public static bool RemoveSecret(string service, string account)
     {
+        if (string.IsNullOrEmpty(service) || string.IsNullOrEmpty(account))
+            return false;
+
         try
         {
             if (!IsLibSecretAvailable())
                 return false;
 
-            // For now, return true to indicate successful "removal"
-            // In a real implementation, you would call the libsecret APIs
-            // This is a simplified version to fix compilation issues
-            return true;
+            IntPtr schema = GetTrashMailPandaSchema();
+            IntPtr error = IntPtr.Zero;
+            bool result = secret_password_clear_sync(
+                schema,
+                IntPtr.Zero,
+                ref error,
+                "service", service,
+                "account", account,
+                IntPtr.Zero
+            );
+
+            if (error != IntPtr.Zero)
+            {
+                g_error_free(error);
+                return false;
+            }
+
+            return result;
         }
         catch
         {
@@ -118,10 +180,21 @@ public static class LinuxSecretHelper
         }
     }
 
+    /// <summary>
+    /// Get the TrashMail Panda schema for credential storage
+    /// </summary>
+    private static IntPtr GetTrashMailPandaSchema()
+    {
+        // Use NULL schema which allows libsecret to use simple attribute-based storage
+        // This is the most compatible approach across different libsecret versions
+        return IntPtr.Zero;
+    }
+
     #region P/Invoke Declarations
 
     // Constants
     private const int RTLD_LAZY = 1;
+    private static readonly string SECRET_COLLECTION_DEFAULT = "default"; // Default collection
 
     // Dynamic library loading
     [DllImport("libdl.so.2", CallingConvention = CallingConvention.Cdecl)]
@@ -129,6 +202,47 @@ public static class LinuxSecretHelper
 
     [DllImport("libdl.so.2", CallingConvention = CallingConvention.Cdecl)]
     private static extern int dlclose(IntPtr handle);
+
+    // libsecret password storage functions
+    [DllImport(LibSecretLibrary, CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool secret_password_store_sync(
+        IntPtr schema,
+        string collection,
+        string label,
+        string password,
+        IntPtr cancellable,
+        ref IntPtr error,
+        string attribute1_name, string attribute1_value,
+        string attribute2_name, string attribute2_value,
+        IntPtr null_terminator);
+
+    [DllImport(LibSecretLibrary, CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr secret_password_lookup_sync(
+        IntPtr schema,
+        IntPtr cancellable,
+        ref IntPtr error,
+        string attribute1_name, string attribute1_value,
+        string attribute2_name, string attribute2_value,
+        IntPtr null_terminator);
+
+    [DllImport(LibSecretLibrary, CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool secret_password_clear_sync(
+        IntPtr schema,
+        IntPtr cancellable,
+        ref IntPtr error,
+        string attribute1_name, string attribute1_value,
+        string attribute2_name, string attribute2_value,
+        IntPtr null_terminator);
+
+    // GLib error handling and memory management
+    [DllImport("libglib-2.0.so.0", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void g_error_free(IntPtr error);
+
+    [DllImport(LibSecretLibrary, CallingConvention = CallingConvention.Cdecl)]
+    private static extern void secret_password_free(IntPtr password);
+
 
     #endregion
 }

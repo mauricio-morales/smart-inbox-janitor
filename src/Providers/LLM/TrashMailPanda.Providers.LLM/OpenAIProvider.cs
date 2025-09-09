@@ -284,7 +284,7 @@ Confidence: 0.0-1.0 numeric score";
 
             return new ClassifyOutput { Items = items };
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // Fallback: create basic classifications for all emails
             var fallbackItems = originalEmails.Select(email => new ClassifyItem

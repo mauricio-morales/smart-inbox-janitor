@@ -17,14 +17,14 @@
         <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,*,Auto" Margin="24">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="24" Background="{DynamicResource RegionColor}">
         
         <!-- Header Section -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,24">
             
             <!-- App Icon and Title -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16">
-                <Border Background="#4CAF50" Width="48" Height="48" CornerRadius="24">
+                <Border Background="{DynamicResource SystemAccentColor}" Width="48" Height="48" CornerRadius="24">
                     <TextBlock Text="🐼" FontSize="28" 
                               HorizontalAlignment="Center" 
                               VerticalAlignment="Center"/>
@@ -33,10 +33,10 @@
                     <TextBlock Text="TrashMail Panda" 
                               FontSize="24" 
                               FontWeight="Bold"
-                              Foreground="#212121"/>
+                              Foreground="{DynamicResource ChromeMediumColor}"/>
                     <TextBlock Text="Provider Status Dashboard" 
                               FontSize="14" 
-                              Foreground="#757575"/>
+                              Foreground="{DynamicResource ChromeLowColor}"/>
                 </StackPanel>
             </StackPanel>
 
@@ -52,7 +52,7 @@
                           TextWrapping="Wrap"/>
                 <TextBlock Text="{Binding HealthyProvidersText}"
                           FontSize="12"
-                          Foreground="#757575"
+                          Foreground="{DynamicResource ChromeLowColor}"
                           HorizontalAlignment="Center"/>
             </StackPanel>
 
@@ -62,17 +62,6 @@
                        Spacing="8"
                        VerticalAlignment="Center">
                 
-                <!-- Refresh All Button -->
-                <Button Command="{Binding RefreshAllProvidersCommand}"
-                        IsEnabled="{Binding !IsRefreshing}"
-                        Classes="secondary"
-                        HorizontalAlignment="Stretch">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="🔄" FontSize="14"/>
-                        <TextBlock Text="Refresh All" FontSize="13"/>
-                    </StackPanel>
-                </Button>
-
                 <!-- Main Dashboard Access Button -->
                 <Button Command="{Binding AccessMainDashboardCommand}"
                         IsVisible="{Binding CanAccessMainDashboard}"
@@ -106,16 +95,19 @@
                 
                 <!-- Loading Overlay -->
                 <Border IsVisible="{Binding IsLoading}"
-                        Background="#F5F5F5"
+                        Background="{DynamicResource AltHighColor}"
+                        BorderBrush="{DynamicResource AltMediumHighColor}"
+                        BorderThickness="1"
                         Padding="24"
                         CornerRadius="8"
+                        BoxShadow="{DynamicResource DashboardCardShadow}"
                         HorizontalAlignment="Stretch">
                     <StackPanel Orientation="Horizontal" 
                                Spacing="12"
                                HorizontalAlignment="Center">
                         <Border Width="20" Height="20" 
                                 CornerRadius="10"
-                                Background="#2196F3"
+                                Background="{DynamicResource SystemAccentColor}"
                                 Classes="loading-spinner"/>
                         <TextBlock Text="Checking provider status..." 
                                   FontSize="14"
@@ -125,9 +117,7 @@
 
                 <!-- Error Summary (when errors exist) -->
                 <Border IsVisible="{Binding HasErrors}"
-                        Background="#FFEBEE"
-                        BorderBrush="#F44336"
-                        BorderThickness="1"
+                        Classes="ErrorCard"
                         Padding="16"
                         CornerRadius="8">
                     <StackPanel Spacing="8">
@@ -136,11 +126,11 @@
                             <TextBlock Text="Issues Detected" 
                                       FontSize="14" 
                                       FontWeight="Medium"
-                                      Foreground="#C62828"/>
+                                      Foreground="{DynamicResource ErrorText}"/>
                         </StackPanel>
                         <TextBlock Text="{Binding ErrorSummary}"
                                   FontSize="12"
-                                  Foreground="#C62828"
+                                  Foreground="{DynamicResource ErrorText}"
                                   TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
@@ -167,10 +157,10 @@
                           Padding="0"
                           Margin="0,16,0,0">
                     <Expander.Content>
-                        <Border Background="#FAFAFA"
+                        <Border Background="{DynamicResource AltHighColor}"
                                 Padding="16"
                                 CornerRadius="8"
-                                BorderBrush="#E0E0E0"
+                                BorderBrush="{DynamicResource AltMediumHighColor}"
                                 BorderThickness="1">
                             <StackPanel Spacing="12">
                                 
@@ -183,26 +173,29 @@
                                         <TextBlock Grid.Row="0" Grid.Column="0" 
                                                   Text="Total Providers:"
                                                   FontSize="12" 
-                                                  Foreground="#757575"/>
+                                                  Foreground="{DynamicResource ChromeLowColor}"/>
                                         <TextBlock Grid.Row="0" Grid.Column="1" 
                                                   Text="{Binding TotalProviderCount}"
-                                                  FontSize="12"/>
+                                                  FontSize="12"
+                                                  Foreground="{DynamicResource ChromeMediumColor}"/>
                                         
                                         <TextBlock Grid.Row="1" Grid.Column="0" 
                                                   Text="Healthy Providers:"
                                                   FontSize="12" 
-                                                  Foreground="#757575"/>
+                                                  Foreground="{DynamicResource ChromeLowColor}"/>
                                         <TextBlock Grid.Row="1" Grid.Column="1" 
                                                   Text="{Binding HealthyProviderCount}"
-                                                  FontSize="12"/>
+                                                  FontSize="12"
+                                                  Foreground="{DynamicResource ChromeMediumColor}"/>
                                         
                                         <TextBlock Grid.Row="2" Grid.Column="0" 
                                                   Text="Last Refresh:"
                                                   FontSize="12" 
-                                                  Foreground="#757575"/>
+                                                  Foreground="{DynamicResource ChromeLowColor}"/>
                                         <TextBlock Grid.Row="2" Grid.Column="1" 
                                                   Text="{Binding LastRefreshText}"
-                                                  FontSize="12"/>
+                                                  FontSize="12"
+                                                  Foreground="{DynamicResource ChromeMediumColor}"/>
                                     </Grid>
                                 </StackPanel>
 
@@ -214,7 +207,7 @@
                                               FontSize="14" 
                                               FontWeight="Medium"/>
                                     <TextBlock FontSize="12" 
-                                              Foreground="#757575"
+                                              Foreground="{DynamicResource ChromeLowColor}"
                                               TextWrapping="Wrap">
                                         <Run Text="Gmail:"/> OAuth setup with your Google account for email access
                                         <LineBreak/>
@@ -233,7 +226,9 @@
 
         <!-- Footer Status Bar -->
         <Border Grid.Row="2" 
-                Background="#F5F5F5" 
+                Background="{DynamicResource AltHighColor}"
+                BorderBrush="{DynamicResource AltMediumHighColor}"
+                BorderThickness="1,0,1,1"
                 Padding="16,8"
                 Margin="0,16,0,0"
                 CornerRadius="4">
@@ -243,13 +238,13 @@
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                 <TextBlock Text="{Binding RefreshStatusMessage}"
                           FontSize="12"
-                          Foreground="#757575"
+                          Foreground="{DynamicResource ChromeLowColor}"
                           VerticalAlignment="Center"
                           IsVisible="{Binding !!RefreshStatusMessage}"/>
                 
                 <TextBlock Text="{Binding LastRefreshText}"
                           FontSize="12"
-                          Foreground="#9E9E9E"
+                          Foreground="{DynamicResource ChromeLowColor}"
                           VerticalAlignment="Center"
                           IsVisible="{Binding !RefreshStatusMessage}"/>
             </StackPanel>
@@ -278,11 +273,11 @@
         <Style Selector="Button.toggle-details">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="#757575"/>
+            <Setter Property="Foreground" Value="{DynamicResource ChromeLowColor}"/>
         </Style>
         
         <Style Selector="Button.toggle-details:pointerover">
-            <Setter Property="Foreground" Value="#424242"/>
+            <Setter Property="Foreground" Value="{DynamicResource ChromeMediumColor}"/>
         </Style>
 
         <!-- Loading Spinner Animation -->
@@ -319,11 +314,11 @@
             <Setter Property="Padding" Value="8,4"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="Medium"/>
-            <Setter Property="Foreground" Value="#757575"/>
+            <Setter Property="Foreground" Value="{DynamicResource ChromeLowColor}"/>
         </Style>
         
         <Style Selector="Expander /template/ ToggleButton:pointerover">
-            <Setter Property="Foreground" Value="#424242"/>
+            <Setter Property="Foreground" Value="{DynamicResource ChromeMediumColor}"/>
         </Style>
     </UserControl.Styles>
 </UserControl>

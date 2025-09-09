@@ -25,7 +25,7 @@ public partial class OpenAISetupViewModel : ViewModelBase
     private string? _validationMessage;
 
     [ObservableProperty]
-    private string _statusMessage = string.Empty;
+    private string _statusMessage = "Please setup your OpenAI API key to continue";
 
     [ObservableProperty]
     private bool _isValidating = false;

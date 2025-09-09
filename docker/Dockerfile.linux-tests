@@ -1,0 +1,57 @@
+# Multi-stage Dockerfile for Linux platform-specific tests
+# Supports Ubuntu-based testing with libsecret and gnome-keyring
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS base
+
+# Install required system packages for Linux security testing
+RUN apt-get update && apt-get install -y \
+    libsecret-1-0 \
+    libsecret-1-dev \
+    libsecret-tools \
+    dbus-x11 \
+    gnome-keyring \
+    dbus \
+    xvfb \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up environment for headless keyring operations
+ENV DISPLAY=:99
+ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/tmp/dbus-session
+
+# Create a script to initialize the headless environment
+RUN echo '#!/bin/bash\n\
+# Start X virtual framebuffer\n\
+Xvfb :99 -screen 0 1024x768x24 &\n\
+\n\
+# Start D-Bus session\n\
+dbus-daemon --session --fork --print-address > /tmp/dbus-session-address\n\
+export DBUS_SESSION_BUS_ADDRESS=$(cat /tmp/dbus-session-address)\n\
+\n\
+# Initialize gnome-keyring\n\
+eval "$(printf \\n | gnome-keyring-daemon --unlock --components=secrets)"\n\
+eval "$(printf \\n | gnome-keyring-daemon --start --components=secrets)"\n\
+\n\
+# Execute the command\n\
+exec "$@"\n\
+' > /usr/local/bin/init-headless.sh && chmod +x /usr/local/bin/init-headless.sh
+
+# Set working directory
+WORKDIR /app
+
+# Copy all source code
+COPY . .
+
+# Restore dependencies (after copying all source)
+RUN dotnet restore
+
+# Build the solution
+RUN dotnet build --configuration Release --no-restore
+
+# Entry point with headless initialization
+ENTRYPOINT ["/usr/local/bin/init-headless.sh"]
+
+# Default command runs Linux-specific tests
+CMD ["dotnet", "test", "--configuration", "Release", "--no-build", \
+     "--filter", "Category=Integration&Platform=Linux", \
+     "--verbosity", "normal", \
+     "--logger", "console;verbosity=detailed"]

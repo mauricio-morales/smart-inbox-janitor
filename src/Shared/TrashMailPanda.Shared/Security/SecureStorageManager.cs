@@ -21,11 +21,11 @@ public class SecureStorageManager : ISecureStorageManager
     private bool _isInitialized = false;
     private DateTime? _lastHealthCheck;
 
-    // Credential key prefixes for different providers
+    // Credential key prefixes for different providers - now used only for logical organization
+    // The actual storage uses master key encryption with database storage
     private const string GmailTokenPrefix = "gmail_";
     private const string OpenAITokenPrefix = "openai_";
     private const string StorageTokenPrefix = "storage_";
-    private const string MasterKeyName = "transmail_master_key";
 
     public SecureStorageManager(ICredentialEncryption credentialEncryption, ILogger<SecureStorageManager> logger)
     {
@@ -111,7 +111,8 @@ public class SecureStorageManager : ISecureStorageManager
                     SecureStorageErrorType.EncryptionError);
             }
 
-            // Store in cache for quick access during session
+            // Store the credential key reference in cache for quick access during session
+            // The encryptionResult.Value contains the credential key that can be used to retrieve from database
             _credentialCache.AddOrUpdate(key, encryptionResult.Value!, (k, v) => encryptionResult.Value!);
 
             _logger.LogInformation("Successfully stored credential for key: {Key}", MaskKey(key));
@@ -141,9 +142,9 @@ public class SecureStorageManager : ISecureStorageManager
             _logger.LogDebug("Retrieving credential for key: {Key}", MaskKey(key));
 
             // Check cache first
-            if (_credentialCache.TryGetValue(key, out var cachedEncryptedCredential))
+            if (_credentialCache.TryGetValue(key, out var cachedCredentialKey))
             {
-                var decryptionResult = await _credentialEncryption.DecryptAsync(cachedEncryptedCredential, key);
+                var decryptionResult = await _credentialEncryption.DecryptAsync(cachedCredentialKey, key);
                 if (decryptionResult.IsSuccess)
                 {
                     _logger.LogDebug("Retrieved credential from cache for key: {Key}", MaskKey(key));
@@ -157,38 +158,21 @@ public class SecureStorageManager : ISecureStorageManager
                 }
             }
 
-            // If not in cache, try to retrieve from keychain directly
-            _logger.LogDebug("Credential not in cache for key {Key}, attempting keychain retrieval", MaskKey(key));
-            
-            try
+            // If not in cache, try to retrieve directly from database via CredentialEncryption
+            // The key is the credential reference that CredentialEncryption uses to lookup in database
+            _logger.LogDebug("Credential not in cache for key {Key}, attempting database retrieval", MaskKey(key));
+
+            var directDecryptResult = await _credentialEncryption.DecryptAsync(key, key);
+            if (directDecryptResult.IsSuccess && !string.IsNullOrEmpty(directDecryptResult.Value))
             {
-                // Build the expected keychain reference based on our predictable account name pattern
-                var service = key; // Use the key as the service context
-                var accountName = $"credential-{Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(key)).Replace("/", "_").Replace("+", "-")}";
-                var keychainReference = $"{service}:{accountName}";
-                var keychainReferenceBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(keychainReference));
-                
-                // Try to decrypt using the expected keychain reference
-                var directDecryptResult = await _credentialEncryption.DecryptAsync(keychainReferenceBase64, key);
-                if (directDecryptResult.IsSuccess && !string.IsNullOrEmpty(directDecryptResult.Value))
-                {
-                    // Found existing credential in keychain, cache it for future use
-                    _credentialCache.AddOrUpdate(key, keychainReferenceBase64, (k, v) => keychainReferenceBase64);
-                    _logger.LogInformation("Retrieved credential from keychain and cached for key: {Key}", MaskKey(key));
-                    return SecureStorageResult<string>.Success(directDecryptResult.Value);
-                }
-                else
-                {
-                    _logger.LogDebug("Direct keychain retrieval failed for key {Key}: {Error}", MaskKey(key), directDecryptResult.ErrorMessage);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Exception during direct keychain retrieval for key {Key}", MaskKey(key));
+                // Found existing credential, cache the credential key reference for future use
+                _credentialCache.AddOrUpdate(key, key, (k, v) => key);
+                _logger.LogInformation("Retrieved credential from database and cached for key: {Key}", MaskKey(key));
+                return SecureStorageResult<string>.Success(directDecryptResult.Value);
             }
 
-            // Credential doesn't exist
-            _logger.LogDebug("Credential not found for key: {Key}", MaskKey(key));
+            // If decryption failed, credential doesn't exist or is corrupted
+            _logger.LogDebug("Credential not found for key: {Key}, error: {Error}", MaskKey(key), directDecryptResult.ErrorMessage ?? "Unknown error");
             return SecureStorageResult<string>.Failure("Credential not found", SecureStorageErrorType.CredentialNotFound);
         }
         catch (Exception ex)
@@ -212,6 +196,7 @@ public class SecureStorageManager : ISecureStorageManager
 
         try
         {
+            await Task.CompletedTask; // Ensure method is properly async
             _logger.LogDebug("Removing credential for key: {Key}", MaskKey(key));
 
             // Remove from cache
@@ -301,7 +286,7 @@ public class SecureStorageManager : ISecureStorageManager
             }
 
             // Test credential storage/retrieval
-            const string testKey = "health_check_test_credential";
+            const string testKey = "TrashMail_Panda_Tests_Credential";
             const string testValue = "test-credential-value-12345";
 
             var storeResult = await StoreCredentialAsync(testKey, testValue);
@@ -327,7 +312,7 @@ public class SecureStorageManager : ISecureStorageManager
 
             // Add system information to details
             details.Add("credential_count", _credentialCache.Count);
-            details.Add("last_health_check", _lastHealthCheck);
+            details.Add("last_health_check", _lastHealthCheck ?? (object)"Never performed");
             details.Add("platform", _credentialEncryption.GetEncryptionStatus().Platform);
 
             result = result with

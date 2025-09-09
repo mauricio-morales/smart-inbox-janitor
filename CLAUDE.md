@@ -18,6 +18,12 @@ TrashMail Panda is an AI-powered email triage assistant built as a cross-platfor
 - `dotnet format` - Format code with .NET formatter
 - `dotnet test` - Run xUnit tests (use `dotnet test --watch` for watch mode)
 
+### Git Hooks Setup (One-time per developer)
+
+- `./setup-hooks.sh` - Configure git hooks for automatic code formatting on commit
+- **Pre-commit Hook**: Automatically runs `dotnet format` before each commit
+- **Bypass Hook**: Use `git commit --no-verify` to skip formatting check temporarily
+
 ### CI/CD Validation (Before Push)
 
 - `dotnet build --configuration Release` - Fast validation: build + test
@@ -570,6 +576,40 @@ private async Task RefreshAsync()
 ```
 
 Use proper MVVM patterns with ObservableProperty and RelayCommand attributes.
+
+## UI Design & Theme Guidelines
+
+**CRITICAL RULE**: NEVER use hardcoded RGB values (#RRGGBB) in XAML or code. This breaks theming and makes maintenance impossible. Always use semantic color resources.
+
+**IMPORTANT**: Always use the semantic color definitions from the theme resource dictionary for all UI styling decisions. This ensures consistent theming across the application.
+
+### Color System - Use Semantic Names
+- **AccentBlue**: `#3A7BD5` - Primary accent color for buttons and highlights
+- **BackgroundPrimary**: `#F7F8FA` - Main application background
+- **CardBackground**: `#FFFFFF` - Card and dialog backgrounds
+- **TextPrimary/Secondary/Tertiary**: Professional text hierarchy
+- **StatusSuccess/Warning/Error/Info/Neutral**: Provider status indicators
+
+### Status Color Usage
+```csharp
+// ✅ Correct - Use semantic helpers
+var statusColor = ProfessionalColors.GetStatusColor("Authentication Required");
+var healthColor = ProfessionalColors.GetHealthStatusColor(isHealthy);
+
+// ❌ Wrong - Don't hardcode colors
+var color = Color.Parse("#E57373");
+```
+
+### Key UI Principles
+- **Always use `ProfessionalColors` class** instead of hardcoding hex values
+- **Semantic naming**: Use status-appropriate colors via `GetStatusColor()` method
+- **Consistent card styling**: White backgrounds with 8px rounded corners and soft shadows
+- **Professional typography**: Use established text color hierarchy
+- **Preserve button classes**: Maintain `.primary`, `.secondary`, `.link` semantic classes
+
+**Reference Files**:
+- `src/TrashMailPanda/TrashMailPanda/Theming/ProfessionalColors.cs` - Central color definitions
+- `PRPs/47-improve-app-color-theme-and-styling.md` - Complete design specifications
 
 ## Performance Considerations
 

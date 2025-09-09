@@ -11,6 +11,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TrashMailPanda.Shared;
+using TrashMailPanda.Shared.Models;
+using TrashMailPanda.Shared.Base;
 
 namespace TrashMailPanda.Providers.Email;
 
@@ -171,6 +173,61 @@ public class GmailEmailProvider : IEmailProvider
         };
 
         await _service.Users.Messages.Modify(modifyRequest, "me", id).ExecuteAsync();
+    }
+
+    /// <summary>
+    /// Gets the authenticated user's Gmail profile information
+    /// </summary>
+    /// <returns>User profile information or null if not authenticated</returns>
+    public async Task<AuthenticatedUserInfo?> GetAuthenticatedUserAsync()
+    {
+        if (_service == null)
+            return null;
+
+        try
+        {
+            var profile = await _service.Users.GetProfile("me").ExecuteAsync();
+            return new AuthenticatedUserInfo
+            {
+                Email = profile.EmailAddress ?? string.Empty,
+                MessagesTotal = (int)(profile.MessagesTotal ?? 0),
+                ThreadsTotal = (int)(profile.ThreadsTotal ?? 0),
+                HistoryId = profile.HistoryId?.ToString() ?? string.Empty
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Check Gmail service health status
+    /// </summary>
+    /// <returns>Health check result</returns>
+    public async Task<Result<bool>> HealthCheckAsync()
+    {
+        try
+        {
+            if (_service == null)
+            {
+                return Result<bool>.Failure(new ValidationError("Gmail service not initialized"));
+            }
+
+            // Try to get user profile as a simple health check
+            var profile = await _service.Users.GetProfile("me").ExecuteAsync();
+
+            if (profile == null || string.IsNullOrEmpty(profile.EmailAddress))
+            {
+                return Result<bool>.Failure(new ValidationError("Unable to retrieve user profile"));
+            }
+
+            return Result<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            return Result<bool>.Failure(new NetworkError($"Gmail health check failed: {ex.Message}"));
+        }
     }
 
     private static EmailSummary MapToEmailSummary(Message message)

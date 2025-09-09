@@ -4,8 +4,32 @@ using System.Globalization;
 using TrashMailPanda.Models;
 using TrashMailPanda.Services;
 using TrashMailPanda.Shared;
+using TrashMailPanda.Theming;
 
 namespace TrashMailPanda.Converters;
+
+/// <summary>
+/// Converts string values to boolean equality comparison
+/// </summary>
+public class StringEqualsConverter : IValueConverter
+{
+    public static readonly StringEqualsConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string stringValue && parameter is string compareValue)
+        {
+            return string.Equals(stringValue, compareValue, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return false;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException("ConvertBack not supported for StringEqualsConverter");
+    }
+}
 
 /// <summary>
 /// Converts boolean health status to user-friendly display text
@@ -34,15 +58,17 @@ public class BoolToHealthConverter : IValueConverter
 }
 
 /// <summary>
-/// Converts provider status information to appropriate color
+/// Converts provider status information to appropriate professional colors
+/// Uses centralized ProfessionalColors for consistent theming
 /// </summary>
 public class ProviderStatusToColorConverter : IValueConverter
 {
-    private static readonly IBrush HealthyBrush = new SolidColorBrush(Colors.Green);
-    private static readonly IBrush UnhealthyBrush = new SolidColorBrush(Colors.Red);
-    private static readonly IBrush SetupRequiredBrush = new SolidColorBrush(Colors.Orange);
-    private static readonly IBrush DisconnectedBrush = new SolidColorBrush(Colors.Gray);
-    private static readonly IBrush LoadingBrush = new SolidColorBrush(Colors.Blue);
+    // Professional color brushes using centralized color definitions
+    private static readonly IBrush HealthyBrush = new SolidColorBrush(ProfessionalColors.StatusSuccess);
+    private static readonly IBrush UnhealthyBrush = new SolidColorBrush(ProfessionalColors.StatusError);
+    private static readonly IBrush SetupRequiredBrush = new SolidColorBrush(ProfessionalColors.StatusWarning);
+    private static readonly IBrush DisconnectedBrush = new SolidColorBrush(ProfessionalColors.StatusNeutral);
+    private static readonly IBrush LoadingBrush = new SolidColorBrush(ProfessionalColors.StatusInfo);
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
@@ -64,40 +90,25 @@ public class ProviderStatusToColorConverter : IValueConverter
 
     private static IBrush GetColorForStatus(string status)
     {
-        return status?.ToLowerInvariant() switch
-        {
-            "connected" => HealthyBrush,
-            "healthy" => HealthyBrush,
-            "ready" => HealthyBrush,
-            "setup required" => SetupRequiredBrush,
-            "authentication required" => SetupRequiredBrush,
-            "oauth setup required" => SetupRequiredBrush,
-            "api key required" => SetupRequiredBrush,
-            "api key invalid" => UnhealthyBrush,
-            "connection failed" => UnhealthyBrush,
-            "error" => UnhealthyBrush,
-            "database error" => UnhealthyBrush,
-            "failed" => UnhealthyBrush,
-            "loading" => LoadingBrush,
-            "connecting" => LoadingBrush,
-            "testing" => LoadingBrush,
-            _ => DisconnectedBrush
-        };
+        // Use centralized color determination logic
+        var color = ProfessionalColors.GetStatusColor(status);
+        return new SolidColorBrush(color);
     }
 
     private static IBrush GetColorForProviderStatus(ProviderStatus status)
     {
+        // Use centralized logic for provider status colors
         if (status.IsHealthy)
         {
-            return HealthyBrush;
+            return new SolidColorBrush(ProfessionalColors.StatusSuccess);
         }
 
         if (status.RequiresSetup)
         {
-            return SetupRequiredBrush;
+            return new SolidColorBrush(ProfessionalColors.StatusWarning);
         }
 
-        return UnhealthyBrush;
+        return new SolidColorBrush(ProfessionalColors.StatusError);
     }
 }
 
@@ -329,5 +340,40 @@ public class SetupTimeToTextConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         throw new NotSupportedException("ConvertBack not supported for SetupTimeToTextConverter");
+    }
+}
+
+/// <summary>
+/// Converts provider name to appropriate PNG logo path for display
+/// </summary>
+public class ProviderNameToLogoConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string providerName)
+        {
+            // Debug: Log the actual provider name being received - use Console.WriteLine for visibility
+            Console.WriteLine($"[ProviderNameToLogoConverter] Converting provider name: '{providerName}'");
+            return providerName?.ToLowerInvariant() switch
+            {
+                "gmail" => "/Assets/Logos/gmail-logo.png",
+                "google" => "/Assets/Logos/gmail-logo.png",
+                "openai" => "/Assets/Logos/openai-logo.png",
+                "openai gpt" => "/Assets/Logos/openai-logo.png",
+                "gpt" => "/Assets/Logos/openai-logo.png",
+                "sqlite" => "/Assets/Logos/sqlite-logo.png",
+                "local storage" => "/Assets/Logos/sqlite-logo.png",
+                "storage" => "/Assets/Logos/sqlite-logo.png",
+                "database" => "/Assets/Logos/sqlite-logo.png",
+                _ => "/Assets/Logos/sqlite-logo.png" // Fallback to a generic logo
+            };
+        }
+
+        return "/Assets/Logos/sqlite-logo.png"; // Default fallback
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException("ConvertBack not supported for ProviderNameToLogoConverter");
     }
 }

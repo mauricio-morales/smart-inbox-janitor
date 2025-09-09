@@ -1,0 +1,68 @@
+services:
+  # Linux platform tests with libsecret support
+  linux-tests:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.linux-tests
+    container_name: trashmail-panda-linux-tests
+    environment:
+      - DOTNET_ENVIRONMENT=Testing
+      - DISPLAY=:99
+    volumes:
+      - ./TestResults:/app/TestResults
+      - ./coverage:/app/coverage
+    networks:
+      - test-network
+    profiles:
+      - linux
+      - all
+
+  # Cross-platform general tests (run in Linux container)
+  cross-platform-tests:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.linux-tests
+    container_name: trashmail-panda-cross-platform-tests
+    environment:
+      - DOTNET_ENVIRONMENT=Testing
+      - DISPLAY=:99
+    command: >
+      dotnet test --configuration Release --no-build
+      --filter "Category=Unit|Category=Integration&!Platform=Windows&!Platform=macOS"
+      --verbosity normal
+      --logger "console;verbosity=detailed"
+      --collect:"XPlat Code Coverage"
+      --results-directory ./TestResults/CrossPlatform
+    volumes:
+      - ./TestResults:/app/TestResults
+      - ./coverage:/app/coverage
+    networks:
+      - test-network
+    profiles:
+      - cross-platform
+      - all
+
+  # Windows tests (only works on Windows Docker hosts)
+  windows-tests:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.windows-tests
+    container_name: trashmail-panda-windows-tests
+    environment:
+      - DOTNET_ENVIRONMENT=Testing
+    volumes:
+      - .\TestResults:C:\app\TestResults
+      - .\coverage:C:\app\coverage
+    networks:
+      - test-network
+    profiles:
+      - windows
+
+networks:
+  test-network:
+    driver: bridge
+
+# Volumes for persistent test results
+volumes:
+  test-results:
+  coverage-data:

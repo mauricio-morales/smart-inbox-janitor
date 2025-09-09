@@ -1,0 +1,62 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+bin/
+obj/
+out/
+
+# NuGet
+packages/
+*.nupkg
+
+# Visual Studio
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+
+# Test results
+**/TestResults/
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+*.dmp
+**/hangdump.dmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker files (avoid recursion)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+*.md
+docs/
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Node modules (if any)
+node_modules/
+
+# Logs
+*.log

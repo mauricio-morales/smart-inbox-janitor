@@ -2,8 +2,10 @@ using Microsoft.Data.Sqlite;
 using SQLitePCL;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using TrashMailPanda.Shared;
 
@@ -13,12 +15,14 @@ namespace TrashMailPanda.Providers.Storage;
 /// SQLite implementation of IStorageProvider with encryption support
 /// Provides encrypted local storage for all application data
 /// </summary>
-public class SqliteStorageProvider : IStorageProvider
+public class SqliteStorageProvider : IStorageProvider, IDisposable
 {
     private SqliteConnection? _connection;
     private readonly string _databasePath;
     private readonly string _password;
     private bool _initialized = false;
+    private bool _disposed = false;
+    private readonly SemaphoreSlim _connectionLock = new(1, 1);
 
     public SqliteStorageProvider(string databasePath, string password)
     {
@@ -379,6 +383,115 @@ public class SqliteStorageProvider : IStorageProvider
         await command.ExecuteNonQueryAsync();
     }
 
+    public async Task<string?> GetEncryptedCredentialAsync(string key)
+    {
+        const string sql = "SELECT encrypted_value FROM encrypted_credentials WHERE key = @key";
+
+        var command = await CreateCommandAsync();
+        try
+        {
+            command.CommandText = sql;
+            command.Parameters.AddWithValue("@key", key);
+
+            using var reader = await command.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                return reader.GetString(0);
+            }
+
+            return null;
+        }
+        finally
+        {
+            command.Dispose();
+            ReleaseConnection();
+        }
+    }
+
+    public async Task SetEncryptedCredentialAsync(string key, string encryptedValue, DateTime? expiresAt = null)
+    {
+        const string sql = @"
+            INSERT OR REPLACE INTO encrypted_credentials (key, encrypted_value, created_at, expires_at)
+            VALUES (@key, @encryptedValue, @createdAt, @expiresAt)";
+
+        var command = await CreateCommandAsync();
+        try
+        {
+            command.CommandText = sql;
+            command.Parameters.AddWithValue("@key", key);
+            command.Parameters.AddWithValue("@encryptedValue", encryptedValue);
+            command.Parameters.AddWithValue("@createdAt", DateTime.UtcNow.ToString("O"));
+            command.Parameters.AddWithValue("@expiresAt", expiresAt?.ToString("O") ?? (object)DBNull.Value);
+
+            await command.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            command.Dispose();
+            ReleaseConnection();
+        }
+    }
+
+    public async Task RemoveEncryptedCredentialAsync(string key)
+    {
+        const string sql = "DELETE FROM encrypted_credentials WHERE key = @key";
+
+        var command = await CreateCommandAsync();
+        try
+        {
+            command.CommandText = sql;
+            command.Parameters.AddWithValue("@key", key);
+
+            await command.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            command.Dispose();
+            ReleaseConnection();
+        }
+    }
+
+    public async Task<IReadOnlyList<string>> GetExpiredCredentialKeysAsync()
+    {
+        EnsureInitialized();
+
+        const string sql = @"
+            SELECT key FROM encrypted_credentials 
+            WHERE expires_at IS NOT NULL AND expires_at <= @currentTime";
+
+        var keys = new List<string>();
+        using var command = _connection!.CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("@currentTime", DateTime.UtcNow.ToString("O"));
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            keys.Add(reader.GetString(0));
+        }
+
+        return keys;
+    }
+
+    public async Task<IReadOnlyList<string>> GetAllEncryptedCredentialKeysAsync()
+    {
+        EnsureInitialized();
+
+        const string sql = "SELECT key FROM encrypted_credentials";
+
+        var keys = new List<string>();
+        using var command = _connection!.CreateCommand();
+        command.CommandText = sql;
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            keys.Add(reader.GetString(0));
+        }
+
+        return keys;
+    }
+
     public async Task<AppConfig> GetConfigAsync()
     {
         EnsureInitialized();
@@ -398,7 +511,7 @@ public class SqliteStorageProvider : IStorageProvider
             switch (key)
             {
                 case "ConnectionState":
-                    config.ConnectionState = JsonSerializer.Deserialize<ConnectionState>(value);
+                    config.ConnectionState = JsonSerializer.Deserialize<TrashMailPanda.Shared.ConnectionState>(value);
                     break;
                 case "ProcessingSettings":
                     config.ProcessingSettings = JsonSerializer.Deserialize<ProcessingSettings>(value);
@@ -502,6 +615,13 @@ public class SqliteStorageProvider : IStorageProvider
                 provider TEXT PRIMARY KEY,
                 encrypted_token TEXT NOT NULL,
                 created_at TEXT NOT NULL
+            )",
+
+            @"CREATE TABLE IF NOT EXISTS encrypted_credentials (
+                key TEXT PRIMARY KEY,
+                encrypted_value TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT
             )"
         };
 
@@ -517,10 +637,90 @@ public class SqliteStorageProvider : IStorageProvider
     {
         if (!_initialized || _connection == null)
             throw new InvalidOperationException("Storage provider not initialized. Call InitAsync first.");
+
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(SqliteStorageProvider));
+    }
+
+    private async Task<SqliteCommand> CreateCommandAsync()
+    {
+        EnsureInitialized();
+        await _connectionLock.WaitAsync();
+
+        try
+        {
+            if (_connection == null)
+                throw new InvalidOperationException("Database connection is null");
+
+            return _connection.CreateCommand();
+        }
+        catch
+        {
+            _connectionLock.Release();
+            throw;
+        }
+    }
+
+    private void ReleaseConnection()
+    {
+        _connectionLock.Release();
     }
 
     public void Dispose()
     {
-        _connection?.Dispose();
+        if (_disposed) return;
+
+        _connectionLock.Wait();
+        try
+        {
+            if (_connection != null)
+            {
+                // CRITICAL FIX: Force WAL checkpoint before closing connection to release file locks
+                // This is essential on Windows where SQLite WAL mode can keep auxiliary files locked
+                try
+                {
+                    if (_connection.State == System.Data.ConnectionState.Open)
+                    {
+                        // Execute WAL checkpoint to merge WAL into main database and release locks
+                        using var checkpointCmd = _connection.CreateCommand();
+                        checkpointCmd.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+                        checkpointCmd.ExecuteNonQuery();
+
+                        // Also ensure journal mode is properly closed
+                        using var journalCmd = _connection.CreateCommand();
+                        journalCmd.CommandText = "PRAGMA journal_mode=DELETE;";
+                        journalCmd.ExecuteNonQuery();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't throw - disposal should be robust
+                    System.Diagnostics.Debug.WriteLine($"WAL checkpoint failed during disposal: {ex.Message}");
+                }
+
+                // Now close and dispose the connection
+                try
+                {
+                    if (_connection.State != System.Data.ConnectionState.Closed)
+                    {
+                        _connection.Close();
+                    }
+                }
+                catch
+                {
+                    // Ignore exceptions during close
+                }
+
+                _connection.Dispose();
+                _connection = null;
+            }
+            _initialized = false;
+            _disposed = true;
+        }
+        finally
+        {
+            _connectionLock.Release();
+            _connectionLock.Dispose();
+        }
     }
 }

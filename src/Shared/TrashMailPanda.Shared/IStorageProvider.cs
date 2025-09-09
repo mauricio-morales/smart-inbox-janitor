@@ -32,6 +32,13 @@ public interface IStorageProvider
     Task<IReadOnlyDictionary<string, string>> GetEncryptedTokensAsync();
     Task SetEncryptedTokenAsync(string provider, string encryptedToken);
 
+    // Encrypted credential storage with master key encryption
+    Task<string?> GetEncryptedCredentialAsync(string key);
+    Task SetEncryptedCredentialAsync(string key, string encryptedValue, DateTime? expiresAt = null);
+    Task RemoveEncryptedCredentialAsync(string key);
+    Task<IReadOnlyList<string>> GetExpiredCredentialKeysAsync();
+    Task<IReadOnlyList<string>> GetAllEncryptedCredentialKeysAsync();
+
     // Configuration
     Task<AppConfig> GetConfigAsync();
     Task UpdateConfigAsync(AppConfig config);

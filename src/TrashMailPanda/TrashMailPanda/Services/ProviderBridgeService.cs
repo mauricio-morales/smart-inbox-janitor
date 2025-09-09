@@ -153,6 +153,32 @@ public class ProviderBridgeService : IProviderBridgeService
                 if (connectivityResult.IsSuccess && connectivityResult.Value != null)
                 {
                     status.Details["user_email"] = connectivityResult.Value;
+
+                    // Get full authenticated user info from Gmail provider
+                    AuthenticatedUserInfo? authenticatedUser = null;
+                    if (_emailProvider != null)
+                    {
+                        try
+                        {
+                            authenticatedUser = await _emailProvider.GetAuthenticatedUserAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to get detailed authenticated user info, using basic info");
+                        }
+                    }
+
+                    // Create authenticated user info (use detailed info if available, fallback to email only)
+                    status = status with
+                    {
+                        AuthenticatedUser = authenticatedUser ?? new AuthenticatedUserInfo
+                        {
+                            Email = connectivityResult.Value,
+                            MessagesTotal = 0,
+                            ThreadsTotal = 0,
+                            HistoryId = string.Empty
+                        }
+                    };
                 }
             }
 
@@ -384,21 +410,40 @@ public class ProviderBridgeService : IProviderBridgeService
     }
 
     /// <summary>
-    /// Test Gmail connectivity
+    /// Test Gmail connectivity and get authenticated user
     /// </summary>
     private async Task<Result<string>> TestGmailConnectivityAsync()
     {
         try
         {
-            // TODO: Call actual Gmail provider health check method
-            // For now, simulate connectivity test
-            await Task.Delay(100); // Simulate API call
+            // Call actual Gmail provider to get authenticated user info
+            if (_emailProvider != null)
+            {
+                var healthResult = await _emailProvider.HealthCheckAsync();
+                if (!healthResult.IsSuccess)
+                {
+                    return Result<string>.Failure(healthResult.Error);
+                }
 
-            // Return user email if available
+                // Get authenticated user info from Gmail provider
+                var authenticatedUser = await _emailProvider.GetAuthenticatedUserAsync();
+                if (authenticatedUser != null && !string.IsNullOrEmpty(authenticatedUser.Email))
+                {
+                    // Store user email in credentials for future reference
+                    await _secureStorageManager.StoreCredentialAsync(ProviderCredentialTypes.GmailUserEmail, authenticatedUser.Email);
+
+                    return Result<string>.Success(authenticatedUser.Email);
+                }
+            }
+
+            // Fallback: try to get previously stored email
             var emailResult = await _secureStorageManager.RetrieveCredentialAsync(ProviderCredentialTypes.GmailUserEmail);
-            var userEmail = emailResult.IsSuccess ? emailResult.Value : "user@gmail.com";
+            if (emailResult.IsSuccess && !string.IsNullOrEmpty(emailResult.Value))
+            {
+                return Result<string>.Success(emailResult.Value);
+            }
 
-            return Result<string>.Success(userEmail ?? "Connected");
+            return Result<string>.Failure(new NetworkError("Gmail provider not available or user not authenticated"));
         }
         catch (Exception ex)
         {

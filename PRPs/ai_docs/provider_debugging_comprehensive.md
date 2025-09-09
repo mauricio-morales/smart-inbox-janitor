@@ -1,10 +1,10 @@
 # Comprehensive Provider Debugging Guide
 
-## Current Smart Inbox Janitor Provider Architecture
+## Current TrashMail Panda Provider Architecture
 
 ### BaseProvider System Overview
 
-The Smart Inbox Janitor implements a sophisticated provider-agnostic architecture with comprehensive debugging capabilities:
+The TrashMail Panda implements a sophisticated provider-agnostic architecture with comprehensive debugging capabilities:
 
 **Core Components:**
 
@@ -339,4 +339,4 @@ class SQLiteProvider extends BaseProvider<SQLiteProviderConfig> {
 3. **Implement property-based testing** for configuration validation
 4. **Create integration test harnesses** for end-to-end flows
 
-This comprehensive debugging framework builds upon the existing Smart Inbox Janitor architecture while adding industry-standard debugging techniques and tools for enhanced development productivity and production reliability.
+This comprehensive debugging framework builds upon the existing TrashMail Panda architecture while adding industry-standard debugging techniques and tools for enhanced development productivity and production reliability.

@@ -444,7 +444,7 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
     /// <param name="reason">Reason for the suspension</param>
     /// <param name="cancellationToken">Cancellation token for the operation</param>
     /// <returns>A result indicating whether the suspension was successful</returns>
-    public async Task<Result<bool>> SuspendAsync(TimeSpan? duration = null, string? reason = null, CancellationToken cancellationToken = default)
+    public Task<Result<bool>> SuspendAsync(TimeSpan? duration = null, string? reason = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -474,13 +474,13 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
                 _logger.LogInformation("Provider {ProviderName} suspended indefinitely: {Reason}", Name, suspensionReason);
             }
 
-            return Result<bool>.Success(true);
+            return Task.FromResult(Result<bool>.Success(true));
         }
         catch (Exception ex)
         {
             var error = ex.ToProviderError("Provider suspension failed");
             _logger.LogError(ex, "Failed to suspend provider {ProviderName}", Name);
-            return Result<bool>.Failure(error);
+            return Task.FromResult(Result<bool>.Failure(error));
         }
     }
 
@@ -489,13 +489,13 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for the operation</param>
     /// <returns>A result indicating whether the resume was successful</returns>
-    public async Task<Result<bool>> ResumeAsync(CancellationToken cancellationToken = default)
+    public Task<Result<bool>> ResumeAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             if (State != ProviderState.Suspended)
             {
-                return Result<bool>.Failure(new InvalidOperationError("Provider is not in suspended state"));
+                return Task.FromResult(Result<bool>.Failure(new InvalidOperationError("Provider is not in suspended state")));
             }
 
             _suspensionCancellation?.Cancel();
@@ -504,13 +504,13 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
             UpdateState(ProviderState.Ready, "Provider resumed from suspension");
             _logger.LogInformation("Provider {ProviderName} resumed from suspension", Name);
 
-            return Result<bool>.Success(true);
+            return Task.FromResult(Result<bool>.Success(true));
         }
         catch (Exception ex)
         {
             var error = ex.ToProviderError("Provider resume failed");
             _logger.LogError(ex, "Failed to resume provider {ProviderName}", Name);
-            return Result<bool>.Failure(error);
+            return Task.FromResult(Result<bool>.Failure(error));
         }
     }
 
@@ -519,7 +519,7 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for the operation</param>
     /// <returns>A result containing diagnostic information</returns>
-    public async Task<Result<ProviderDiagnostics>> GetDiagnosticsAsync(CancellationToken cancellationToken = default)
+    public Task<Result<ProviderDiagnostics>> GetDiagnosticsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -536,12 +536,12 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
                 Details = Metadata.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
             };
 
-            return Result<ProviderDiagnostics>.Success(diagnostics);
+            return Task.FromResult(Result<ProviderDiagnostics>.Success(diagnostics));
         }
         catch (Exception ex)
         {
             var error = ex.ToProviderError("Failed to collect diagnostics");
-            return Result<ProviderDiagnostics>.Failure(error);
+            return Task.FromResult(Result<ProviderDiagnostics>.Failure(error));
         }
     }
 

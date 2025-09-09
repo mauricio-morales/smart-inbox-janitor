@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using TrashMailPanda.Shared.Models;
+using TrashMailPanda.Shared.Base;
 
 namespace TrashMailPanda.Shared;
 
@@ -52,4 +54,16 @@ public interface IEmailProvider
     /// </summary>
     /// <param name="id">Email ID</param>
     Task ReportPhishingAsync(string id);
+
+    /// <summary>
+    /// Get authenticated user information
+    /// </summary>
+    /// <returns>Authenticated user details or null if not authenticated</returns>
+    Task<AuthenticatedUserInfo?> GetAuthenticatedUserAsync();
+
+    /// <summary>
+    /// Check provider health status
+    /// </summary>
+    /// <returns>Health check result</returns>
+    Task<Result<bool>> HealthCheckAsync();
 }

@@ -55,6 +55,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     private static IServiceCollection AddSecurityServices(this IServiceCollection services)
     {
+        services.AddSingleton<IMasterKeyManager, MasterKeyManager>();
         services.AddSingleton<ICredentialEncryption, CredentialEncryption>();
         services.AddSingleton<ISecureStorageManager, SecureStorageManager>();
         services.AddSingleton<ISecurityAuditLogger, SecurityAuditLogger>();
@@ -96,6 +97,9 @@ public static class ServiceCollectionExtensions
         // Add provider bridge service for connecting legacy providers to new architecture
         services.AddSingleton<IProviderBridgeService, ProviderBridgeService>();
 
+        // Add Gmail OAuth authentication service
+        services.AddSingleton<IGmailOAuthService, GmailOAuthService>();
+
         // Add background health monitoring service
         services.AddHostedService<ProviderHealthMonitorService>();
 
@@ -120,12 +124,14 @@ public static class ServiceCollectionExtensions
 
         // Add setup dialog ViewModels
         services.AddTransient<OpenAISetupViewModel>();
+        services.AddTransient<GmailSetupViewModel>();
 
         // Register MainWindowViewModel with navigation dependencies
         services.AddTransient<MainWindowViewModel>(provider => new MainWindowViewModel(
             provider.GetRequiredService<ProviderStatusDashboardViewModel>(),
             provider.GetRequiredService<EmailDashboardViewModel>(),
             provider,
+            provider.GetRequiredService<IGmailOAuthService>(),
             provider.GetRequiredService<ILogger<MainWindowViewModel>>()
         ));
 

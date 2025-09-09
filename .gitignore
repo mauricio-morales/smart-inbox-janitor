@@ -25,6 +25,7 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+.avalonia-build-tasks
 
 # Visual Studio and Rider cache/options
 .vs/

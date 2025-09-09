@@ -35,7 +35,7 @@ public sealed class ProviderRegistryHealthCheck : IHealthCheck
     /// <summary>
     /// Performs health check of the provider registry
     /// </summary>
-    public async Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult> CheckHealthAsync(
+    public Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
@@ -87,15 +87,15 @@ public sealed class ProviderRegistryHealthCheck : IHealthCheck
             var description = errors.Count == 0 ? "Provider registry is healthy" :
                             $"Provider registry has {errors.Count} issue(s): {string.Join(", ", errors)}";
 
-            return new Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult(status, description, data: data);
+            return Task.FromResult(new Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult(status, description, data: data));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Exception during provider registry health check");
-            return new Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult(
+            return Task.FromResult(new Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult(
                 Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
                 $"Health check failed with exception: {ex.Message}",
-                ex);
+                ex));
         }
     }
 }

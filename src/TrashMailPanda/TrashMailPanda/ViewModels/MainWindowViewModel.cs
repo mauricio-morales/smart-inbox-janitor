@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Threading.Tasks;
 using TrashMailPanda.Views;
+using TrashMailPanda.Services;
 
 namespace TrashMailPanda.ViewModels;
 
@@ -17,6 +18,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly ProviderStatusDashboardViewModel _providerDashboardViewModel;
     private readonly EmailDashboardViewModel _emailDashboardViewModel;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IGmailOAuthService _gmailOAuthService;
     private readonly ILogger<MainWindowViewModel> _logger;
 
     // Navigation State
@@ -43,17 +45,20 @@ public partial class MainWindowViewModel : ViewModelBase
         ProviderStatusDashboardViewModel providerDashboardViewModel,
         EmailDashboardViewModel emailDashboardViewModel,
         IServiceProvider serviceProvider,
+        IGmailOAuthService gmailOAuthService,
         ILogger<MainWindowViewModel> logger)
     {
         _providerDashboardViewModel = providerDashboardViewModel ?? throw new ArgumentNullException(nameof(providerDashboardViewModel));
         _emailDashboardViewModel = emailDashboardViewModel ?? throw new ArgumentNullException(nameof(emailDashboardViewModel));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _gmailOAuthService = gmailOAuthService ?? throw new ArgumentNullException(nameof(gmailOAuthService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // Subscribe to provider dashboard events
         _providerDashboardViewModel.DashboardAccessRequested += OnDashboardAccessRequested;
         _providerDashboardViewModel.ProviderSetupRequested += OnProviderSetupRequested;
         _providerDashboardViewModel.ProviderConfigurationRequested += OnProviderConfigurationRequested;
+        _providerDashboardViewModel.ProviderAuthenticationRequested += OnProviderAuthenticationRequested;
 
         // Subscribe to email dashboard events
         _emailDashboardViewModel.ReturnToDashboardRequested += OnReturnToDashboardRequested;
@@ -222,9 +227,7 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 case "gmail":
                     _logger.LogInformation("Opening Gmail OAuth setup dialog");
-                    NavigationStatus = "Gmail setup - OAuth flow not yet implemented";
-                    // TODO: Implement Gmail OAuth setup dialog
-                    await Task.Delay(2000);
+                    await OpenGmailSetupDialogAsync();
                     break;
 
                 case "openai":
@@ -293,6 +296,64 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Handle provider authentication requests from provider dashboard
+    /// </summary>
+    private async void OnProviderAuthenticationRequested(object? sender, string providerName)
+    {
+        try
+        {
+            _logger.LogInformation("Provider authentication requested for {Provider}", providerName);
+
+            NavigationStatus = $"Starting {providerName} authentication...";
+
+            switch (providerName?.ToLowerInvariant())
+            {
+                case "gmail":
+                    _logger.LogInformation("Initiating Gmail OAuth authentication in browser");
+                    NavigationStatus = "Opening browser for Gmail sign-in...";
+
+                    var authResult = await _gmailOAuthService.AuthenticateAsync();
+
+                    if (authResult.IsSuccess)
+                    {
+                        _logger.LogInformation("Gmail OAuth authentication completed successfully");
+                        NavigationStatus = "Gmail authentication successful - refreshing status...";
+
+                        // Refresh provider status to reflect the change
+                        await _providerDashboardViewModel.RefreshAllProvidersCommand.ExecuteAsync(null);
+
+                        NavigationStatus = "Gmail authentication completed";
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Gmail OAuth authentication failed: {Error}", authResult.Error?.Message);
+                        NavigationStatus = $"Gmail authentication failed: {authResult.Error?.Message}";
+                    }
+                    break;
+
+                default:
+                    _logger.LogInformation("Authentication for {Provider} not implemented", providerName);
+                    NavigationStatus = $"{providerName} authentication not implemented";
+                    await Task.Delay(2000);
+                    break;
+            }
+
+            // Reset navigation status after a delay
+            _ = Task.Delay(3000).ContinueWith(_ =>
+            {
+                NavigationStatus = IsOnProviderDashboard
+                    ? "Provider Status Dashboard"
+                    : "Email Processing Dashboard";
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception handling provider authentication request for {Provider}", providerName);
+            NavigationStatus = "Authentication failed - check logs";
+        }
+    }
+
+    /// <summary>
     /// Open the OpenAI API key setup dialog
     /// </summary>
     private async Task OpenOpenAISetupDialogAsync()
@@ -315,7 +376,8 @@ public partial class MainWindowViewModel : ViewModelBase
             }
             else
             {
-                dialog.Show(); // Show as regular window if no parent
+                // Fallback to show dialog without parent (will be modal by default)
+                dialog.Show();
             }
 
             if (viewModel.DialogResult)
@@ -344,9 +406,66 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     private Avalonia.Controls.Window? GetMainWindow()
     {
-        // In a real implementation, this would need to get the actual main window
-        // For now, we'll return null which will center the dialog on screen
+        // Get the main window from the application's main window
+        var app = Avalonia.Application.Current;
+        if (app?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return desktop.MainWindow;
+        }
         return null;
+    }
+
+    /// <summary>
+    /// Open Gmail OAuth setup dialog
+    /// </summary>
+    private async Task OpenGmailSetupDialogAsync()
+    {
+        try
+        {
+            var viewModel = _serviceProvider.GetRequiredService<GmailSetupViewModel>();
+
+            var dialog = new Views.GmailSetupDialog(viewModel);
+
+            // Subscribe to Gmail sign-in event
+            viewModel.RequestGmailSignIn += async (sender, args) =>
+            {
+                _logger.LogInformation("Gmail OAuth setup completed - triggering Gmail authentication");
+                await Task.Delay(500); // Brief delay to let dialog close
+                // Trigger additional refresh to ensure Gmail authentication is attempted
+                await _providerDashboardViewModel.RefreshAllProvidersCommand.ExecuteAsync(null);
+            };
+
+            // Show dialog (modal)
+            var mainWindow = GetMainWindow();
+            if (mainWindow != null)
+            {
+                await dialog.ShowDialog(mainWindow);
+            }
+            else
+            {
+                // Fallback to show dialog without parent (will be modal by default)
+                dialog.Show();
+            }
+
+            if (viewModel.DialogResult)
+            {
+                _logger.LogInformation("Gmail OAuth setup completed successfully");
+                NavigationStatus = "Gmail OAuth credentials saved successfully";
+
+                // Refresh provider status to reflect the change
+                await _providerDashboardViewModel.RefreshAllProvidersCommand.ExecuteAsync(null);
+            }
+            else
+            {
+                _logger.LogInformation("Gmail OAuth setup was cancelled");
+                NavigationStatus = "Gmail setup cancelled";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception opening Gmail setup dialog");
+            NavigationStatus = "Failed to open Gmail setup";
+        }
     }
 
     /// <summary>
@@ -407,6 +526,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _providerDashboardViewModel.DashboardAccessRequested -= OnDashboardAccessRequested;
             _providerDashboardViewModel.ProviderSetupRequested -= OnProviderSetupRequested;
             _providerDashboardViewModel.ProviderConfigurationRequested -= OnProviderConfigurationRequested;
+            _providerDashboardViewModel.ProviderAuthenticationRequested -= OnProviderAuthenticationRequested;
             _providerDashboardViewModel.PropertyChanged -= OnProviderDashboardPropertyChanged;
         }
 

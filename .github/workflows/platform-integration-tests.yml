@@ -1,0 +1,269 @@
+name: Platform-Specific Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  platform-integration-tests:
+    name: Platform Integration Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: Windows
+            runtime: win-x64
+            platform-trait: Windows
+            encryption-method: DPAPI
+            timeout: 30000
+            setup-commands: |
+              # Windows setup - DPAPI should be available by default
+              echo "Windows DPAPI tests - no additional setup required"
+              
+          - os: macos-latest
+            platform: macOS
+            runtime: osx-x64
+            platform-trait: macOS
+            encryption-method: Keychain
+            timeout: 60000
+            setup-commands: |
+              # macOS setup - Keychain Services should be available
+              echo "macOS Keychain tests - checking keychain availability"
+              security list-keychains
+              
+          - os: ubuntu-latest
+            platform: Linux
+            runtime: linux-x64
+            platform-trait: Linux
+            encryption-method: libsecret
+            timeout: 45000
+            setup-commands: |
+              # Linux setup - Install libsecret and setup headless environment
+              echo "Linux libsecret tests - installing dependencies"
+              sudo apt-get update
+              sudo apt-get install -y libsecret-1-0 libsecret-1-dev libsecret-tools
+              sudo apt-get install -y dbus-x11 gnome-keyring
+              
+              # Setup headless keyring for CI
+              echo "Setting up headless keyring for CI environment"
+              eval "$(printf '\n' | gnome-keyring-daemon --unlock)"
+              eval "$(printf '\n' | gnome-keyring-daemon --start --components=secrets)"
+              export GNOME_KEYRING_CONTROL
+              export GNOME_KEYRING_PID
+    
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-platform-${{ hashFiles('**/*.csproj', '**/*.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-platform-
+          ${{ runner.os }}-nuget-
+
+    - name: Platform-specific setup
+      run: ${{ matrix.setup-commands }}
+      shell: bash
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build solution
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Run platform-specific integration tests
+      run: |
+        echo "Running ${{ matrix.platform }} integration tests..."
+        echo "Expected encryption method: ${{ matrix.encryption-method }}"
+        echo "Test timeout: ${{ matrix.timeout }}ms"
+        
+        # Run only the platform-specific integration tests
+        dotnet test --configuration Release --no-build \
+          --verbosity normal \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./coverage-${{ matrix.platform }} \
+          --filter "Category=Integration&Platform=${{ matrix.platform-trait }}" \
+          --logger "console;verbosity=detailed" \
+          --blame-hang --blame-hang-timeout 10m \
+          -- RunConfiguration.TestSessionTimeout=${{ matrix.timeout }}
+      shell: bash
+      env:
+        # Environment variables for testing
+        DOTNET_ENVIRONMENT: Testing
+        # Platform-specific environment setup
+        DISPLAY: ${{ matrix.platform == 'Linux' && ':99' || '' }}
+
+    - name: Run cross-platform security integration tests
+      run: |
+        echo "Running cross-platform security integration tests on ${{ matrix.platform }}..."
+        
+        # Run the general integration tests that should work on all platforms
+        dotnet test --configuration Release --no-build \
+          --verbosity normal \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./coverage-security-${{ matrix.platform }} \
+          --filter "Category=Integration&Category=Security" \
+          --logger "console;verbosity=detailed" \
+          --blame-hang --blame-hang-timeout 10m \
+          -- RunConfiguration.TestSessionTimeout=90000
+      shell: bash
+
+    - name: Collect platform-specific test results
+      if: always()
+      run: |
+        echo "=== Platform Integration Test Results for ${{ matrix.platform }} ==="
+        
+        # Look for test result files
+        find . -name "*.trx" -type f | head -5 | xargs -I {} echo "Found test result: {}"
+        find . -name "*.xml" -type f -path "*/coverage*" | head -5 | xargs -I {} echo "Found coverage: {}"
+        
+        # Display test summary if available
+        if [ -f "TestResults/*.trx" ]; then
+          echo "Test results found"
+        else
+          echo "No test result files found"
+        fi
+      shell: bash
+
+    - name: Upload platform-specific test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: platform-test-results-${{ matrix.platform }}-${{ github.run_number }}
+        path: |
+          ./coverage-*/**/*.xml
+          ./TestResults/**/*.trx
+          ./**/*TestResults*.xml
+        retention-days: 7
+
+    - name: Upload platform-specific coverage
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: platform-coverage-${{ matrix.platform }}-${{ github.run_number }}
+        path: |
+          ./coverage-*/**/*.xml
+        retention-days: 7
+
+    - name: Platform test summary
+      if: always()
+      run: |
+        echo "::notice title=${{ matrix.platform }} Tests::Platform-specific integration tests completed for ${{ matrix.platform }} (${{ matrix.encryption-method }})"
+        echo "Runtime: ${{ matrix.runtime }}"
+        echo "Timeout: ${{ matrix.timeout }}ms"
+        echo "Platform trait filter: Platform=${{ matrix.platform-trait }}"
+      shell: bash
+
+  # Consolidate results across all platforms
+  platform-test-summary:
+    name: Platform Test Summary
+    runs-on: ubuntu-latest
+    needs: [platform-integration-tests]
+    if: always()
+    
+    steps:
+    - name: Download all platform test artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./platform-results
+        pattern: platform-test-results-*
+
+    - name: Download all platform coverage artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./platform-coverage
+        pattern: platform-coverage-*
+
+    - name: Analyze platform test results
+      run: |
+        echo "=== Platform Integration Test Summary ==="
+        echo "Analyzing results from all platforms..."
+        
+        find ./platform-results -name "*.xml" -o -name "*.trx" | wc -l | xargs echo "Total test result files:"
+        find ./platform-coverage -name "*.xml" | wc -l | xargs echo "Total coverage files:"
+        
+        echo ""
+        echo "Platform-specific test artifacts:"
+        ls -la ./platform-results/ || echo "No platform results directory found"
+        
+        echo ""
+        echo "Platform-specific coverage artifacts:"
+        ls -la ./platform-coverage/ || echo "No platform coverage directory found"
+        
+        echo ""
+        echo "=== Test Matrix Summary ==="
+        echo "✅ Windows DPAPI integration tests"
+        echo "✅ macOS Keychain Services integration tests" 
+        echo "✅ Linux libsecret integration tests"
+        echo ""
+        echo "All platform-specific security integration tests completed."
+
+    - name: Report platform test status
+      run: |
+        # Check if platform-integration-tests job succeeded for each platform
+        if [ "${{ needs.platform-integration-tests.result }}" = "success" ]; then
+          echo "::notice title=Platform Tests Success::All platform-specific integration tests passed successfully"
+          echo "✅ All platform security implementations verified"
+        else
+          echo "::warning title=Platform Tests Issues::Some platform-specific tests had issues"
+          echo "⚠️  Check individual platform test results for details"
+          echo "Job result: ${{ needs.platform-integration-tests.result }}"
+        fi
+
+  # Upload consolidated coverage to Codecov (optional)
+  upload-platform-coverage:
+    name: Upload Platform Coverage
+    runs-on: ubuntu-latest
+    needs: [platform-integration-tests]
+    if: github.event_name == 'push' && contains(fromJSON('["main", "develop"]'), github.ref_name)
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download platform coverage
+      uses: actions/download-artifact@v4
+      with:
+        path: ./consolidated-coverage
+        pattern: platform-coverage-*
+
+    - name: Prepare coverage files
+      run: |
+        echo "Preparing coverage files for upload..."
+        find ./consolidated-coverage -name "*.xml" -type f
+        
+        # Create a consolidated directory structure
+        mkdir -p ./final-coverage
+        find ./consolidated-coverage -name "*.xml" -exec cp {} ./final-coverage/ \;
+        
+        echo "Final coverage files:"
+        ls -la ./final-coverage/
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        directory: ./final-coverage
+        flags: platform-integration
+        name: platform-integration-coverage
+        fail_ci_if_error: false
+        verbose: true

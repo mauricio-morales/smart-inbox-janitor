@@ -21,13 +21,13 @@
     <Grid RowDefinitions="Auto,*,Auto">
         
         <!-- Navigation Header -->
-        <Border Grid.Row="0" Background="#2E7D32" Height="48" Padding="16,0">
+        <Border Grid.Row="0" Background="{DynamicResource StatusSuccessText}" Height="48" Padding="16,0">
         <Grid>
             <Grid ColumnDefinitions="Auto,*,Auto">
                 
                 <!-- App Icon and Title -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                    <Border Background="#4CAF50" Width="32" Height="32" CornerRadius="16">
+                    <Border Background="{DynamicResource StatusSuccess}" Width="32" Height="32" CornerRadius="16">
                         <TextBlock Text="🐼" FontSize="20" 
                                   HorizontalAlignment="Center" 
                                   VerticalAlignment="Center"/>
@@ -39,7 +39,7 @@
                                   Foreground="White"/>
                         <TextBlock Text="{Binding CurrentViewDescription}" 
                                   FontSize="11" 
-                                  Foreground="#C8E6C9"/>
+                                  Foreground="{DynamicResource TextOnAccent}"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -104,7 +104,7 @@
 
         <!-- Status Bar -->
         <Border Grid.Row="2" 
-                Background="#F5F5F5" 
+                Background="{DynamicResource BackgroundPrimary}" 
                 Height="32"
                 Padding="16,0"
                 IsVisible="{Binding ShowStatusBar}">
@@ -135,11 +135,11 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                     <TextBlock Text="Dashboard Ready" 
                               FontSize="11" 
-                              Foreground="#4CAF50"
+                              Foreground="{DynamicResource StatusSuccess}"
                               IsVisible="{Binding CanAccessMainDashboard}"/>
                     <TextBlock Text="Setup Required" 
                               FontSize="11" 
-                              Foreground="#FF5722"
+                              Foreground="{DynamicResource StatusError}"
                               IsVisible="{Binding !CanAccessMainDashboard}"/>
                     
                     <TextBlock Text="{Binding WindowTitle}" 
@@ -158,15 +158,15 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#4CAF50"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource StatusSuccess}"/>
             <Setter Property="CornerRadius" Value="4"/>
             <Setter Property="Padding" Value="8,4"/>
             <Setter Property="MinWidth" Value="80"/>
         </Style>
         
         <Style Selector="Button.nav-button:pointerover">
-            <Setter Property="Background" Value="#4CAF50"/>
-            <Setter Property="BorderBrush" Value="#66BB6A"/>
+            <Setter Property="Background" Value="{DynamicResource StatusSuccess}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource StatusSuccess}"/>
         </Style>
         
         <Style Selector="Button.nav-button:disabled">

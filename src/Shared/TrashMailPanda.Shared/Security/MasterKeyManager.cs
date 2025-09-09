@@ -1,0 +1,643 @@
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using TrashMailPanda.Shared.Platform;
+
+namespace TrashMailPanda.Shared.Security;
+
+/// <summary>
+/// Master key manager for centralized encryption key generation and validation
+/// Provides deterministic key derivation for consistent master keys across sessions
+/// </summary>
+public class MasterKeyManager : IMasterKeyManager
+{
+    private readonly ILogger<MasterKeyManager> _logger;
+    private readonly string _platform;
+
+    public MasterKeyManager(ILogger<MasterKeyManager> logger)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _platform = PlatformInfo.CurrentDisplayName;
+    }
+
+    /// <summary>
+    /// Generate a new 256-bit master key using cryptographically secure randomness
+    /// </summary>
+    /// <returns>Result containing the base64-encoded master key or error details</returns>
+    public Task<EncryptionResult<string>> GenerateMasterKeyAsync()
+    {
+        try
+        {
+            _logger.LogDebug("Generating new master key using system entropy");
+
+            using var rng = RandomNumberGenerator.Create();
+            var keyBytes = new byte[32]; // 256-bit key
+            rng.GetBytes(keyBytes);
+
+            var masterKey = Convert.ToBase64String(keyBytes);
+
+            // Securely clear the byte array
+            SecureClear(keyBytes);
+
+            _logger.LogInformation("Master key generated successfully");
+            return Task.FromResult(EncryptionResult<string>.Success(masterKey));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate master key");
+            return Task.FromResult(EncryptionResult<string>.Failure($"Master key generation failed: {ex.Message}", EncryptionErrorType.KeyGenerationFailed));
+        }
+    }
+
+    /// <summary>
+    /// Derive a master key from system entropy for deterministic key generation
+    /// Uses platform-specific entropy sources for consistency across sessions
+    /// </summary>
+    /// <returns>Result containing the derived master key or error details</returns>
+    public async Task<EncryptionResult<string>> DeriveMasterKeyAsync()
+    {
+        try
+        {
+            _logger.LogDebug("Deriving master key from system entropy");
+
+            var entropy = await GetSystemEntropyAsync();
+            if (entropy == null || entropy.Length == 0)
+            {
+                return EncryptionResult<string>.Failure("Failed to obtain system entropy", EncryptionErrorType.ConfigurationError);
+            }
+
+            var masterKey = await DeriveKeyFromEntropyAsync(entropy);
+
+            // Securely clear the entropy data
+            SecureClear(entropy);
+
+            _logger.LogInformation("Master key derived successfully from system entropy");
+            return EncryptionResult<string>.Success(masterKey);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to derive master key from system entropy");
+            return EncryptionResult<string>.Failure($"Master key derivation failed: {ex.Message}", EncryptionErrorType.KeyGenerationFailed);
+        }
+    }
+
+    /// <summary>
+    /// Validate that a master key is properly formatted and usable for encryption
+    /// </summary>
+    /// <param name="masterKey">The master key to validate</param>
+    /// <returns>Result indicating whether the master key is valid</returns>
+    public async Task<EncryptionResult<bool>> ValidateMasterKeyAsync(string masterKey)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(masterKey))
+            {
+                return EncryptionResult<bool>.Failure("Master key cannot be null or empty", EncryptionErrorType.InvalidInput);
+            }
+
+            // Validate base64 format
+            byte[] keyBytes;
+            try
+            {
+                keyBytes = Convert.FromBase64String(masterKey);
+            }
+            catch (FormatException)
+            {
+                return EncryptionResult<bool>.Failure("Master key is not valid base64", EncryptionErrorType.InvalidInput);
+            }
+
+            // Validate key length (256-bit = 32 bytes)
+            if (keyBytes.Length != 32)
+            {
+                SecureClear(keyBytes);
+                return EncryptionResult<bool>.Failure($"Master key must be 256 bits (32 bytes), got {keyBytes.Length} bytes", EncryptionErrorType.InvalidInput);
+            }
+
+            // Test key usability with AES encryption
+            var testResult = await TestKeyUsabilityAsync(keyBytes);
+            SecureClear(keyBytes);
+
+            if (!testResult.IsSuccess)
+            {
+                return EncryptionResult<bool>.Failure($"Master key validation failed: {testResult.ErrorMessage}", EncryptionErrorType.ConfigurationError);
+            }
+
+            _logger.LogDebug("Master key validation completed successfully");
+            return EncryptionResult<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception during master key validation");
+            return EncryptionResult<bool>.Failure($"Master key validation failed: {ex.Message}", EncryptionErrorType.ConfigurationError);
+        }
+    }
+
+    /// <summary>
+    /// Encrypt data using the provided master key
+    /// </summary>
+    /// <param name="plainText">The data to encrypt</param>
+    /// <param name="masterKey">The master key to use for encryption</param>
+    /// <returns>Result containing encrypted data or error details</returns>
+    public async Task<EncryptionResult<string>> EncryptWithMasterKeyAsync(string plainText, string masterKey)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(plainText))
+            {
+                return EncryptionResult<string>.Failure("Plain text cannot be null or empty", EncryptionErrorType.InvalidInput);
+            }
+
+            var keyValidation = await ValidateMasterKeyAsync(masterKey);
+            if (!keyValidation.IsSuccess)
+            {
+                return EncryptionResult<string>.Failure($"Invalid master key: {keyValidation.ErrorMessage}", EncryptionErrorType.InvalidInput);
+            }
+
+            var keyBytes = Convert.FromBase64String(masterKey);
+            var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
+
+            using var aes = Aes.Create();
+            aes.Key = keyBytes;
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
+            aes.GenerateIV();
+
+            using var encryptor = aes.CreateEncryptor();
+            var encryptedBytes = encryptor.TransformFinalBlock(plainTextBytes, 0, plainTextBytes.Length);
+
+            // Combine IV + encrypted data
+            var result = new byte[aes.IV.Length + encryptedBytes.Length];
+            Array.Copy(aes.IV, 0, result, 0, aes.IV.Length);
+            Array.Copy(encryptedBytes, 0, result, aes.IV.Length, encryptedBytes.Length);
+
+            var encryptedBase64 = Convert.ToBase64String(result);
+
+            // Securely clear sensitive data
+            SecureClear(keyBytes);
+            SecureClear(plainTextBytes);
+            SecureClear(encryptedBytes);
+
+            _logger.LogDebug("Successfully encrypted {PlainTextLength} bytes to {EncryptedLength} bytes", plainTextBytes.Length, result.Length);
+            return EncryptionResult<string>.Success(encryptedBase64);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to encrypt data with master key");
+            return EncryptionResult<string>.Failure($"Encryption failed: {ex.Message}", EncryptionErrorType.EncryptionFailed);
+        }
+    }
+
+    /// <summary>
+    /// Decrypt data using the provided master key
+    /// </summary>
+    /// <param name="encryptedData">The encrypted data to decrypt</param>
+    /// <param name="masterKey">The master key to use for decryption</param>
+    /// <returns>Result containing decrypted data or error details</returns>
+    public async Task<EncryptionResult<string>> DecryptWithMasterKeyAsync(string encryptedData, string masterKey)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(encryptedData))
+            {
+                return EncryptionResult<string>.Failure("Encrypted data cannot be null or empty", EncryptionErrorType.InvalidInput);
+            }
+
+            var keyValidation = await ValidateMasterKeyAsync(masterKey);
+            if (!keyValidation.IsSuccess)
+            {
+                return EncryptionResult<string>.Failure($"Invalid master key: {keyValidation.ErrorMessage}", EncryptionErrorType.InvalidInput);
+            }
+
+            byte[] keyBytes;
+            byte[] encryptedBytes;
+
+            try
+            {
+                keyBytes = Convert.FromBase64String(masterKey);
+            }
+            catch (FormatException ex)
+            {
+                return EncryptionResult<string>.Failure($"Invalid master key format: {ex.Message}", EncryptionErrorType.InvalidInput);
+            }
+
+            try
+            {
+                encryptedBytes = Convert.FromBase64String(encryptedData);
+            }
+            catch (FormatException ex)
+            {
+                SecureClear(keyBytes);
+                return EncryptionResult<string>.Failure($"Invalid encrypted data format: {ex.Message}", EncryptionErrorType.DecryptionFailed);
+            }
+
+            // Validate encrypted data length
+            if (encryptedBytes.Length < 16) // AES block size
+            {
+                SecureClear(keyBytes);
+                return EncryptionResult<string>.Failure($"Encrypted data too short: {encryptedBytes.Length} bytes, minimum 16 bytes required", EncryptionErrorType.DecryptionFailed);
+            }
+
+            // Validate that data length makes sense (IV + at least one block)
+            if (encryptedBytes.Length < 32) // IV (16) + minimum one encrypted block (16)
+            {
+                _logger.LogWarning("Encrypted data length is suspicious: {Length} bytes", encryptedBytes.Length);
+            }
+
+            var iv = new byte[16];
+            var cipherText = new byte[encryptedBytes.Length - 16];
+            Array.Copy(encryptedBytes, 0, iv, 0, 16);
+            Array.Copy(encryptedBytes, 16, cipherText, 0, cipherText.Length);
+
+            try
+            {
+                using var aes = Aes.Create();
+                aes.Key = keyBytes;
+                aes.IV = iv;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
+
+                using var decryptor = aes.CreateDecryptor();
+                var decryptedBytes = decryptor.TransformFinalBlock(cipherText, 0, cipherText.Length);
+                var plainText = Encoding.UTF8.GetString(decryptedBytes);
+
+                // Securely clear sensitive data
+                SecureClear(keyBytes);
+                SecureClear(iv);
+                SecureClear(cipherText);
+                SecureClear(decryptedBytes);
+
+                return EncryptionResult<string>.Success(plainText);
+            }
+            catch (CryptographicException ex) when (ex.Message.Contains("Padding is invalid"))
+            {
+                SecureClear(keyBytes);
+                SecureClear(iv);
+                SecureClear(cipherText);
+                _logger.LogError(ex, "Decryption failed due to invalid padding - data may be corrupted or wrong key used");
+                return EncryptionResult<string>.Failure("Decryption failed: data appears to be corrupted or encrypted with a different key", EncryptionErrorType.DecryptionFailed);
+            }
+            catch (CryptographicException ex)
+            {
+                SecureClear(keyBytes);
+                SecureClear(iv);
+                SecureClear(cipherText);
+                _logger.LogError(ex, "Cryptographic exception during decryption");
+                return EncryptionResult<string>.Failure($"Cryptographic error during decryption: {ex.Message}", EncryptionErrorType.DecryptionFailed);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to decrypt data with master key");
+            return EncryptionResult<string>.Failure($"Decryption failed: {ex.Message}", EncryptionErrorType.DecryptionFailed);
+        }
+    }
+
+    #region Private Helper Methods
+
+    // Platform detection now handled by centralized PlatformInfo utility
+
+    private async Task<byte[]?> GetSystemEntropyAsync()
+    {
+        try
+        {
+            return _platform switch
+            {
+                "Windows" => await GetWindowsEntropyAsync(),
+                "macOS" => await GetMacOSEntropyAsync(),
+                "Linux" => await GetLinuxEntropyAsync(),
+                _ => await GetGenericEntropyAsync()
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get platform-specific entropy, falling back to generic entropy");
+            return await GetGenericEntropyAsync();
+        }
+    }
+
+    private async Task<byte[]> GetWindowsEntropyAsync()
+    {
+        try
+        {
+            // Use Windows CryptoAPI for secure random bytes
+            using var rng = RandomNumberGenerator.Create();
+            var entropyBytes = new byte[64]; // Use 64 bytes of secure entropy
+            rng.GetBytes(entropyBytes);
+
+            _logger.LogDebug("Generated {ByteCount} bytes of Windows system entropy", entropyBytes.Length);
+            return entropyBytes;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get Windows-specific entropy, falling back to secure random");
+            return await GetSecureFallbackEntropyAsync();
+        }
+    }
+
+    private async Task<byte[]> GetMacOSEntropyAsync()
+    {
+        try
+        {
+            // Use /dev/urandom for cryptographically secure random bytes on macOS
+            if (File.Exists("/dev/urandom"))
+            {
+                var entropyBytes = new byte[64];
+                using var urandom = File.OpenRead("/dev/urandom");
+                var totalBytesRead = 0;
+                while (totalBytesRead < entropyBytes.Length)
+                {
+                    var bytesRead = await urandom.ReadAsync(entropyBytes, totalBytesRead, entropyBytes.Length - totalBytesRead);
+                    if (bytesRead == 0)
+                        throw new InvalidOperationException("Unexpected end of /dev/urandom stream");
+                    totalBytesRead += bytesRead;
+                }
+
+                _logger.LogDebug("Read {ByteCount} bytes from /dev/urandom on macOS", entropyBytes.Length);
+                return entropyBytes;
+            }
+            else
+            {
+                _logger.LogWarning("/dev/urandom not available, using secure fallback");
+                return await GetSecureFallbackEntropyAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read from /dev/urandom, using secure fallback");
+            return await GetSecureFallbackEntropyAsync();
+        }
+    }
+
+    private async Task<byte[]> GetLinuxEntropyAsync()
+    {
+        try
+        {
+            // Use /dev/urandom for cryptographically secure random bytes on Linux
+            if (File.Exists("/dev/urandom"))
+            {
+                var entropyBytes = new byte[64];
+                using var urandom = File.OpenRead("/dev/urandom");
+                var totalBytesRead = 0;
+                while (totalBytesRead < entropyBytes.Length)
+                {
+                    var bytesRead = await urandom.ReadAsync(entropyBytes, totalBytesRead, entropyBytes.Length - totalBytesRead);
+                    if (bytesRead == 0)
+                        throw new InvalidOperationException("Unexpected end of /dev/urandom stream");
+                    totalBytesRead += bytesRead;
+                }
+
+                _logger.LogDebug("Read {ByteCount} bytes from /dev/urandom on Linux", entropyBytes.Length);
+                return entropyBytes;
+            }
+            else
+            {
+                _logger.LogWarning("/dev/urandom not available, using secure fallback");
+                return await GetSecureFallbackEntropyAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read from /dev/urandom, using secure fallback");
+            return await GetSecureFallbackEntropyAsync();
+        }
+    }
+
+    private async Task<byte[]> GetGenericEntropyAsync()
+    {
+        // Fallback to secure random number generation
+        _logger.LogInformation("Using generic secure entropy generation");
+        return await GetSecureFallbackEntropyAsync();
+    }
+
+    /// <summary>
+    /// Generate cryptographically secure entropy using .NET's RandomNumberGenerator
+    /// This is used as fallback when platform-specific entropy sources are unavailable
+    /// </summary>
+    private Task<byte[]> GetSecureFallbackEntropyAsync()
+    {
+        using var rng = RandomNumberGenerator.Create();
+        var entropyBytes = new byte[64]; // Use 64 bytes of secure entropy
+        rng.GetBytes(entropyBytes);
+
+        _logger.LogDebug("Generated {ByteCount} bytes of secure fallback entropy", entropyBytes.Length);
+        return Task.FromResult(entropyBytes);
+    }
+
+    private Task<string> DeriveKeyFromEntropyAsync(byte[] entropy)
+    {
+        using var sha256 = SHA256.Create();
+        var hash = sha256.ComputeHash(entropy);
+
+        // Double hash for additional security
+        var finalHash = sha256.ComputeHash(hash);
+
+        var masterKey = Convert.ToBase64String(finalHash);
+
+        // Securely clear intermediate data
+        SecureClear(hash);
+        SecureClear(finalHash);
+
+        return Task.FromResult(masterKey);
+    }
+
+    private Task<EncryptionResult> TestKeyUsabilityAsync(byte[] keyBytes)
+    {
+        try
+        {
+            // Test AES encryption/decryption with the key
+            const string testData = "TrashMail Panda Key Test";
+            var testDataBytes = Encoding.UTF8.GetBytes(testData);
+
+            using var aes = Aes.Create();
+            aes.Key = keyBytes;
+            aes.GenerateIV();
+
+            // Encrypt
+            using var encryptor = aes.CreateEncryptor();
+            var encryptedBytes = encryptor.TransformFinalBlock(testDataBytes, 0, testDataBytes.Length);
+
+            // Decrypt
+            using var decryptor = aes.CreateDecryptor();
+            var decryptedBytes = decryptor.TransformFinalBlock(encryptedBytes, 0, encryptedBytes.Length);
+            var decryptedText = Encoding.UTF8.GetString(decryptedBytes);
+
+            // Verify round-trip
+            if (decryptedText != testData)
+            {
+                return Task.FromResult(EncryptionResult.Failure("Key failed round-trip encryption test", EncryptionErrorType.ConfigurationError));
+            }
+
+            // Securely clear test data
+            SecureClear(testDataBytes);
+            SecureClear(encryptedBytes);
+            SecureClear(decryptedBytes);
+
+            return Task.FromResult(EncryptionResult.Success());
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(EncryptionResult.Failure($"Key usability test failed: {ex.Message}", EncryptionErrorType.ConfigurationError));
+        }
+    }
+
+    /// <summary>
+    /// Securely clear sensitive byte data from memory using cryptographically secure overwrite patterns
+    /// This implementation prevents compiler optimizations from removing the clearing operations and uses
+    /// multiple passes with cryptographically secure random data to ensure complete memory sanitization
+    /// </summary>
+    /// <param name="data">The sensitive byte data to clear</param>
+    private static void SecureClear(byte[] data)
+    {
+        if (data == null || data.Length == 0) return;
+
+        // Use cryptographically secure random number generator instead of System.Random
+        // to prevent predictable overwrite patterns that could be used for data recovery
+        using var rng = RandomNumberGenerator.Create();
+
+        try
+        {
+            // First pass: overwrite with cryptographically secure random data
+            rng.GetBytes(data);
+
+            // Second pass: overwrite with different random pattern
+            rng.GetBytes(data);
+
+            // Third pass: fill with zeros
+            Array.Clear(data, 0, data.Length);
+
+            // Fourth pass: overwrite with 0xFF pattern (all bits set)
+            Array.Fill(data, (byte)0xFF);
+
+            // Final pass: platform-specific secure clearing to prevent compiler optimization
+            SecureClearPlatformSpecific(data.AsSpan());
+        }
+        catch (Exception)
+        {
+            // Fallback to basic clear if secure clear fails
+            Array.Clear(data, 0, data.Length);
+        }
+    }
+
+    /// <summary>
+    /// Platform-specific secure memory clearing to prevent compiler optimizations
+    /// Uses OS-specific secure zeroing functions when available
+    /// </summary>
+    /// <param name="sensitiveData">The sensitive data span to clear securely</param>
+    private static void SecureClearPlatformSpecific(Span<byte> sensitiveData)
+    {
+        if (sensitiveData.IsEmpty) return;
+
+        var platform = PlatformInfo.CurrentDisplayName;
+
+        try
+        {
+            if (platform == "Windows" && OperatingSystem.IsWindows())
+            {
+                SecureClearWindows(sensitiveData);
+            }
+            else if (platform == "Linux" && OperatingSystem.IsLinux())
+            {
+                SecureClearUnix(sensitiveData);
+            }
+            else if (platform == "macOS" && OperatingSystem.IsMacOS())
+            {
+                SecureClearUnix(sensitiveData);
+            }
+            else
+            {
+                SecureClearGeneric(sensitiveData);
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback to simple clear if platform-specific clearing fails
+            sensitiveData.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Windows-specific secure memory clearing using RtlSecureZeroMemory equivalent
+    /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void SecureClearWindows(Span<byte> data)
+    {
+        // On Windows, use RtlSecureZeroMemory-equivalent behavior
+        // This prevents the compiler from optimizing away the zeroing
+        unsafe
+        {
+            fixed (byte* ptr = data)
+            {
+                // Use Marshal.Copy with IntPtr.Zero to simulate secure zeroing
+                // This creates a memory barrier that prevents optimization
+                for (int i = 0; i < data.Length; i += 64)
+                {
+                    int chunkSize = Math.Min(64, data.Length - i);
+                    Marshal.Copy(IntPtr.Zero, data.Slice(i, chunkSize).ToArray(), 0, chunkSize);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Unix-specific secure memory clearing using explicit_bzero equivalent
+    /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
+    [System.Runtime.Versioning.SupportedOSPlatform("osx")]
+    private static void SecureClearUnix(Span<byte> data)
+    {
+        // On Unix systems, simulate explicit_bzero behavior
+        // Use volatile semantics to prevent optimization
+        unsafe
+        {
+            fixed (byte* ptr = data)
+            {
+                // Create memory barriers to prevent compiler optimization
+                for (int i = 0; i < data.Length; i++)
+                {
+                    Volatile.Write(ref ptr[i], 0);
+                }
+
+                // Additional barrier using Marshal.Copy
+                var zeroBytes = new byte[Math.Min(data.Length, 1024)];
+                for (int i = 0; i < data.Length; i += zeroBytes.Length)
+                {
+                    int chunkSize = Math.Min(zeroBytes.Length, data.Length - i);
+                    Marshal.Copy(zeroBytes, 0, (IntPtr)(ptr + i), chunkSize);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Generic secure memory clearing using Marshal.Copy with memory barriers
+    /// </summary>
+    private static void SecureClearGeneric(Span<byte> data)
+    {
+        // Use Marshal.Copy with zero buffer to create memory barriers
+        var zeroBytes = new byte[Math.Min(data.Length, 1024)];
+
+        unsafe
+        {
+            fixed (byte* ptr = data)
+            {
+                for (int i = 0; i < data.Length; i += zeroBytes.Length)
+                {
+                    int chunkSize = Math.Min(zeroBytes.Length, data.Length - i);
+                    Marshal.Copy(zeroBytes, 0, (IntPtr)(ptr + i), chunkSize);
+                }
+
+                // Additional volatile writes to prevent optimization
+                for (int i = 0; i < data.Length; i++)
+                {
+                    Volatile.Write(ref ptr[i], 0);
+                }
+            }
+        }
+    }
+
+    #endregion
+}

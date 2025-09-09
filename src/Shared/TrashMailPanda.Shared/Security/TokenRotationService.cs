@@ -27,7 +27,6 @@ public class TokenRotationService : ITokenRotationService, IDisposable
     private bool _disposed = false;
     private int _totalRotations = 0;
     private int _totalFailures = 0;
-    private DateTime? _lastHealthCheck;
 
     // Default settings
     private static readonly TimeSpan DefaultCheckInterval = TimeSpan.FromHours(6);
@@ -55,11 +54,11 @@ public class TokenRotationService : ITokenRotationService, IDisposable
         InitializeDefaultProviderSettings();
     }
 
-    public async Task<Result<bool>> StartRotationSchedulerAsync(CancellationToken cancellationToken = default)
+    public Task<Result<bool>> StartRotationSchedulerAsync(CancellationToken cancellationToken = default)
     {
         if (_disposed)
         {
-            return Result<bool>.Failure(new InvalidOperationError("Service has been disposed"));
+            return Task.FromResult(Result<bool>.Failure(new InvalidOperationError("Service has been disposed")));
         }
 
         lock (_operationLock)
@@ -67,7 +66,7 @@ public class TokenRotationService : ITokenRotationService, IDisposable
             if (_isRunning)
             {
                 _logger.LogInformation("Token rotation scheduler is already running");
-                return Result<bool>.Success(true);
+                return Task.FromResult(Result<bool>.Success(true));
             }
 
             try
@@ -77,24 +76,24 @@ public class TokenRotationService : ITokenRotationService, IDisposable
                 _isRunning = true;
 
                 _logger.LogInformation("Token rotation scheduler started with check interval: {Interval}", CheckInterval);
-                return Result<bool>.Success(true);
+                return Task.FromResult(Result<bool>.Success(true));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to start token rotation scheduler");
-                return Result<bool>.Failure(new ProcessingError($"Failed to start scheduler: {ex.Message}", null, ex));
+                return Task.FromResult(Result<bool>.Failure(new ProcessingError($"Failed to start scheduler: {ex.Message}", null, ex)));
             }
         }
     }
 
-    public async Task<Result<bool>> StopRotationSchedulerAsync(CancellationToken cancellationToken = default)
+    public Task<Result<bool>> StopRotationSchedulerAsync(CancellationToken cancellationToken = default)
     {
         lock (_operationLock)
         {
             if (!_isRunning)
             {
                 _logger.LogInformation("Token rotation scheduler is already stopped");
-                return Result<bool>.Success(true);
+                return Task.FromResult(Result<bool>.Success(true));
             }
 
             try
@@ -104,12 +103,12 @@ public class TokenRotationService : ITokenRotationService, IDisposable
                 _isRunning = false;
 
                 _logger.LogInformation("Token rotation scheduler stopped");
-                return Result<bool>.Success(true);
+                return Task.FromResult(Result<bool>.Success(true));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to stop token rotation scheduler");
-                return Result<bool>.Failure(new ProcessingError($"Failed to stop scheduler: {ex.Message}", null, ex));
+                return Task.FromResult(Result<bool>.Failure(new ProcessingError($"Failed to stop scheduler: {ex.Message}", null, ex)));
             }
         }
     }
@@ -142,7 +141,7 @@ public class TokenRotationService : ITokenRotationService, IDisposable
                         IsFinalAttempt = true
                     });
 
-                    return Result<TokenRotationResult>.Failure(new ProcessingError($"Failed to check token expiry: {needsRotation.Error.Message}"));
+                    return Result<TokenRotationResult>.Failure(new ProcessingError($"Failed to check token expiry: {needsRotation.Error?.Message ?? "Unknown error"}"));
                 }
 
                 var result = new TokenRotationResult
@@ -280,29 +279,29 @@ public class TokenRotationService : ITokenRotationService, IDisposable
         }
     }
 
-    public async Task<Result<DateTime?>> GetNextRotationTimeAsync(string providerName, CancellationToken cancellationToken = default)
+    public Task<Result<DateTime?>> GetNextRotationTimeAsync(string providerName, CancellationToken cancellationToken = default)
     {
         try
         {
             if (_providerStatistics.TryGetValue(providerName, out var stats))
             {
-                return Result<DateTime?>.Success(stats.NextScheduledRotation);
+                return Task.FromResult(Result<DateTime?>.Success(stats.NextScheduledRotation));
             }
 
-            return Result<DateTime?>.Success(null);
+            return Task.FromResult(Result<DateTime?>.Success(null));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Exception getting next rotation time for provider: {ProviderName}", providerName);
-            return Result<DateTime?>.Failure(new ProcessingError($"Failed to get next rotation time: {ex.Message}", null, ex));
+            return Task.FromResult(Result<DateTime?>.Failure(new ProcessingError($"Failed to get next rotation time: {ex.Message}", null, ex)));
         }
     }
 
-    public async Task<Result<bool>> ConfigureProviderRotationAsync(string providerName, TokenRotationSettings settings, CancellationToken cancellationToken = default)
+    public Task<Result<bool>> ConfigureProviderRotationAsync(string providerName, TokenRotationSettings settings, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(providerName))
         {
-            return Result<bool>.Failure(new ValidationError("Provider name cannot be null or empty"));
+            return Task.FromResult(Result<bool>.Failure(new ValidationError("Provider name cannot be null or empty")));
         }
 
         try
@@ -319,16 +318,16 @@ public class TokenRotationService : ITokenRotationService, IDisposable
                 (key, oldStats) => oldStats with { IsRotationEnabled = settings.IsEnabled });
 
             _logger.LogInformation("Updated rotation settings for provider: {ProviderName}", providerName);
-            return Result<bool>.Success(true);
+            return Task.FromResult(Result<bool>.Success(true));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Exception configuring rotation for provider: {ProviderName}", providerName);
-            return Result<bool>.Failure(new ConfigurationError($"Failed to configure rotation: {ex.Message}", null, ex));
+            return Task.FromResult(Result<bool>.Failure(new ConfigurationError($"Failed to configure rotation: {ex.Message}", null, ex)));
         }
     }
 
-    public async Task<Result<TokenRotationStatistics>> GetRotationStatisticsAsync(CancellationToken cancellationToken = default)
+    public Task<Result<TokenRotationStatistics>> GetRotationStatisticsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -343,12 +342,12 @@ public class TokenRotationService : ITokenRotationService, IDisposable
                 CollectedAt = DateTime.UtcNow
             };
 
-            return Result<TokenRotationStatistics>.Success(statistics);
+            return Task.FromResult(Result<TokenRotationStatistics>.Success(statistics));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Exception getting rotation statistics");
-            return Result<TokenRotationStatistics>.Failure(new ProcessingError($"Failed to get statistics: {ex.Message}", null, ex));
+            return Task.FromResult(Result<TokenRotationStatistics>.Failure(new ProcessingError($"Failed to get statistics: {ex.Message}", null, ex)));
         }
     }
 
@@ -359,6 +358,7 @@ public class TokenRotationService : ITokenRotationService, IDisposable
 
         try
         {
+            await Task.CompletedTask; // Ensure method is properly async
             _logger.LogDebug("Rotation timer elapsed, checking all providers");
 
             var providers = new[] { "gmail", "openai" };
@@ -452,7 +452,7 @@ public class TokenRotationService : ITokenRotationService, IDisposable
         return Result<bool>.Success(false);
     }
 
-    private async Task<Result<TokenRotationResult>> RotateGmailTokensAsync(CancellationToken cancellationToken)
+    private Task<Result<TokenRotationResult>> RotateGmailTokensAsync(CancellationToken cancellationToken)
     {
         // In a real implementation, you would:
         // 1. Retrieve the refresh token from secure storage
@@ -469,10 +469,10 @@ public class TokenRotationService : ITokenRotationService, IDisposable
             PreviousExpiryDate = DateTime.UtcNow.AddMinutes(-30)
         };
 
-        return Result<TokenRotationResult>.Success(result);
+        return Task.FromResult(Result<TokenRotationResult>.Success(result));
     }
 
-    private async Task<Result<TokenRotationResult>> RotateOpenAITokensAsync(CancellationToken cancellationToken)
+    private Task<Result<TokenRotationResult>> RotateOpenAITokensAsync(CancellationToken cancellationToken)
     {
         // OpenAI API keys don't typically need rotation unless compromised
         // This would be a manual process initiated by the user
@@ -484,7 +484,7 @@ public class TokenRotationService : ITokenRotationService, IDisposable
             Reason = "OpenAI API keys don't require automatic rotation"
         };
 
-        return Result<TokenRotationResult>.Success(result);
+        return Task.FromResult(Result<TokenRotationResult>.Success(result));
     }
 
     private void UpdateProviderStatistics(string providerName, bool success)

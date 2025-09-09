@@ -12,5 +12,9 @@ public enum EncryptionErrorType
     PlatformNotSupported,
     KeychainError,
     ConfigurationError,
-    UnknownError
+    UnknownError,
+    KeychainCorrupted,
+    KeychainAccessDenied,
+    NetworkError,
+    TransientError
 }
