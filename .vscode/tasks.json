@@ -221,7 +221,7 @@
     },
     {
       "label": "🎨 Format Code",
-      "detail": "Format code using dotnet format",
+      "detail": "Format code using dotnet format (includes whitespace)",
       "type": "shell",
       "command": "dotnet", 
       "args": ["format"],
@@ -230,6 +230,32 @@
         "echo": true,
         "reveal": "always",
         "panel": "shared"
+      },
+      "problemMatcher": [],
+      "dependsOrder": "sequence",
+      "dependsOn": ["Format Whitespace", "Format Styles"]
+    },
+    {
+      "label": "Format Whitespace",
+      "detail": "Format whitespace using dotnet format whitespace",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["format", "whitespace"],
+      "presentation": {
+        "echo": false,
+        "reveal": "silent"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Format Styles", 
+      "detail": "Format code styles using dotnet format style",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["format", "style"],
+      "presentation": {
+        "echo": false,
+        "reveal": "silent"
       },
       "problemMatcher": []
     },

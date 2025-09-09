@@ -5,12 +5,20 @@
 
 echo "Running dotnet format before commit..."
 
-# Run dotnet format and check if any files were changed
-dotnet format --include-generated --verbosity diagnostic
+# Run dotnet format (whitespace, style, and analyzers) and check if any files were changed
+dotnet format whitespace --include-generated --verbosity diagnostic
+dotnet_whitespace_exit=$?
 
-# Check if dotnet format made any changes
-if [ $? -ne 0 ]; then
+dotnet format style --include-generated --verbosity diagnostic  
+dotnet_style_exit=$?
+
+dotnet format analyzers --include-generated --verbosity diagnostic
+dotnet_analyzers_exit=$?
+
+# Check if any dotnet format commands failed
+if [ $dotnet_whitespace_exit -ne 0 ] || [ $dotnet_style_exit -ne 0 ] || [ $dotnet_analyzers_exit -ne 0 ]; then
     echo "Error: dotnet format failed. Please fix formatting issues and try again."
+    echo "Exit codes - whitespace: $dotnet_whitespace_exit, style: $dotnet_style_exit, analyzers: $dotnet_analyzers_exit"
     exit 1
 fi
 
