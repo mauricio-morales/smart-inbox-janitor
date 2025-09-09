@@ -90,6 +90,11 @@
         <!-- Main Content Area -->
         <ContentControl Grid.Row="1" Content="{Binding CurrentView}">
             <ContentControl.DataTemplates>
+                <!-- Onboarding Coordinator Template -->
+                <DataTemplate DataType="vm:OnboardingCoordinatorViewModel">
+                    <views:OnboardingCoordinatorView/>
+                </DataTemplate>
+                
                 <!-- Provider Status Dashboard Template -->
                 <DataTemplate DataType="vm:ProviderStatusDashboardViewModel">
                     <views:ProviderStatusDashboard/>

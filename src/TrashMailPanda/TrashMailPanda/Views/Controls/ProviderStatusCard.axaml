@@ -55,26 +55,10 @@
                         BorderBrush="{DynamicResource BorderLight}"
                         BorderThickness="1"
                         VerticalAlignment="Center">
-                    <!-- Provider Logo PNG - Hardcoded for each provider -->
-                    <Grid>
-                        <!-- Gmail Logo -->
-                        <Image Source="/Assets/Logos/gmail-logo.png"
-                               Width="20" Height="20"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               IsVisible="{Binding ProviderName, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Gmail}"/>
-                        
-                        <!-- OpenAI Logo -->
-                        <Image Source="/Assets/Logos/openai-logo.png"
-                               Width="20" Height="20"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               IsVisible="{Binding ProviderName, Converter={StaticResource StringEqualsConverter}, ConverterParameter=OpenAI}"/>
-                        
-                        <!-- SQLite Logo -->
-                        <Image Source="/Assets/Logos/sqlite-logo.png"
-                               Width="20" Height="20"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               IsVisible="{Binding ProviderName, Converter={StaticResource StringEqualsConverter}, ConverterParameter=SQLite}"/>
-                    </Grid>
+                    <!-- Provider Logo using converter -->
+                    <Image Source="{Binding ProviderDisplayName, Converter={StaticResource ProviderNameToLogoConverter}}"
+                           Width="20" Height="20"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
 
                 <!-- Provider Info -->
@@ -85,11 +69,12 @@
                               FontSize="16"
                               FontWeight="SemiBold"
                               Foreground="{DynamicResource TextPrimary}"/>
-                    <TextBlock Text="{Binding ProviderDescription}"
-                              FontSize="11"
-                              Foreground="{DynamicResource TextTertiary}"
+                    <TextBlock Text="{Binding StatusDisplayText}"
+                              FontSize="12"
+                              FontWeight="Medium"
+                              Foreground="{DynamicResource TextSecondary}"
                               TextWrapping="Wrap"
-                              MaxLines="2"/>
+                              MaxLines="1"/>
                 </StackPanel>
 
                 <!-- Status Icon -->
@@ -108,32 +93,6 @@
 
             <!-- Status Content Section -->
             <StackPanel Grid.Row="1" Spacing="8">
-                
-                <!-- Current Status Display -->
-                <Border Background="{DynamicResource HoverBackground}"
-                        Padding="10" 
-                        CornerRadius="4">
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="{Binding StatusDisplayText}"
-                                  FontSize="13"
-                                  FontWeight="Medium"
-                                  Foreground="{DynamicResource TextPrimary}"
-                                  TextWrapping="Wrap"/>
-                        
-                        <!-- Error Message (if any) -->
-                        <TextBlock Text="{Binding ErrorMessage}"
-                                  FontSize="11"
-                                  Foreground="{DynamicResource StatusErrorText}"
-                                  TextWrapping="Wrap"
-                                  IsVisible="{Binding !!ErrorMessage}"/>
-                        
-                        <!-- Last Refresh Time -->
-                        <TextBlock Text="{Binding LastRefreshTime, StringFormat='Last checked: {0}'}"
-                                  FontSize="10"
-                                  Foreground="{DynamicResource TextTertiary}"
-                                  IsVisible="{Binding !IsLoading}"/>
-                    </StackPanel>
-                </Border>
 
                 <!-- Authenticated User Information (when available) -->
                 <Border IsVisible="{Binding HasAuthenticatedUser}"
@@ -205,11 +164,11 @@
             <!-- Action Section -->
             <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
                 
-                <!-- Main Action Button -->
+                <!-- Action Button (for providers needing setup) -->
                 <Button Grid.Column="0"
                         Command="{Binding HandleActionCommand}"
                         IsEnabled="{Binding CanConfigureProvider}"
-                        IsVisible="{Binding ShowSetupButton}"
+                        IsVisible="{Binding RequiresSetup}"
                         Classes="primary"
                         HorizontalAlignment="Stretch"
                         Padding="12,8">
@@ -223,16 +182,16 @@
                     </StackPanel>
                 </Button>
 
-                <!-- Status Button (for healthy providers) -->
+                <!-- Status Display (for healthy providers) -->
                 <Button Grid.Column="0"
-                        IsVisible="{Binding ShowSetupButton, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}"
+                        IsVisible="{Binding IsHealthy}"
                         Classes="provider-status"
                         HorizontalAlignment="Stretch"
                         Padding="12,8"
                         IsEnabled="False">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="✅" FontSize="13"/>
-                        <TextBlock Text="Connected and working" 
+                        <TextBlock Text="Successfully configured" 
                                   FontSize="13"
                                   FontWeight="Medium"
                                   Foreground="{DynamicResource AccentBlue}"/>

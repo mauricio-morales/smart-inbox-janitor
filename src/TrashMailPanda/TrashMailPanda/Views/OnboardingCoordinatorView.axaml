@@ -1,0 +1,265 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TrashMailPanda.ViewModels"
+             xmlns:views="using:TrashMailPanda.Views"
+             xmlns:conv="using:TrashMailPanda.Converters"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             x:Class="TrashMailPanda.Views.OnboardingCoordinatorView"
+             x:DataType="vm:OnboardingCoordinatorViewModel">
+
+    <Design.DataContext>
+        <vm:OnboardingCoordinatorViewModel/>
+    </Design.DataContext>
+
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </UserControl.Resources>
+
+    <!-- Main Onboarding Container -->
+    <Grid RowDefinitions="Auto,*" 
+          Background="{DynamicResource BackgroundPrimary}">
+        
+        <!-- Navigation Header -->
+        <Border Grid.Row="0" 
+                Background="{DynamicResource CardBackground}"
+                BorderBrush="{DynamicResource BorderLight}"
+                BorderThickness="0,0,0,1"
+                Padding="24,16">
+            
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                
+                <!-- Back Button -->
+                <Button Grid.Column="0"
+                        Command="{Binding GoBackCommand}"
+                        IsVisible="{Binding ShowBackButton}"
+                        IsEnabled="{Binding CanGoBack}"
+                        Classes="navigation-back"
+                        Padding="12,8">
+                    <TextBlock Text="{Binding BackButtonText}" FontSize="13"/>
+                </Button>
+
+                <!-- Title and Status -->
+                <StackPanel Grid.Column="1" 
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Spacing="4">
+                    <TextBlock Text="{Binding Title}"
+                              FontSize="18"
+                              FontWeight="SemiBold"
+                              Foreground="{DynamicResource TextPrimary}"
+                              HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding StatusMessage}"
+                              FontSize="12"
+                              Foreground="{DynamicResource TextTertiary}"
+                              HorizontalAlignment="Center"
+                              IsVisible="{Binding !!StatusMessage}"/>
+                </StackPanel>
+
+                <!-- Quick Actions -->
+                <StackPanel Grid.Column="2" 
+                           Orientation="Horizontal"
+                           Spacing="8">
+                    
+                    <!-- Refresh Button -->
+                    <Button Command="{Binding RefreshCommand}"
+                            IsEnabled="{Binding !IsLoading}"
+                            Classes="navigation-action"
+                            Padding="8"
+                            ToolTip.Tip="Refresh current view">
+                        <TextBlock Text="🔄" FontSize="14"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1">
+            
+            <!-- Loading Overlay -->
+            <Border IsVisible="{Binding IsLoading}"
+                    Background="{DynamicResource BackgroundPrimary}"
+                    ZIndex="100">
+                <StackPanel HorizontalAlignment="Center" 
+                           VerticalAlignment="Center"
+                           Spacing="16">
+                    <Border Width="48" Height="48" 
+                            CornerRadius="24"
+                            Background="{DynamicResource AccentBlue}"
+                            Classes="loading-spinner">
+                        <TextBlock Text="🐼" 
+                                  FontSize="24" 
+                                  HorizontalAlignment="Center" 
+                                  VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="{Binding StatusMessage, FallbackValue='Loading...'}"
+                              FontSize="16"
+                              FontWeight="Medium"
+                              Foreground="{DynamicResource TextPrimary}"
+                              HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Error State -->
+            <Border IsVisible="{Binding HasError}"
+                    Background="{DynamicResource BackgroundPrimary}"
+                    Padding="64"
+                    ZIndex="99">
+                <Border Background="{DynamicResource StatusErrorBackground}"
+                        BorderBrush="{DynamicResource StatusErrorBorder}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="32"
+                        MaxWidth="500"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <StackPanel Spacing="16" HorizontalAlignment="Center">
+                        <TextBlock Text="⚠️" 
+                                  FontSize="48"
+                                  HorizontalAlignment="Center"/>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Onboarding Error"
+                                      FontSize="20"
+                                      FontWeight="SemiBold"
+                                      Foreground="{DynamicResource StatusErrorText}"
+                                      HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding ErrorMessage}"
+                                      FontSize="14"
+                                      Foreground="{DynamicResource StatusErrorText}"
+                                      TextWrapping="Wrap"
+                                      HorizontalAlignment="Center"
+                                      TextAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" 
+                                   Spacing="12"
+                                   HorizontalAlignment="Center">
+                            <Button Command="{Binding ClearErrorCommand}"
+                                    Classes="secondary"
+                                    Padding="16,12">
+                                <TextBlock Text="Dismiss" FontSize="13"/>
+                            </Button>
+                            <Button Command="{Binding RefreshCommand}"
+                                    Classes="primary"
+                                    Padding="16,12">
+                                <TextBlock Text="Try Again" FontSize="13"/>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Border>
+
+            <!-- Content Container -->
+            <ContentControl Content="{Binding CurrentViewModel}"
+                           IsVisible="{Binding !IsLoading}"
+                           HorizontalAlignment="Stretch"
+                           VerticalAlignment="Stretch">
+                
+                <!-- Data Templates for different ViewModels -->
+                <ContentControl.DataTemplates>
+                    
+                    <!-- Welcome Screen -->
+                    <DataTemplate DataType="vm:OnboardingWelcomeViewModel">
+                        <views:OnboardingWelcomeView/>
+                    </DataTemplate>
+                    
+                    <!-- Dashboard Screen -->
+                    <DataTemplate DataType="vm:OnboardingDashboardViewModel">
+                        <views:OnboardingDashboardView/>
+                    </DataTemplate>
+                    
+                </ContentControl.DataTemplates>
+            </ContentControl>
+        </Grid>
+    </Grid>
+
+    <!-- Styles -->
+    <UserControl.Styles>
+        
+        <!-- Navigation Back Button -->
+        <Style Selector="Button.navigation-back">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderMedium}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        
+        <Style Selector="Button.navigation-back:pointerover">
+            <Setter Property="Background" Value="{DynamicResource HoverBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+        
+        <Style Selector="Button.navigation-back:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+
+        <!-- Navigation Action Button -->
+        <Style Selector="Button.navigation-action">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderMedium}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        
+        <Style Selector="Button.navigation-action:pointerover">
+            <Setter Property="Background" Value="{DynamicResource HoverBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+
+        <!-- Navigation Skip Button -->
+        <Style Selector="Button.navigation-skip">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource StatusWarningBorder}"/>
+            <Setter Property="Foreground" Value="{DynamicResource StatusWarningText}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        
+        <Style Selector="Button.navigation-skip:pointerover">
+            <Setter Property="Background" Value="{DynamicResource StatusWarningBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource StatusWarningTextStrong}"/>
+        </Style>
+
+        <!-- Loading Spinner Animation -->
+        <Style Selector="Border.loading-spinner">
+            <Style.Animations>
+                <Animation Duration="0:0:2" IterationCount="Infinite">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="RotateTransform.Angle" Value="0"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="RotateTransform.Angle" Value="360"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+            <Setter Property="RenderTransform">
+                <RotateTransform/>
+            </Setter>
+        </Style>
+
+        <!-- Secondary Button -->
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderMedium}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        
+        <Style Selector="Button.secondary:pointerover">
+            <Setter Property="Background" Value="{DynamicResource HoverBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+
+        <!-- Content transitions -->
+        <Style Selector="ContentControl">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+    </UserControl.Styles>
+</UserControl>

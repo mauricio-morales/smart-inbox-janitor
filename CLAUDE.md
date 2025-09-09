@@ -664,3 +664,4 @@ var color = Color.Parse("#E57373");
 - Error tracking through Result pattern without exceptions
 - Provider health monitoring with detailed diagnostics
 - Security audit trails in encrypted database
+- This application used to be named Smart Inbox Janitor. We've renamed it to TrashMail Panda. Any reference you read to "Smart Inbox Janitor", just be aware that we are talking about TrashMail Panda and ever try to rename back to Smart Inbox Janitor nor create resources with that legacy name.

@@ -103,6 +103,9 @@ public static class ServiceCollectionExtensions
         // Add background health monitoring service
         services.AddHostedService<ProviderHealthMonitorService>();
 
+        // Add onboarding service
+        services.AddSingleton<IOnboardingService, OnboardingService>();
+
         return services;
     }
 
@@ -126,12 +129,19 @@ public static class ServiceCollectionExtensions
         services.AddTransient<OpenAISetupViewModel>();
         services.AddTransient<GmailSetupViewModel>();
 
+        // Add onboarding ViewModels
+        services.AddTransient<OnboardingWelcomeViewModel>();
+        services.AddTransient<OnboardingDashboardViewModel>();
+        services.AddTransient<OnboardingCoordinatorViewModel>();
+
         // Register MainWindowViewModel with navigation dependencies
         services.AddTransient<MainWindowViewModel>(provider => new MainWindowViewModel(
             provider.GetRequiredService<ProviderStatusDashboardViewModel>(),
             provider.GetRequiredService<EmailDashboardViewModel>(),
+            provider.GetRequiredService<OnboardingCoordinatorViewModel>(),
             provider,
             provider.GetRequiredService<IGmailOAuthService>(),
+            provider.GetRequiredService<IOnboardingService>(),
             provider.GetRequiredService<ILogger<MainWindowViewModel>>()
         ));
 

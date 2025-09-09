@@ -1,0 +1,386 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TrashMailPanda.ViewModels"
+             xmlns:conv="using:TrashMailPanda.Converters"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="TrashMailPanda.Views.OnboardingWelcomeView"
+             x:DataType="vm:OnboardingWelcomeViewModel">
+
+    <Design.DataContext>
+        <vm:OnboardingWelcomeViewModel/>
+    </Design.DataContext>
+
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </UserControl.Resources>
+
+    <!-- Main Welcome Container -->
+    <Grid RowDefinitions="Auto,*,Auto" 
+          Background="{DynamicResource BackgroundPrimary}"
+          Margin="32">
+        
+        <!-- Progress Bar -->
+        <Border Grid.Row="0" 
+                Background="{DynamicResource CardBackground}"
+                BorderBrush="{DynamicResource BorderLight}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="20"
+                Margin="0,0,0,24">
+            <StackPanel Spacing="8">
+                <TextBlock Text="{Binding ProgressText}"
+                          FontSize="14"
+                          FontWeight="Medium"
+                          Foreground="{DynamicResource TextSecondary}"
+                          HorizontalAlignment="Center"/>
+                <ProgressBar Value="{Binding ProgressValue}"
+                            Height="8"
+                            Background="{DynamicResource HoverBackground}"
+                            Foreground="{DynamicResource AccentBlue}"
+                            CornerRadius="4"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Welcome Content -->
+        <ScrollViewer Grid.Row="1" 
+                     HorizontalScrollBarVisibility="Disabled"
+                     VerticalScrollBarVisibility="Auto">
+            
+            <Grid ColumnDefinitions="*,*" 
+                  RowDefinitions="Auto,*,Auto,Auto"
+                  Margin="32">
+                
+                <!-- Header Section - Spans both columns -->
+                <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="0" 
+                           Spacing="20" 
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,32">
+                    
+                    <!-- App Icon and Title -->
+                    <StackPanel Orientation="Horizontal" 
+                               Spacing="16" 
+                               HorizontalAlignment="Center">
+                        <Border Background="{DynamicResource AccentBlue}" 
+                                Width="64" Height="64" 
+                                CornerRadius="32">
+                            <TextBlock Text="🐼" 
+                                      FontSize="36" 
+                                      HorizontalAlignment="Center" 
+                                      VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}"
+                                      FontSize="32"
+                                      FontWeight="Bold"
+                                      Foreground="{DynamicResource TextPrimary}"/>
+                            <TextBlock Text="{Binding Subtitle}"
+                                      FontSize="16"
+                                      Foreground="{DynamicResource TextSecondary}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Description -->
+                    <TextBlock Text="{Binding Description}"
+                              FontSize="16"
+                              Foreground="{DynamicResource TextPrimary}"
+                              TextWrapping="Wrap"
+                              LineHeight="1.5"
+                              HorizontalAlignment="Center"
+                              TextAlignment="Center"
+                              Margin="32,16,32,24"/>
+                </StackPanel>
+
+                <!-- Left Column - Features -->
+                <Border Grid.Column="0" Grid.Row="1"
+                        Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource BorderLight}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="24"
+                        VerticalAlignment="Top"
+                        Margin="0,0,16,0"
+                        BoxShadow="{DynamicResource DashboardCardShadow}">
+                    
+                    <StackPanel Spacing="16">
+                        
+                        <!-- Features Heading -->
+                        <TextBlock Text="{Binding FeaturesHeading}"
+                                  FontSize="20"
+                                  FontWeight="SemiBold"
+                                  Foreground="{DynamicResource TextPrimary}"
+                                  HorizontalAlignment="Center"/>
+
+                        <!-- Features List -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="🔒 Safe email processing - no permanent deletions"
+                                      FontSize="14"
+                                      Foreground="{DynamicResource TextPrimary}"
+                                      TextWrapping="Wrap"
+                                      Padding="16"
+                                      Background="{DynamicResource HoverBackground}"/>
+                            <TextBlock Text="🤖 AI-powered intelligent email classification"
+                                      FontSize="14"
+                                      Foreground="{DynamicResource TextPrimary}"
+                                      TextWrapping="Wrap"
+                                      Padding="16"
+                                      Background="{DynamicResource HoverBackground}"/>
+                            <TextBlock Text="⚡ Bulk operations for efficient inbox management"
+                                      FontSize="14"
+                                      Foreground="{DynamicResource TextPrimary}"
+                                      TextWrapping="Wrap"
+                                      Padding="16"
+                                      Background="{DynamicResource HoverBackground}"/>
+                            <TextBlock Text="📊 Clear insights into your email habits"
+                                      FontSize="14"
+                                      Foreground="{DynamicResource TextPrimary}"
+                                      TextWrapping="Wrap"
+                                      Padding="16"
+                                      Background="{DynamicResource HoverBackground}"/>
+                            <TextBlock Text="🔐 Secure local storage with encryption"
+                                      FontSize="14"
+                                      Foreground="{DynamicResource TextPrimary}"
+                                      TextWrapping="Wrap"
+                                      Padding="16"
+                                      Background="{DynamicResource HoverBackground}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Right Column - Additional Info or Quick Start -->
+                <Border Grid.Column="1" Grid.Row="1"
+                        Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource BorderLight}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="24"
+                        VerticalAlignment="Top"
+                        Margin="16,0,0,0"
+                        BoxShadow="{DynamicResource DashboardCardShadow}">
+                    
+                    <StackPanel Spacing="16">
+                        
+                        <!-- Quick Start Heading -->
+                        <TextBlock Text="Quick Start Guide"
+                                  FontSize="20"
+                                  FontWeight="SemiBold"
+                                  Foreground="{DynamicResource TextPrimary}"
+                                  HorizontalAlignment="Center"/>
+
+                        <!-- Quick Start Steps -->
+                        <StackPanel Spacing="12">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Border Background="{DynamicResource AccentBlue}"
+                                        Width="24" Height="24"
+                                        CornerRadius="12">
+                                    <TextBlock Text="1" 
+                                              FontSize="12" 
+                                              FontWeight="Bold"
+                                              Foreground="White"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Connect your Gmail account securely"
+                                          FontSize="14"
+                                          Foreground="{DynamicResource TextPrimary}"
+                                          TextWrapping="Wrap"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                            
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Border Background="{DynamicResource AccentBlue}"
+                                        Width="24" Height="24"
+                                        CornerRadius="12">
+                                    <TextBlock Text="2" 
+                                              FontSize="12" 
+                                              FontWeight="Bold"
+                                              Foreground="White"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Set up AI classification preferences"
+                                          FontSize="14"
+                                          Foreground="{DynamicResource TextPrimary}"
+                                          TextWrapping="Wrap"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                            
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Border Background="{DynamicResource AccentBlue}"
+                                        Width="24" Height="24"
+                                        CornerRadius="12">
+                                    <TextBlock Text="3" 
+                                              FontSize="12" 
+                                              FontWeight="Bold"
+                                              Foreground="White"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Start cleaning your inbox safely"
+                                          FontSize="14"
+                                          Foreground="{DynamicResource TextPrimary}"
+                                          TextWrapping="Wrap"
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Security Note -->
+                        <Border Background="{DynamicResource StatusInfoBackground}"
+                                BorderBrush="{DynamicResource StatusInfoBorder}"
+                                BorderThickness="1"
+                                Padding="12"
+                                CornerRadius="6"
+                                Margin="0,16,0,0">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="🔒 Your Privacy is Protected"
+                                          FontSize="12"
+                                          FontWeight="Medium"
+                                          Foreground="{DynamicResource StatusInfoText}"/>
+                                <TextBlock Text="All processing happens locally. Your emails are never sent to external servers."
+                                          FontSize="11"
+                                          Foreground="{DynamicResource StatusInfoText}"
+                                          TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+
+                <!-- Error Message - Spans both columns -->
+                <Border Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="3"
+                        IsVisible="{Binding HasError}"
+                        Background="{DynamicResource StatusErrorBackground}"
+                        BorderBrush="{DynamicResource StatusErrorBorder}"
+                        BorderThickness="1"
+                        Padding="16"
+                        CornerRadius="8"
+                        Margin="0,8,0,0">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="⚠️" FontSize="16"/>
+                            <TextBlock Text="Setup Issue"
+                                      FontSize="14"
+                                      FontWeight="Medium"
+                                      Foreground="{DynamicResource StatusErrorText}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                  FontSize="13"
+                                  Foreground="{DynamicResource StatusErrorText}"
+                                  TextWrapping="Wrap"/>
+                        <Button Command="{Binding ClearErrorCommand}"
+                                Classes="link"
+                                HorizontalAlignment="Right"
+                                Padding="4">
+                            <TextBlock Text="Dismiss" FontSize="12"/>
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Action Buttons -->
+        <Border Grid.Row="2" 
+                Background="{DynamicResource CardBackground}"
+                BorderBrush="{DynamicResource BorderLight}"
+                BorderThickness="1,0,1,1"
+                Padding="24"
+                Margin="0,24,0,0"
+                CornerRadius="0,0,8,8">
+            
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                
+                <!-- Skip Button -->
+                <Button Grid.Column="0"
+                        Command="{Binding SkipSetupCommand}"
+                        IsEnabled="{Binding !IsLoading}"
+                        Classes="secondary"
+                        Padding="16,12">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="⏭️" FontSize="14"/>
+                        <TextBlock Text="{Binding SkipButtonText}" 
+                                  FontSize="14"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Status Text -->
+                <StackPanel Grid.Column="1" 
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center">
+                    <TextBlock Text="Ready to set up your email assistant"
+                              FontSize="13"
+                              Foreground="{DynamicResource TextSecondary}"
+                              HorizontalAlignment="Center"
+                              IsVisible="{Binding !IsLoading}"/>
+                </StackPanel>
+
+                <!-- Proceed Button -->
+                <Button Grid.Column="2"
+                        Command="{Binding ProceedCommand}"
+                        IsEnabled="{Binding CanProceed}"
+                        Classes="primary"
+                        Padding="20,12">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding ProceedButtonText}" 
+                                  FontSize="14"
+                                  FontWeight="Medium"/>
+                        <TextBlock Text="→" 
+                                  FontSize="14"
+                                  Opacity="0.8"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+
+    <!-- Styles -->
+    <UserControl.Styles>
+        
+        <!-- Loading Animation -->
+        <Style Selector="Border.loading-pulse">
+            <Style.Animations>
+                <Animation Duration="0:0:1.5" IterationCount="Infinite">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="1.0"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="50%">
+                        <Setter Property="Opacity" Value="0.3"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1.0"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- Link Button Styling -->
+        <Style Selector="Button.link">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBlue}"/>
+        </Style>
+        
+        <Style Selector="Button.link:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+
+        <!-- Secondary Button Styling -->
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderMedium}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        
+        <Style Selector="Button.secondary:pointerover">
+            <Setter Property="Background" Value="{DynamicResource HoverBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+
+        <!-- Progress Bar Styling -->
+        <Style Selector="ProgressBar">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+    </UserControl.Styles>
+</UserControl>

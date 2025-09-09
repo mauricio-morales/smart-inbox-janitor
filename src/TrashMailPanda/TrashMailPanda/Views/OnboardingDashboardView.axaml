@@ -1,0 +1,465 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TrashMailPanda.ViewModels"
+             xmlns:controls="using:TrashMailPanda.Views.Controls"
+             xmlns:conv="using:TrashMailPanda.Converters"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+             x:Class="TrashMailPanda.Views.OnboardingDashboardView"
+             x:DataType="vm:OnboardingDashboardViewModel">
+
+    <Design.DataContext>
+        <vm:OnboardingDashboardViewModel/>
+    </Design.DataContext>
+
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" 
+          Background="{DynamicResource BackgroundPrimary}"
+          Margin="32">
+        
+        <!-- Progress Section -->
+        <Border Grid.Row="0" 
+                Background="{DynamicResource CardBackground}"
+                BorderBrush="{DynamicResource BorderLight}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="24"
+                Margin="0,0,0,24"
+                BoxShadow="{DynamicResource DashboardCardShadow}">
+            
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                
+                <!-- Progress Info -->
+                <StackPanel Grid.Column="0" Spacing="4">
+                    <TextBlock Text="{Binding ProgressText}"
+                              FontSize="16"
+                              FontWeight="Medium"
+                              Foreground="{DynamicResource TextPrimary}"/>
+                    <ProgressBar Value="{Binding ProgressValue}"
+                                Height="8"
+                                Width="200"
+                                Background="{DynamicResource HoverBackground}"
+                                Foreground="{DynamicResource AccentBlue}"
+                                CornerRadius="4"/>
+                </StackPanel>
+
+                <!-- Status -->
+                <StackPanel Grid.Column="1" 
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Spacing="4">
+                    <TextBlock Text="{Binding StatusMessage}"
+                              FontSize="14"
+                              Foreground="{DynamicResource TextSecondary}"
+                              HorizontalAlignment="Center"
+                              IsVisible="{Binding !!StatusMessage}"/>
+                    <TextBlock Text="{Binding LastRefresh, StringFormat='Last updated: {0:HH:mm:ss}'}"
+                              FontSize="12"
+                              Foreground="{DynamicResource TextTertiary}"
+                              HorizontalAlignment="Center"
+                              IsVisible="{Binding LastRefresh}"/>
+                </StackPanel>
+
+                <!-- Refresh Button -->
+                <Button Grid.Column="2"
+                        Command="{Binding RefreshCommand}"
+                        IsEnabled="{Binding !IsRefreshing}"
+                        Classes="secondary"
+                        Padding="12,8"
+                        ToolTip.Tip="Refresh provider status">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="🔄" FontSize="14"/>
+                        <TextBlock Text="{Binding RefreshButtonText}" FontSize="13"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Header Section -->
+        <Border Grid.Row="1" 
+                Background="{DynamicResource CardBackground}"
+                BorderBrush="{DynamicResource BorderLight}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="24"
+                Margin="0,0,0,24"
+                BoxShadow="{DynamicResource DashboardCardShadow}">
+            
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                
+                <!-- Title and Description -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}"
+                              FontSize="24"
+                              FontWeight="Bold"
+                              Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="{Binding Subtitle}"
+                              FontSize="14"
+                              Foreground="{DynamicResource TextSecondary}"
+                              Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <!-- Overall Status -->
+                <StackPanel Grid.Column="1" 
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Spacing="4">
+                    <TextBlock FontSize="14"
+                              FontWeight="Medium"
+                              HorizontalAlignment="Center"
+                              Foreground="{DynamicResource TextPrimary}">
+                        <Run Text="{Binding CompletedProviders}"/>
+                        <Run Text=" of "/>
+                        <Run Text="{Binding TotalProviders}"/>
+                        <Run Text=" providers ready"/>
+                    </TextBlock>
+                    <Border Background="{DynamicResource StatusSuccessBackground}"
+                            Padding="8,4"
+                            CornerRadius="4"
+                            IsVisible="{Binding AllRequiredProvidersReady}">
+                        <TextBlock Text="✅ All required providers ready!"
+                                  FontSize="12"
+                                  FontWeight="Medium"
+                                  Foreground="{DynamicResource StatusSuccessText}"
+                                  HorizontalAlignment="Center"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Continue Button -->
+                <Button Grid.Column="2"
+                        Command="{Binding ContinueToAppCommand}"
+                        IsEnabled="{Binding CanContinue}"
+                        Classes="primary"
+                        Padding="20,12"
+                        IsVisible="{Binding AllRequiredProvidersReady}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding ContinueButtonText}" 
+                                  FontSize="14"
+                                  FontWeight="Medium"/>
+                        <TextBlock Text="→" FontSize="14"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Providers Section -->
+        <ScrollViewer Grid.Row="2" 
+                     HorizontalScrollBarVisibility="Disabled"
+                     VerticalScrollBarVisibility="Auto">
+            
+            <StackPanel Spacing="24">
+                
+                <!-- Loading State -->
+                <Border IsVisible="{Binding IsLoading}"
+                        Background="{DynamicResource HoverBackground}"
+                        BorderBrush="{DynamicResource BorderMedium}"
+                        BorderThickness="1"
+                        Padding="32"
+                        CornerRadius="8"
+                        HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" 
+                               Spacing="12"
+                               HorizontalAlignment="Center">
+                        <Border Width="20" Height="20" 
+                                CornerRadius="10"
+                                Background="{DynamicResource AccentBlue}"
+                                Classes="loading-spinner"/>
+                        <TextBlock Text="Loading provider information..." 
+                                  FontSize="14"
+                                  VerticalAlignment="Center"
+                                  Foreground="{DynamicResource TextPrimary}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Error State -->
+                <Border IsVisible="{Binding HasError}"
+                        Background="{DynamicResource StatusErrorBackground}"
+                        BorderBrush="{DynamicResource StatusErrorBorder}"
+                        BorderThickness="1"
+                        Padding="20"
+                        CornerRadius="8">
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="⚠️" FontSize="16"/>
+                            <TextBlock Text="Setup Issue"
+                                      FontSize="16"
+                                      FontWeight="Medium"
+                                      Foreground="{DynamicResource StatusErrorText}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                  FontSize="14"
+                                  Foreground="{DynamicResource StatusErrorText}"
+                                  TextWrapping="Wrap"/>
+                        <Button Command="{Binding ClearErrorCommand}"
+                                Classes="link"
+                                HorizontalAlignment="Left"
+                                Padding="4">
+                            <TextBlock Text="Try Again" FontSize="13"/>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- Provider Cards Grid -->
+                <ItemsControl ItemsSource="{Binding Providers}"
+                             IsVisible="{Binding !IsLoading}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" 
+                                      HorizontalAlignment="Center"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource CardBackground}"
+                                    BorderBrush="{DynamicResource BorderLight}"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="24"
+                                    Margin="8"
+                                    Width="280"
+                                    BoxShadow="{DynamicResource ProviderCardShadow}"
+                                    Classes="OnboardingProviderCard">
+                                
+                                <Grid RowDefinitions="Auto,*,Auto">
+                                    
+                                    <!-- Provider Header -->
+                                    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,16">
+                                        
+                                        <!-- Provider Icon -->
+                                        <Border Width="40" Height="40" 
+                                                CornerRadius="20"
+                                                Background="{DynamicResource AccentBlue}"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding IconName, FallbackValue='⚙️'}"
+                                                      FontSize="20"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      Foreground="White"/>
+                                        </Border>
+
+                                        <!-- Provider Info -->
+                                        <StackPanel Grid.Column="1" 
+                                                   Margin="12,0,0,0" 
+                                                   VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding DisplayName}"
+                                                      FontSize="16"
+                                                      FontWeight="SemiBold"
+                                                      Foreground="{DynamicResource TextPrimary}"/>
+                                            <TextBlock Text="{Binding IsRequired, StringFormat='\{0:Required;Optional\}'}"
+                                                      FontSize="11"
+                                                      Foreground="{DynamicResource TextTertiary}"/>
+                                        </StackPanel>
+
+                                        <!-- Status Indicator -->
+                                        <Border Grid.Column="2"
+                                                Width="24" Height="24"
+                                                CornerRadius="12"
+                                                Background="{Binding Status.IsHealthy, StringFormat='\{0:#1FB885;#F56565\}'}"
+                                                VerticalAlignment="Top">
+                                            <TextBlock Text="{Binding Status.IsHealthy, StringFormat='\{0:✓;✗\}'}"
+                                                      FontSize="12"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      Foreground="White"/>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- Provider Content -->
+                                    <StackPanel Grid.Row="1" Spacing="12">
+                                        
+                                        <!-- Description -->
+                                        <TextBlock Text="{Binding Description}"
+                                                  FontSize="13"
+                                                  Foreground="{DynamicResource TextSecondary}"
+                                                  TextWrapping="Wrap"
+                                                  LineHeight="1.4"/>
+
+                                        <!-- Setup Instructions -->
+                                        <Border Background="{DynamicResource HoverBackground}"
+                                                Padding="12"
+                                                CornerRadius="6"
+                                                IsVisible="{Binding !Status.IsHealthy}">
+                                            <StackPanel Spacing="6">
+                                                <TextBlock Text="Setup Instructions:"
+                                                          FontSize="12"
+                                                          FontWeight="Medium"
+                                                          Foreground="{DynamicResource TextPrimary}"/>
+                                                <TextBlock Text="{Binding SetupInstructions}"
+                                                          FontSize="11"
+                                                          Foreground="{DynamicResource TextSecondary}"
+                                                          TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Success State -->
+                                        <Border Background="{DynamicResource StatusSuccessBackground}"
+                                                Padding="12"
+                                                CornerRadius="6"
+                                                IsVisible="{Binding Status.IsHealthy}">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="✅ Provider is ready!"
+                                                          FontSize="12"
+                                                          FontWeight="Medium"
+                                                          Foreground="{DynamicResource StatusSuccessText}"/>
+                                                <TextBlock Text="This provider is working correctly and ready to use."
+                                                          FontSize="11"
+                                                          Foreground="{DynamicResource StatusSuccessText}"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Error State -->
+                                        <Border Background="{DynamicResource StatusErrorBackground}"
+                                                Padding="12"
+                                                CornerRadius="6"
+                                                IsVisible="{Binding !!SetupErrorMessage}">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="⚠️ Setup Issue"
+                                                          FontSize="12"
+                                                          FontWeight="Medium"
+                                                          Foreground="{DynamicResource StatusErrorText}"/>
+                                                <TextBlock Text="{Binding SetupErrorMessage}"
+                                                          FontSize="11"
+                                                          Foreground="{DynamicResource StatusErrorText}"
+                                                          TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- Action Button -->
+                                    <Button Grid.Row="2"
+                                            Command="{Binding $parent[UserControl].DataContext.RequestProviderSetupCommand}"
+                                            CommandParameter="{Binding ProviderName}"
+                                            IsEnabled="{Binding !Status.IsHealthy}"
+                                            Classes="primary"
+                                            HorizontalAlignment="Stretch"
+                                            Margin="0,16,0,0"
+                                            Padding="12,10">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{Binding Status.IsHealthy, StringFormat='\{0:✅ Ready;⚙️ Set Up\}'}"
+                                                      FontSize="13"
+                                                      FontWeight="Medium"/>
+                                            <TextBlock Text="→" 
+                                                      FontSize="13"
+                                                      IsVisible="{Binding !Status.IsHealthy}"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Optional Providers Info -->
+                <Border IsVisible="{Binding HasOptionalProviders}"
+                        Background="{DynamicResource StatusInfoBackground}"
+                        BorderBrush="{DynamicResource StatusInfoBorder}"
+                        BorderThickness="1"
+                        Padding="16"
+                        CornerRadius="8"
+                        Margin="16,0">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="💡 Optional Providers"
+                                  FontSize="14"
+                                  FontWeight="Medium"
+                                  Foreground="{DynamicResource StatusInfoText}"/>
+                        <TextBlock FontSize="12"
+                                  Foreground="{DynamicResource StatusInfoText}"
+                                  TextWrapping="Wrap">
+                            You can set up optional providers later. The app will work with just the required providers configured.
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Border Grid.Row="3" 
+                Background="{DynamicResource CardBackground}"
+                BorderBrush="{DynamicResource BorderLight}"
+                BorderThickness="1,0,1,1"
+                Padding="24,16"
+                Margin="0,24,0,0"
+                CornerRadius="0,0,8,8">
+            
+            <Grid ColumnDefinitions="*,Auto">
+                
+                <!-- Help Text -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock FontSize="12"
+                              Foreground="{DynamicResource TextTertiary}">
+                        Need help? Check the setup instructions for each provider above.
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Setup Progress Button (for incomplete setups) -->
+                <Button Grid.Column="1"
+                        Command="{Binding ContinueToAppCommand}"
+                        IsEnabled="{Binding CanContinue}"
+                        Classes="primary"
+                        Padding="16,10"
+                        IsVisible="{Binding !AllRequiredProvidersReady}">
+                    <TextBlock Text="{Binding ContinueButtonText}" 
+                              FontSize="13"
+                              FontWeight="Medium"/>
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+
+    <!-- Styles -->
+    <UserControl.Styles>
+        
+        <!-- Loading Spinner Animation -->
+        <Style Selector="Border.loading-spinner">
+            <Style.Animations>
+                <Animation Duration="0:0:1" IterationCount="Infinite">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="RotateTransform.Angle" Value="0"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="RotateTransform.Angle" Value="360"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+            <Setter Property="RenderTransform">
+                <RotateTransform/>
+            </Setter>
+        </Style>
+
+        <!-- Onboarding Provider Card Hover -->
+        <Style Selector="Border.OnboardingProviderCard:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderMedium}"/>
+            <Setter Property="BoxShadow" Value="{DynamicResource ProviderCardHoverShadow}"/>
+        </Style>
+
+        <!-- Link Button -->
+        <Style Selector="Button.link">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBlue}"/>
+        </Style>
+        
+        <Style Selector="Button.link:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+
+        <!-- Secondary Button -->
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderMedium}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        
+        <Style Selector="Button.secondary:pointerover">
+            <Setter Property="Background" Value="{DynamicResource HoverBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+    </UserControl.Styles>
+</UserControl>

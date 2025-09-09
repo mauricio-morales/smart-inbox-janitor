@@ -10,20 +10,22 @@ using TrashMailPanda.Services;
 namespace TrashMailPanda.ViewModels;
 
 /// <summary>
-/// Main window ViewModel that manages navigation between provider dashboard and email dashboard
+/// Main window ViewModel that manages navigation between onboarding, provider dashboard and email dashboard
 /// Serves as the central navigation hub for the application
 /// </summary>
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly ProviderStatusDashboardViewModel _providerDashboardViewModel;
     private readonly EmailDashboardViewModel _emailDashboardViewModel;
+    private readonly OnboardingCoordinatorViewModel _onboardingCoordinatorViewModel;
     private readonly IServiceProvider _serviceProvider;
     private readonly IGmailOAuthService _gmailOAuthService;
+    private readonly IOnboardingService _onboardingService;
     private readonly ILogger<MainWindowViewModel> _logger;
 
     // Navigation State
     [ObservableProperty]
-    private ViewModelBase _currentView;
+    private ViewModelBase _currentView = null!; // Will be set in InitializeStartupViewAsync
 
     [ObservableProperty]
     private bool _canAccessMainDashboard = false;
@@ -44,14 +46,18 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel(
         ProviderStatusDashboardViewModel providerDashboardViewModel,
         EmailDashboardViewModel emailDashboardViewModel,
+        OnboardingCoordinatorViewModel onboardingCoordinatorViewModel,
         IServiceProvider serviceProvider,
         IGmailOAuthService gmailOAuthService,
+        IOnboardingService onboardingService,
         ILogger<MainWindowViewModel> logger)
     {
         _providerDashboardViewModel = providerDashboardViewModel ?? throw new ArgumentNullException(nameof(providerDashboardViewModel));
         _emailDashboardViewModel = emailDashboardViewModel ?? throw new ArgumentNullException(nameof(emailDashboardViewModel));
+        _onboardingCoordinatorViewModel = onboardingCoordinatorViewModel ?? throw new ArgumentNullException(nameof(onboardingCoordinatorViewModel));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _gmailOAuthService = gmailOAuthService ?? throw new ArgumentNullException(nameof(gmailOAuthService));
+        _onboardingService = onboardingService ?? throw new ArgumentNullException(nameof(onboardingService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // Subscribe to provider dashboard events
@@ -64,15 +70,18 @@ public partial class MainWindowViewModel : ViewModelBase
         _emailDashboardViewModel.ReturnToDashboardRequested += OnReturnToDashboardRequested;
         _emailDashboardViewModel.EmailProcessingRequested += OnEmailProcessingRequested;
 
+        // Subscribe to onboarding events
+        _onboardingCoordinatorViewModel.OnboardingCompleted += OnOnboardingCompleted;
+        _onboardingCoordinatorViewModel.OnboardingSkipped += OnOnboardingSkipped;
+        _onboardingCoordinatorViewModel.ProviderSetupRequested += OnProviderSetupRequested;
+
         // Monitor CanAccessMainDashboard changes from provider dashboard
         _providerDashboardViewModel.PropertyChanged += OnProviderDashboardPropertyChanged;
 
-        // Start with provider dashboard as the default view
-        _currentView = _providerDashboardViewModel;
-        WindowTitle = "TrashMail Panda - Provider Status";
-        NavigationStatus = "Provider Status Dashboard";
+        // Initialize with appropriate view based on onboarding state
+        _ = Task.Run(InitializeStartupViewAsync);
 
-        _logger.LogInformation("MainWindowViewModel initialized with provider dashboard as default view");
+        _logger.LogInformation("MainWindowViewModel initialized with startup view determination");
     }
 
     /// <summary>
@@ -516,6 +525,99 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsOnEmailDashboard => CurrentView == _emailDashboardViewModel;
 
     /// <summary>
+    /// Initialize the startup view based on onboarding state
+    /// </summary>
+    private async Task InitializeStartupViewAsync()
+    {
+        try
+        {
+            IsNavigating = true;
+            NavigationStatus = "Checking onboarding status...";
+
+            // Check if onboarding is complete
+            var stateResult = await _onboardingService.GetOnboardingStateAsync();
+            if (stateResult.IsSuccess)
+            {
+                var state = stateResult.Value!;
+                var canAccessResult = await _onboardingService.CanAccessMainApplicationAsync();
+
+                if (state.IsOnboardingComplete && canAccessResult.IsSuccess && canAccessResult.Value)
+                {
+                    // Onboarding is complete, show provider dashboard
+                    _logger.LogInformation("Onboarding complete, showing provider dashboard");
+                    CurrentView = _providerDashboardViewModel;
+                    WindowTitle = "TrashMail Panda - Provider Status";
+                    NavigationStatus = "Provider Status Dashboard";
+                }
+                else
+                {
+                    // Show onboarding flow
+                    _logger.LogInformation("Onboarding incomplete, showing onboarding coordinator");
+                    CurrentView = _onboardingCoordinatorViewModel;
+                    WindowTitle = "TrashMail Panda - Setup";
+                    NavigationStatus = "Setting up TrashMail Panda";
+                }
+            }
+            else
+            {
+                // Default to onboarding if we can't determine state
+                _logger.LogWarning("Failed to get onboarding state, defaulting to onboarding: {Error}", stateResult.Error?.Message);
+                CurrentView = _onboardingCoordinatorViewModel;
+                WindowTitle = "TrashMail Panda - Setup";
+                NavigationStatus = "Setting up TrashMail Panda";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception during startup view initialization");
+            // Default to onboarding on error
+            CurrentView = _onboardingCoordinatorViewModel;
+            WindowTitle = "TrashMail Panda - Setup";
+            NavigationStatus = "Setting up TrashMail Panda";
+        }
+        finally
+        {
+            IsNavigating = false;
+        }
+    }
+
+    /// <summary>
+    /// Handle onboarding completion
+    /// </summary>
+    private void OnOnboardingCompleted(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger.LogInformation("Onboarding completed, transitioning to provider dashboard");
+            CurrentView = _providerDashboardViewModel;
+            WindowTitle = "TrashMail Panda - Provider Status";
+            NavigationStatus = "Provider Status Dashboard";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception handling onboarding completion");
+        }
+    }
+
+    /// <summary>
+    /// Handle onboarding skip
+    /// </summary>
+    private void OnOnboardingSkipped(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger.LogInformation("Onboarding skipped, transitioning to provider dashboard");
+            CurrentView = _providerDashboardViewModel;
+            WindowTitle = "TrashMail Panda - Provider Status";
+            NavigationStatus = "Provider Status Dashboard";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception handling onboarding skip");
+        }
+    }
+
+    /// <summary>
     /// Cleanup when view model is no longer needed
     /// </summary>
     public void Cleanup()
@@ -534,6 +636,13 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _emailDashboardViewModel.ReturnToDashboardRequested -= OnReturnToDashboardRequested;
             _emailDashboardViewModel.EmailProcessingRequested -= OnEmailProcessingRequested;
+        }
+
+        if (_onboardingCoordinatorViewModel != null)
+        {
+            _onboardingCoordinatorViewModel.OnboardingCompleted -= OnOnboardingCompleted;
+            _onboardingCoordinatorViewModel.OnboardingSkipped -= OnOnboardingSkipped;
+            _onboardingCoordinatorViewModel.ProviderSetupRequested -= OnProviderSetupRequested;
         }
 
         _logger.LogInformation("MainWindowViewModel cleanup completed");
