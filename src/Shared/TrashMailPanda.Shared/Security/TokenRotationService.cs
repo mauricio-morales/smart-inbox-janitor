@@ -27,7 +27,6 @@ public class TokenRotationService : ITokenRotationService, IDisposable
     private bool _disposed = false;
     private int _totalRotations = 0;
     private int _totalFailures = 0;
-    private DateTime? _lastHealthCheck;
 
     // Default settings
     private static readonly TimeSpan DefaultCheckInterval = TimeSpan.FromHours(6);

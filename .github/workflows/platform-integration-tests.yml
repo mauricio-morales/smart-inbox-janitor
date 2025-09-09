@@ -104,6 +104,7 @@ jobs:
           --results-directory ./coverage-${{ matrix.platform }} \
           --filter "Category=Integration&Platform=${{ matrix.platform-trait }}" \
           --logger "console;verbosity=detailed" \
+          --blame-hang --blame-hang-timeout 10m \
           -- RunConfiguration.TestSessionTimeout=${{ matrix.timeout }}
       shell: bash
       env:
@@ -123,6 +124,7 @@ jobs:
           --results-directory ./coverage-security-${{ matrix.platform }} \
           --filter "Category=Integration&Category=Security" \
           --logger "console;verbosity=detailed" \
+          --blame-hang --blame-hang-timeout 10m \
           -- RunConfiguration.TestSessionTimeout=90000
       shell: bash
 
