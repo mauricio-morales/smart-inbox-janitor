@@ -203,17 +203,33 @@ public class SecureStorageIntegrationTests : IDisposable
                 var removeResult = await secureStorageManager2.RemoveCredentialAsync(testKey);
                 Assert.True(removeResult.IsSuccess, "Cleanup should succeed");
 
-                // Explicitly dispose in correct order to ensure database connections are closed
+                // CRITICAL: Explicit disposal order to properly close SQLite connections on Windows
+                // This is essential because SQLite WAL mode can keep file handles open even after disposal
                 credentialEncryption2.Dispose();
-                storageProvider2.Dispose(); // Explicitly dispose to ensure SQLite connection is closed
+                
+                // Force SQLite connection cleanup with platform-specific considerations
+                storageProvider2.Dispose();
+                
+                // WINDOWS-SPECIFIC: Give SQLite WAL mode extra time to release file handles
+                // SQLite on Windows needs additional time after disposal to release WAL/SHM file locks
+                if (OperatingSystem.IsWindows())
+                {
+                    Console.WriteLine("DEBUG: Windows detected - allowing extra time for SQLite file handle release");
+                    await Task.Delay(750); // Increased from 500ms based on CI failures
+                }
             }
 
-            // Add a longer delay to ensure SQLite has fully released file handles on Windows
-            await Task.Delay(500);
+            // ADDITIONAL CLEANUP: Force garbage collection to release any remaining managed handles
+            // This ensures that any finalizers for SQLite connections run before file cleanup
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
         }
         finally
         {
-            // Clean up temp database file with retry logic for Windows file locking issues
+            // CRITICAL: Clean up temp database file with Windows-specific retry logic for SQLite file locking issues
+            // SQLite on Windows uses WAL (Write-Ahead Logging) mode which creates auxiliary .wal and .shm files
+            // that can remain locked even after connection disposal. This requires platform-specific cleanup.
             await CleanupTempFileAsync(tempDbPath);
         }
     }
@@ -469,21 +485,42 @@ public class SecureStorageIntegrationTests : IDisposable
     }
 
     /// <summary>
-    /// Clean up temp database file with retry logic to handle Windows file locking issues
+    /// Clean up temp database file with retry logic to handle Windows file locking issues.
+    /// 
+    /// ROOT CAUSE: SQLite on Windows uses WAL (Write-Ahead Logging) mode which creates auxiliary 
+    /// files (.wal, .shm) that can remain locked even after SqliteConnection.Dispose() is called.
+    /// Windows file system doesn't immediately release these locks, causing IOException when 
+    /// attempting to delete the main database file.
+    /// 
+    /// SOLUTION: This method implements platform-specific cleanup with retry logic and handles
+    /// all SQLite-related files (main .db, .wal, .shm) that may be created.
     /// </summary>
     private static async Task CleanupTempFileAsync(string filePath)
     {
+        // STEP 1: Check if main database file exists
         if (!File.Exists(filePath))
             return;
 
         const int maxRetries = 10;
         const int initialDelayMs = 200;
 
+        // STEP 2: Collect all SQLite-related files that may need cleanup
+        // SQLite can create auxiliary files: database.db-wal, database.db-shm
+        var filesToClean = new List<string> { filePath };
+        var walFile = filePath + "-wal";
+        var shmFile = filePath + "-shm";
+        
+        if (File.Exists(walFile)) filesToClean.Add(walFile);
+        if (File.Exists(shmFile)) filesToClean.Add(shmFile);
+
+        Console.WriteLine($"DEBUG: Cleaning up {filesToClean.Count} SQLite files: {string.Join(", ", filesToClean.Select(Path.GetFileName))}");
+
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
-                // Force aggressive garbage collection to help release any lingering file handles
+                // STEP 3: Force aggressive garbage collection to release any lingering managed file handles
+                // This is critical on Windows where finalizers may not have run yet
                 for (int i = 0; i < 3; i++)
                 {
                     GC.Collect();
@@ -491,38 +528,90 @@ public class SecureStorageIntegrationTests : IDisposable
                 }
                 GC.Collect();
 
-                // On Windows, try to release SQLite-specific locks
+                // STEP 4: Windows-specific SQLite cleanup strategy
                 if (OperatingSystem.IsWindows())
                 {
-                    // Additional delay on first attempt to let SQLite finish cleanup
+                    // Give SQLite more time on first attempt - WAL files can take longer to release
                     if (attempt == 1)
                     {
-                        await Task.Delay(300);
+                        Console.WriteLine($"DEBUG: Windows platform detected, allowing {500}ms for SQLite WAL cleanup");
+                        await Task.Delay(500);
+                    }
+                    
+                    // On subsequent attempts, try to force WAL checkpoint by briefly reconnecting
+                    // This is a desperate measure to get SQLite to release WAL file locks
+                    if (attempt > 3)
+                    {
+                        await ForceWindowsSqliteCleanup(filePath);
                     }
                 }
 
-                File.Delete(filePath);
+                // STEP 5: Delete all files in reverse order (auxiliary files first, then main database)
+                var filesToDelete = filesToClean.Where(File.Exists).ToList();
+                filesToDelete.Reverse(); // Delete .wal/.shm first, then main .db
+                
+                foreach (var file in filesToDelete)
+                {
+                    File.Delete(file);
+                    Console.WriteLine($"DEBUG: Successfully deleted {Path.GetFileName(file)}");
+                }
+                
+                Console.WriteLine($"DEBUG: All SQLite files cleaned up successfully on attempt {attempt}");
                 return; // Success
             }
             catch (IOException ex) when (attempt < maxRetries)
             {
-                // File is still locked, wait and retry with exponential backoff
+                // File is still locked by SQLite engine, wait and retry with exponential backoff
                 var delay = initialDelayMs * attempt;
-                Console.WriteLine($"Attempt {attempt}/{maxRetries}: File locked ({ex.Message}), retrying in {delay}ms");
+                Console.WriteLine($"RETRY {attempt}/{maxRetries}: SQLite file locked ({ex.Message}), retrying in {delay}ms");
+                Console.WriteLine($"DEBUG: Locked file details - Process: {System.Diagnostics.Process.GetCurrentProcess().Id}, Thread: {Environment.CurrentManagedThreadId}");
                 await Task.Delay(delay);
             }
             catch (UnauthorizedAccessException ex) when (attempt < maxRetries)
             {
                 // Permission issue, wait and retry
                 var delay = initialDelayMs * attempt;
-                Console.WriteLine($"Attempt {attempt}/{maxRetries}: Access denied ({ex.Message}), retrying in {delay}ms");
+                Console.WriteLine($"RETRY {attempt}/{maxRetries}: Access denied ({ex.Message}), retrying in {delay}ms");
                 await Task.Delay(delay);
             }
         }
 
-        // If we get here, all retries failed - log but don't fail the test
-        // The temp file will be cleaned up by the OS eventually
-        Console.WriteLine($"Warning: Could not delete temp file {filePath} after {maxRetries} attempts. File will be cleaned up by OS.");
+        // STEP 6: If all retries failed, this is a known Windows/SQLite limitation
+        // Log detailed diagnostic info for future debugging but don't fail the test
+        Console.WriteLine($"WARNING: Could not delete SQLite files after {maxRetries} attempts.");
+        Console.WriteLine($"CAUSE: This is a known Windows + SQLite WAL mode limitation where file locks persist.");
+        Console.WriteLine($"IMPACT: Temp files will be cleaned up by OS temp directory cleanup.");
+        Console.WriteLine($"FILES: {string.Join(", ", filesToClean.Where(File.Exists).Select(Path.GetFileName))}");
+    }
+
+    /// <summary>
+    /// Windows-specific desperate measure to force SQLite to release WAL file locks.
+    /// This tries to briefly reconnect to the database to trigger a WAL checkpoint.
+    /// </summary>
+    private static async Task ForceWindowsSqliteCleanup(string dbPath)
+    {
+        try
+        {
+            Console.WriteLine($"DEBUG: Attempting forced WAL checkpoint for {Path.GetFileName(dbPath)}");
+            
+            // Very briefly reconnect to force SQLite to checkpoint and close WAL files
+            using var tempConnection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath};Mode=ReadWrite");
+            await tempConnection.OpenAsync();
+            
+            // Execute WAL checkpoint to force SQLite to merge WAL into main database
+            using var checkpointCmd = tempConnection.CreateCommand();
+            checkpointCmd.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+            await checkpointCmd.ExecuteNonQueryAsync();
+            
+            // Explicitly close and dispose to release handles
+            tempConnection.Close();
+            Console.WriteLine($"DEBUG: WAL checkpoint completed");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG: WAL checkpoint failed (expected): {ex.Message}");
+            // This is expected to fail sometimes, it's just a desperate attempt
+        }
     }
 
     public void Dispose()
