@@ -162,6 +162,8 @@ public class MasterKeyManager : IMasterKeyManager
 
             using var aes = Aes.Create();
             aes.Key = keyBytes;
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
             aes.GenerateIV();
 
             using var encryptor = aes.CreateEncryptor();
@@ -179,6 +181,7 @@ public class MasterKeyManager : IMasterKeyManager
             SecureClear(plainTextBytes);
             SecureClear(encryptedBytes);
 
+            _logger.LogDebug("Successfully encrypted {PlainTextLength} bytes to {EncryptedLength} bytes", plainTextBytes.Length, result.Length);
             return EncryptionResult<string>.Success(encryptedBase64);
         }
         catch (Exception ex)
@@ -209,14 +212,39 @@ public class MasterKeyManager : IMasterKeyManager
                 return EncryptionResult<string>.Failure($"Invalid master key: {keyValidation.ErrorMessage}", EncryptionErrorType.InvalidInput);
             }
 
-            var keyBytes = Convert.FromBase64String(masterKey);
-            var encryptedBytes = Convert.FromBase64String(encryptedData);
+            byte[] keyBytes;
+            byte[] encryptedBytes;
 
-            // Extract IV and encrypted data
+            try
+            {
+                keyBytes = Convert.FromBase64String(masterKey);
+            }
+            catch (FormatException ex)
+            {
+                return EncryptionResult<string>.Failure($"Invalid master key format: {ex.Message}", EncryptionErrorType.InvalidInput);
+            }
+
+            try
+            {
+                encryptedBytes = Convert.FromBase64String(encryptedData);
+            }
+            catch (FormatException ex)
+            {
+                SecureClear(keyBytes);
+                return EncryptionResult<string>.Failure($"Invalid encrypted data format: {ex.Message}", EncryptionErrorType.DecryptionFailed);
+            }
+
+            // Validate encrypted data length
             if (encryptedBytes.Length < 16) // AES block size
             {
                 SecureClear(keyBytes);
-                return EncryptionResult<string>.Failure("Invalid encrypted data format", EncryptionErrorType.DecryptionFailed);
+                return EncryptionResult<string>.Failure($"Encrypted data too short: {encryptedBytes.Length} bytes, minimum 16 bytes required", EncryptionErrorType.DecryptionFailed);
+            }
+
+            // Validate that data length makes sense (IV + at least one block)
+            if (encryptedBytes.Length < 32) // IV (16) + minimum one encrypted block (16)
+            {
+                _logger.LogWarning("Encrypted data length is suspicious: {Length} bytes", encryptedBytes.Length);
             }
 
             var iv = new byte[16];
@@ -224,21 +252,42 @@ public class MasterKeyManager : IMasterKeyManager
             Array.Copy(encryptedBytes, 0, iv, 0, 16);
             Array.Copy(encryptedBytes, 16, cipherText, 0, cipherText.Length);
 
-            using var aes = Aes.Create();
-            aes.Key = keyBytes;
-            aes.IV = iv;
+            try
+            {
+                using var aes = Aes.Create();
+                aes.Key = keyBytes;
+                aes.IV = iv;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
 
-            using var decryptor = aes.CreateDecryptor();
-            var decryptedBytes = decryptor.TransformFinalBlock(cipherText, 0, cipherText.Length);
-            var plainText = Encoding.UTF8.GetString(decryptedBytes);
+                using var decryptor = aes.CreateDecryptor();
+                var decryptedBytes = decryptor.TransformFinalBlock(cipherText, 0, cipherText.Length);
+                var plainText = Encoding.UTF8.GetString(decryptedBytes);
 
-            // Securely clear sensitive data
-            SecureClear(keyBytes);
-            SecureClear(iv);
-            SecureClear(cipherText);
-            SecureClear(decryptedBytes);
+                // Securely clear sensitive data
+                SecureClear(keyBytes);
+                SecureClear(iv);
+                SecureClear(cipherText);
+                SecureClear(decryptedBytes);
 
-            return EncryptionResult<string>.Success(plainText);
+                return EncryptionResult<string>.Success(plainText);
+            }
+            catch (CryptographicException ex) when (ex.Message.Contains("Padding is invalid"))
+            {
+                SecureClear(keyBytes);
+                SecureClear(iv);
+                SecureClear(cipherText);
+                _logger.LogError(ex, "Decryption failed due to invalid padding - data may be corrupted or wrong key used");
+                return EncryptionResult<string>.Failure("Decryption failed: data appears to be corrupted or encrypted with a different key", EncryptionErrorType.DecryptionFailed);
+            }
+            catch (CryptographicException ex)
+            {
+                SecureClear(keyBytes);
+                SecureClear(iv);
+                SecureClear(cipherText);
+                _logger.LogError(ex, "Cryptographic exception during decryption");
+                return EncryptionResult<string>.Failure($"Cryptographic error during decryption: {ex.Message}", EncryptionErrorType.DecryptionFailed);
+            }
         }
         catch (Exception ex)
         {
