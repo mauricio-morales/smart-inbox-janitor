@@ -51,6 +51,14 @@ public class CredentialEncryptionTests : IDisposable
                 inMemoryStorage[key] = value;
                 return Task.CompletedTask;
             });
+        _mockStorageProvider.Setup(x => x.GetAllEncryptedCredentialKeysAsync())
+            .ReturnsAsync(() => inMemoryStorage.Keys.ToList());
+        _mockStorageProvider.Setup(x => x.RemoveEncryptedCredentialAsync(It.IsAny<string>()))
+            .Returns((string key) =>
+            {
+                inMemoryStorage.Remove(key);
+                return Task.CompletedTask;
+            });
 
         _credentialEncryption = new CredentialEncryption(_mockLogger.Object, _mockMasterKeyManager.Object, _mockStorageProvider.Object);
     }
