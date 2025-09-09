@@ -186,7 +186,7 @@ public class SecureStorageIntegrationTests : IDisposable
                     var isCredentialNotFound = retrieveResult.ErrorMessage?.Contains("Credential not found") == true;
                     var isLinuxCI = OperatingSystem.IsLinux() || encryptionStatus.Platform == "Linux";
                     var isWindowsCI = OperatingSystem.IsWindows() || encryptionStatus.Platform == "Windows";
-                    
+
                     // WINDOWS CI: Check for keychain corruption issues indicated by master key recovery
                     // The logs show "Master key recovery initiated due to error: KeychainCorrupted" which indicates
                     // that the Windows CI environment has DPAPI keychain issues similar to Linux CI
