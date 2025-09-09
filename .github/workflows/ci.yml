@@ -49,6 +49,21 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-nuget-
 
+    - name: Install Ubuntu dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        echo "Installing libsecret dependencies for secure storage tests..."
+        sudo apt-get update
+        sudo apt-get install -y libsecret-1-0 libsecret-1-dev libsecret-tools
+        sudo apt-get install -y dbus-x11 gnome-keyring
+        
+        # Setup headless keyring for CI
+        echo "Setting up headless keyring for CI environment"
+        eval "$(printf '\n' | gnome-keyring-daemon --unlock)" || true
+        eval "$(printf '\n' | gnome-keyring-daemon --start --components=secrets)" || true
+        export GNOME_KEYRING_CONTROL
+        export GNOME_KEYRING_PID
+
     - name: Restore dependencies
       run: dotnet restore
 
@@ -57,6 +72,9 @@ jobs:
 
     - name: Run unit tests
       run: dotnet test --configuration ${{ matrix.configuration }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage --blame-hang --blame-hang-timeout 30s
+      env:
+        DOTNET_ENVIRONMENT: Testing
+        DISPLAY: ${{ matrix.os == 'ubuntu-latest' && ':99' || '' }}
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
