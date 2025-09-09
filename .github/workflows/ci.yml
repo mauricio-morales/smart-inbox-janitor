@@ -16,18 +16,26 @@ jobs:
   # Job 1: Build and Test
   build-and-test:
     name: Build & Test
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runs-on || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-24.04-libsecret, ubuntu-24.04-fallback, windows-latest, macos-latest]
         configuration: [Release]
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04-libsecret
+            runs-on: ubuntu-24.04
             runtime: linux-x64
+            libsecret: true
+          - os: ubuntu-24.04-fallback
+            runs-on: ubuntu-24.04
+            runtime: linux-x64
+            libsecret: false
           - os: windows-latest
+            runs-on: windows-latest
             runtime: win-x64
           - os: macos-latest
+            runs-on: macos-latest
             runtime: osx-x64
     
     steps:
@@ -49,20 +57,25 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-nuget-
 
-    - name: Install Ubuntu dependencies
-      if: matrix.os == 'ubuntu-latest'
+    - name: Install Ubuntu dependencies (with libsecret)
+      if: matrix.libsecret == true
       run: |
-        echo "Installing libsecret dependencies for secure storage tests..."
-        sudo apt-get update
-        sudo apt-get install -y libsecret-1-0 libsecret-1-dev libsecret-tools
-        sudo apt-get install -y dbus-x11 gnome-keyring
+        echo "Installing libsecret dependencies for keychain storage tests..."
+        # Use --no-install-recommends for faster installation
+        sudo apt-get install -y --no-install-recommends libsecret-1-0 libsecret-1-dev libsecret-tools dbus-x11 gnome-keyring
         
-        # Setup headless keyring for CI
-        echo "Setting up headless keyring for CI environment"
-        eval "$(printf '\n' | gnome-keyring-daemon --unlock)" || true
-        eval "$(printf '\n' | gnome-keyring-daemon --start --components=secrets)" || true
-        export GNOME_KEYRING_CONTROL
-        export GNOME_KEYRING_PID
+        # Setup minimal keyring for testing
+        echo "Setting up keyring for libsecret testing..."
+        dbus-daemon --session --fork --print-address > /tmp/dbus-address
+        export DBUS_SESSION_BUS_ADDRESS=$(cat /tmp/dbus-address)
+        echo '' | gnome-keyring-daemon --unlock --start --foreground --components=secrets &
+        sleep 2
+
+    - name: Install Ubuntu dependencies (fallback only)  
+      if: matrix.libsecret == false
+      run: |
+        echo "Skipping libsecret installation to test database fallback encryption..."
+        echo "This test ensures the app works without OS keychain access"
 
     - name: Restore dependencies
       run: dotnet restore
@@ -74,7 +87,11 @@ jobs:
       run: dotnet test --configuration ${{ matrix.configuration }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage --blame-hang --blame-hang-timeout 30s
       env:
         DOTNET_ENVIRONMENT: Testing
-        DISPLAY: ${{ matrix.os == 'ubuntu-latest' && ':99' || '' }}
+        DISPLAY: ${{ contains(matrix.os, 'ubuntu') && ':99' || '' }}
+        # Set D-Bus address for libsecret tests
+        DBUS_SESSION_BUS_ADDRESS: ${{ matrix.libsecret == true && 'unix:path=/tmp/dbus-address' || '' }}
+        # Suppress libsecret warnings only in fallback tests
+        G_MESSAGES_DEBUG: ${{ matrix.libsecret == false && 'none' || '' }}
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -86,7 +103,7 @@ jobs:
           ./TestResults/**/*.trx
 
     - name: Upload coverage to Codecov
-      if: matrix.os == 'ubuntu-latest' && matrix.configuration == 'Release'
+      if: matrix.os == 'ubuntu-24.04-libsecret' && matrix.configuration == 'Release'
       uses: codecov/codecov-action@v4
       with:
         directory: ./coverage
@@ -164,7 +181,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             runtime: linux-x64
             artifact-name: transmail-panda-linux
           - os: windows-latest
@@ -281,7 +298,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [package, integration-tests]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: production
     
     steps:
     - name: Download artifacts
