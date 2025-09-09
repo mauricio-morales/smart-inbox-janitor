@@ -2,6 +2,7 @@ using Google.Apis.Util.Store;
 using Microsoft.Extensions.Logging;
 using TrashMailPanda.Shared;
 using TrashMailPanda.Shared.Security;
+using TrashMailPanda.Models;
 
 namespace TrashMailPanda.Services;
 
