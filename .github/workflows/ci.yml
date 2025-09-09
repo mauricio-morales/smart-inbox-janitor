@@ -120,8 +120,9 @@ jobs:
         # List all packages and check for vulnerabilities
         dotnet list package --vulnerable --include-transitive > vulnerability-report.txt 2>&1 || true
         
-        # Check if vulnerabilities were found
-        if grep -q "vulnerable" vulnerability-report.txt; then
+        # Check if vulnerabilities were found by looking for actual vulnerability entries
+        # The command outputs vulnerability details when found, not just "no vulnerable packages"
+        if grep -q -E "(>|\s+)[A-Za-z0-9\.]+ \d+\.\d+\.\d+" vulnerability-report.txt && ! grep -q "has no vulnerable packages" vulnerability-report.txt; then
           echo "❌ Security vulnerabilities found:"
           cat vulnerability-report.txt
           exit 1
