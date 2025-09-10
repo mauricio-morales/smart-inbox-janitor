@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\TrashMailPanda\TrashMailPanda\TrashMailPanda.csproj" />
     <ProjectReference Include="..\..\Shared\TrashMailPanda.Shared\TrashMailPanda.Shared.csproj" />
+    <ProjectReference Include="..\..\Providers\Email\TrashMailPanda.Providers.Email\TrashMailPanda.Providers.Email.csproj" />
   </ItemGroup>
 
   <ItemGroup>
