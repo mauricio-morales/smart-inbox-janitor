@@ -12,6 +12,7 @@ using Google.Apis.Gmail.v1;
 using Google.Apis.Gmail.v1.Data;
 using Google.Apis.Services;
 using Google.Apis.Util.Store;
+using Google.Apis.Requests;
 using Google;
 using TrashMailPanda.Shared;
 using TrashMailPanda.Shared.Base;
@@ -25,6 +26,20 @@ namespace TrashMailPanda.Providers.Email;
 /// <summary>
 /// Gmail implementation of IEmailProvider using BaseProvider pattern
 /// Provides Gmail-specific email operations with robust error handling and rate limiting
+/// 
+/// IMPORTANT - BATCH OPERATIONS LIMITATION:
+/// Gmail API does not provide true bulk message retrieval operations. The "batch" methods 
+/// in this provider use HTTP batch requests (Google.Apis.Requests.BatchRequest) to bundle 
+/// multiple individual API calls into single HTTP requests. This improves network performance 
+/// by reducing round-trips but does NOT reduce quota consumption - each message still costs 
+/// 5 quota units regardless of batching.
+/// 
+/// Available Gmail API batch operations are limited to:
+/// - batchModify: Modify labels on multiple messages
+/// - batchDelete: Delete multiple messages
+/// 
+/// For message retrieval, only individual Users.Messages.Get requests are available,
+/// which this provider optimizes using HTTP batching for better network performance.
 /// </summary>
 public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvider
 {
@@ -525,6 +540,40 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             Result<bool>.Failure(new ServiceUnavailableError(health.Description));
     }
 
+    /// <summary>
+    /// Get multiple emails in batch for improved performance
+    /// 
+    /// IMPORTANT: Gmail API does not provide true bulk message retrieval. This method uses 
+    /// HTTP batch requests to bundle multiple individual Users.Messages.Get calls into 
+    /// a single HTTP request, reducing network overhead but still consuming quota for 
+    /// each individual message (5 quota units per message).
+    /// 
+    /// Performance benefits come from reduced HTTP round-trips, not reduced API quota usage.
+    /// </summary>
+    /// <param name="messageIds">List of message IDs to retrieve</param>
+    /// <returns>A result containing the list of retrieved email summaries</returns>
+    public async Task<Result<IReadOnlyList<EmailSummary>>> GetBatchAsync(IReadOnlyList<string> messageIds)
+    {
+        return await ExecuteOperationAsync("GetBatch", async (cancellationToken) =>
+        {
+            if (_gmailService == null)
+            {
+                return Result<IReadOnlyList<EmailSummary>>.Failure(
+                    new InvalidOperationError(GmailErrorMessages.SERVICE_NOT_INITIALIZED));
+            }
+
+            if (messageIds == null || messageIds.Count == 0)
+            {
+                return Result<IReadOnlyList<EmailSummary>>.Success(Array.Empty<EmailSummary>());
+            }
+
+            var detailedMessages = await GetMessagesBatchAsync(messageIds, cancellationToken);
+            var summaries = detailedMessages.Select(MapToEmailSummary).ToList();
+
+            return Result<IReadOnlyList<EmailSummary>>.Success(summaries);
+        });
+    }
+
     #endregion
 
     #region Private Helper Methods
@@ -779,38 +828,131 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     }
 
     /// <summary>
-    /// Gets message summaries for a list of messages
+    /// Gets message summaries for a list of messages using efficient batch requests
     /// </summary>
     private async Task<IReadOnlyList<EmailSummary>> GetMessageSummariesAsync(
         IList<Message> messages,
         CancellationToken cancellationToken)
     {
-        var summaries = new List<EmailSummary>();
+        if (messages == null || !messages.Any())
+        {
+            return Array.Empty<EmailSummary>();
+        }
 
-        // Process messages in batches to avoid overwhelming the API
-        var batchSize = Math.Min(10, Configuration?.BatchSize ?? 10);
-        var batches = messages.Batch(batchSize);
+        var messageIds = messages.Select(m => m.Id).ToList();
+        var detailedMessages = await GetMessagesBatchAsync(messageIds, cancellationToken);
+
+        return detailedMessages.Select(MapToEmailSummary).ToList();
+    }
+
+    /// <summary>
+    /// Retrieves multiple messages efficiently using Gmail API batch requests
+    /// 
+    /// NOTE: This is NOT a true bulk API operation. The Gmail API does not provide 
+    /// bulk message retrieval. This method uses HTTP batch requests to bundle 
+    /// multiple individual Users.Messages.Get calls into fewer HTTP requests.
+    /// 
+    /// Each message still consumes 5 quota units, but network latency is reduced
+    /// by batching up to 100 individual requests per HTTP call.
+    /// </summary>
+    private async Task<IReadOnlyList<Message>> GetMessagesBatchAsync(
+        IReadOnlyList<string> messageIds,
+        CancellationToken cancellationToken)
+    {
+        if (messageIds == null || !messageIds.Any())
+        {
+            return Array.Empty<Message>();
+        }
+
+        if (_gmailService == null)
+        {
+            throw new InvalidOperationException(GmailErrorMessages.SERVICE_NOT_INITIALIZED);
+        }
+
+        var allMessages = new List<Message>();
+
+        // Split messageIds into batches of maximum allowed size
+        var batchSize = Math.Min(GmailQuotas.MAX_BATCH_SIZE, Configuration?.BatchSize ?? GmailQuotas.RECOMMENDED_BATCH_SIZE);
+        var batches = messageIds.Batch(batchSize);
 
         foreach (var batch in batches)
         {
-            var batchTasks = batch.Select(async message =>
-            {
-                var result = await _rateLimitHandler.ExecuteWithRetryAsync(async () =>
-                {
-                    var fullMessage = await _gmailService!.Users.Messages
-                        .Get(GmailApiConstants.USER_ID_ME, message.Id)
-                        .ExecuteAsync(cancellationToken);
-                    return fullMessage;
-                }, cancellationToken);
-
-                return result.IsSuccess ? MapToEmailSummary(result.Value) : null;
-            });
-
-            var batchResults = await Task.WhenAll(batchTasks);
-            summaries.AddRange(batchResults.Where(s => s != null)!);
+            var batchMessages = await ExecuteMessageBatchAsync(batch.ToList(), cancellationToken);
+            allMessages.AddRange(batchMessages);
         }
 
-        return summaries;
+        return allMessages;
+    }
+
+    /// <summary>
+    /// Executes a single batch request for message retrieval
+    /// 
+    /// TECHNICAL DETAIL: Uses Google.Apis.Requests.BatchRequest to combine multiple 
+    /// Users.Messages.Get requests into a single HTTP request. This is purely an HTTP 
+    /// optimization - each individual message request is still processed separately 
+    /// by the Gmail API and consumes full quota (5 units per message).
+    /// 
+    /// Benefits: Reduced HTTP round-trips and connection overhead
+    /// Limitations: Same quota consumption as individual requests
+    /// </summary>
+    private async Task<IReadOnlyList<Message>> ExecuteMessageBatchAsync(
+        IReadOnlyList<string> messageIds,
+        CancellationToken cancellationToken)
+    {
+        var retrievedMessages = new List<Message>();
+        var errors = new List<string>();
+
+        var result = await _rateLimitHandler.ExecuteWithRetryAsync(async () =>
+        {
+            var batchRequest = new BatchRequest(_gmailService!);
+
+            // Define callback for handling batch responses
+            BatchRequest.OnResponse<Message> callback = (message, error, index, httpResponse) =>
+            {
+                if (error != null)
+                {
+                    var messageId = index < messageIds.Count ? messageIds[index] : "unknown";
+                    errors.Add($"Error retrieving message {messageId}: {error.Message}");
+                    RecordMetric("batch_message_errors", 1);
+                }
+                else if (message != null)
+                {
+                    retrievedMessages.Add(message);
+                }
+            };
+
+            // Queue individual Get requests for each message ID
+            for (int i = 0; i < messageIds.Count; i++)
+            {
+                var getRequest = _gmailService.Users.Messages.Get(GmailApiConstants.USER_ID_ME, messageIds[i]);
+                // Use metadata format for efficiency - contains headers and basic info without full body
+                getRequest.Format = UsersResource.MessagesResource.GetRequest.FormatEnum.Metadata;
+
+                batchRequest.Queue<Message>(getRequest, callback);
+            }
+
+            // Execute the entire batch
+            await batchRequest.ExecuteAsync(cancellationToken);
+
+            // Log any errors but don't fail the entire operation
+            if (errors.Count > 0)
+            {
+                // Note: Errors are tracked in metrics, detailed logging can be added later
+                RecordMetric("batch_total_errors", errors.Count);
+            }
+
+            RecordMetric("batch_messages_retrieved", retrievedMessages.Count);
+            RecordMetric("batch_requests_executed", 1);
+
+            return true;
+        }, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            throw new InvalidOperationException($"Batch message retrieval failed: {result.Error}");
+        }
+
+        return retrievedMessages;
     }
 
     /// <summary>

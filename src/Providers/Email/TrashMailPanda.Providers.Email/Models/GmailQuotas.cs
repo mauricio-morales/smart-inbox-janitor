@@ -2,10 +2,18 @@ namespace TrashMailPanda.Providers.Email.Models;
 
 /// <summary>
 /// Gmail API quota limits and operational constraints
+/// 
+/// IMPORTANT: Batch sizes refer to HTTP batch request limits, not true bulk operations.
+/// Gmail API does not provide bulk message retrieval - only HTTP batching of individual requests.
 /// </summary>
 public static class GmailQuotas
 {
-    /// <summary>Maximum number of operations in a single batch request</summary>
+    /// <summary>
+    /// Maximum number of operations in a single HTTP batch request
+    /// 
+    /// CLARIFICATION: This refers to HTTP batching, not true bulk operations.
+    /// Each individual operation within the batch still consumes full quota.
+    /// </summary>
     public const int MAX_BATCH_SIZE = 100;
 
     /// <summary>Recommended batch size to avoid rate limiting</summary>
