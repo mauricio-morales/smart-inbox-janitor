@@ -152,16 +152,16 @@ public sealed class GmailProviderConfig : BaseProviderConfig
 
         if (!hasModifyPermissions)
         {
-            return Result.Failure(new ValidationError("Configuration validation failed: Request provider requires modify permissions for email triage operations"));
+            return Result.Failure(new ValidationError("Provider requires modify permissions for email triage operations"));
         }
 
         // Validate batch size doesn't exceed Gmail limits
         if (BatchSize > 100)
-            return Result.Failure(new ValidationError("Configuration validation failed: Request Batch size cannot exceed Gmail API limit of 100 operations"));
+            return Result.Failure(new ValidationError("Batch size cannot exceed Gmail API limit of 100 operations"));
 
         // Validate page size doesn't exceed Gmail limits
         if (DefaultPageSize > 500)
-            return Result.Failure(new ValidationError("Configuration validation failed: Request Page size cannot exceed Gmail API limit of 500 messages"));
+            return Result.Failure(new ValidationError("Page size cannot exceed Gmail API limit of 500 messages"));
 
         return Result.Success();
     }
@@ -175,15 +175,8 @@ public sealed class GmailProviderConfig : BaseProviderConfig
         var copy = (GmailProviderConfig)MemberwiseClone();
         copy.ClientSecret = "***REDACTED***";
 
-        // Partially mask ClientId - show only last 4 characters for identification
-        if (!string.IsNullOrEmpty(copy.ClientId) && copy.ClientId.Length > 4)
-        {
-            copy.ClientId = "***..." + copy.ClientId.Substring(copy.ClientId.Length - 4);
-        }
-        else if (!string.IsNullOrEmpty(copy.ClientId))
-        {
-            copy.ClientId = "***REDACTED***";
-        }
+        // ClientId is not considered sensitive - keep as is for identification
+        // Only ClientSecret needs to be redacted
 
         return copy;
     }

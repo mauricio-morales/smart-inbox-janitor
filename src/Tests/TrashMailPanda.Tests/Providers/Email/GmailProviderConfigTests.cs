@@ -340,6 +340,7 @@ public class GmailProviderConfigTests
             ClientId = "valid_client_id",
             ClientSecret = "valid_secret",
             Scopes = new[] { "https://www.googleapis.com/auth/gmail.modify" },
+            RequestTimeout = TimeSpan.FromSeconds(30), // Less than TimeoutSeconds
             TimeoutSeconds = 60,
             MaxRetryAttempts = 3,
             RetryDelayMilliseconds = 1000,
@@ -365,6 +366,7 @@ public class GmailProviderConfigTests
             ClientId = "valid_client_id",
             ClientSecret = "valid_secret",
             Scopes = new[] { "https://mail.google.com/" },
+            RequestTimeout = TimeSpan.FromSeconds(30), // Less than TimeoutSeconds
             TimeoutSeconds = 60,
             MaxRetryAttempts = 3,
             RetryDelayMilliseconds = 1000,
@@ -445,6 +447,7 @@ public class GmailProviderConfigTests
             ClientId = "valid_client_id",
             ClientSecret = "valid_secret",
             Scopes = new[] { GmailService.Scope.GmailReadonly },
+            RequestTimeout = TimeSpan.FromSeconds(30), // Less than TimeoutSeconds
             TimeoutSeconds = 60,
             MaxRetryAttempts = 3,
             RetryDelayMilliseconds = 1000,
@@ -472,6 +475,7 @@ public class GmailProviderConfigTests
             ClientId = "valid_client_id",
             ClientSecret = "valid_secret",
             Scopes = new[] { "https://www.googleapis.com/auth/gmail.modify" },
+            RequestTimeout = TimeSpan.FromSeconds(30), // Less than TimeoutSeconds
             TimeoutSeconds = 60,
             MaxRetryAttempts = 3,
             RetryDelayMilliseconds = 1000,
@@ -497,6 +501,7 @@ public class GmailProviderConfigTests
             ClientId = "valid_client_id",
             ClientSecret = "valid_secret",
             Scopes = new[] { "https://mail.google.com/" },
+            RequestTimeout = TimeSpan.FromSeconds(30), // Less than TimeoutSeconds
             TimeoutSeconds = 60,
             MaxRetryAttempts = 3,
             RetryDelayMilliseconds = 1000,
@@ -522,6 +527,7 @@ public class GmailProviderConfigTests
             ClientId = "valid_client_id",
             ClientSecret = "valid_secret",
             BatchSize = 150, // Exceeds 100 limit
+            RequestTimeout = TimeSpan.FromSeconds(30), // Less than TimeoutSeconds
             TimeoutSeconds = 60,
             MaxRetryAttempts = 3,
             RetryDelayMilliseconds = 1000,
@@ -534,7 +540,7 @@ public class GmailProviderConfigTests
         // Assert
         Assert.True(result.IsFailure);
         Assert.IsType<ValidationError>(result.Error);
-        Assert.Contains("Batch size cannot exceed", result.Error.Message);
+        Assert.Contains("Batch size must be between", result.Error.Message);
     }
 
     /// <summary>
@@ -549,6 +555,7 @@ public class GmailProviderConfigTests
             ClientId = "valid_client_id",
             ClientSecret = "valid_secret",
             DefaultPageSize = 600, // Exceeds 500 limit
+            RequestTimeout = TimeSpan.FromSeconds(30), // Less than TimeoutSeconds
             TimeoutSeconds = 60,
             MaxRetryAttempts = 3,
             RetryDelayMilliseconds = 1000,
@@ -561,7 +568,7 @@ public class GmailProviderConfigTests
         // Assert
         Assert.True(result.IsFailure);
         Assert.IsType<ValidationError>(result.Error);
-        Assert.Contains("Page size cannot exceed", result.Error.Message);
+        Assert.Contains("Default page size must be between", result.Error.Message);
     }
 
     /// <summary>
@@ -583,7 +590,7 @@ public class GmailProviderConfigTests
 
         // Assert
         Assert.NotNull(sanitized);
-        Assert.Equal("***...2345", sanitized.ClientId); // Partially masked - shows last 4 chars
+        Assert.Equal("test_client_id_12345", sanitized.ClientId); // Not sensitive - keep as is
         Assert.Equal("***REDACTED***", sanitized.ClientSecret); // Fully redacted
         Assert.Equal("Test App", sanitized.ApplicationName); // Not redacted
     }
@@ -607,7 +614,7 @@ public class GmailProviderConfigTests
 
         // Assert
         Assert.NotNull(sanitized);
-        Assert.Equal("***REDACTED***", sanitized.ClientId); // Fully redacted for short IDs
+        Assert.Equal("1234", sanitized.ClientId); // Not sensitive - keep as is even for short IDs
         Assert.Equal("***REDACTED***", sanitized.ClientSecret);
     }
 

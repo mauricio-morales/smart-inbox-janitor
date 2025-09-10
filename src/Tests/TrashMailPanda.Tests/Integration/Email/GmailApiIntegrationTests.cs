@@ -29,9 +29,16 @@ public class GmailApiIntegrationTests : IDisposable
         _mockRateLimitHandler = new Mock<IGmailRateLimitHandler>();
         _mockDataStore = new Mock<Google.Apis.Util.Store.IDataStore>();
 
+        // Use real environment variables if available for local testing,
+        // otherwise use test placeholders
+        var clientId = Environment.GetEnvironmentVariable("GMAIL_CLIENT_ID") ?? "test_integration_client_id";
+        var clientSecret = Environment.GetEnvironmentVariable("GMAIL_CLIENT_SECRET") ?? "test_integration_client_secret";
+
         _testConfig = new GmailProviderConfig();
-        _testConfig.ClientId = "test_integration_client_id";
-        _testConfig.ClientSecret = "test_integration_client_secret";
+        _testConfig.ClientId = clientId;
+        _testConfig.ClientSecret = clientSecret;
+        _testConfig.RequestTimeout = TimeSpan.FromSeconds(30); // Less than TimeoutSeconds
+        _testConfig.TimeoutSeconds = 60; // Ensure RequestTimeout < TimeoutSeconds
     }
 
     /// <summary>
@@ -79,8 +86,11 @@ public class GmailApiIntegrationTests : IDisposable
 
     /// <summary>
     /// Tests provider state transitions during integration testing
+    /// NOTE: This test is skipped by default as it requires real Gmail OAuth credentials.
+    /// To run this test locally, set GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET environment variables
+    /// and remove the Skip attribute.
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Requires real Gmail OAuth credentials - see CLAUDE.md for local setup instructions")]
     public async Task ProviderStateTransitions_DuringIntegration_FollowExpectedPattern()
     {
         // Arrange
@@ -90,7 +100,10 @@ public class GmailApiIntegrationTests : IDisposable
         Assert.Equal(ProviderState.Uninitialized, provider.State);
 
         var initResult = await provider.InitializeAsync(_testConfig);
-        // State will depend on OAuth success/failure
+
+        // With real credentials, initialization should succeed
+        Assert.True(initResult.IsSuccess);
+        Assert.Equal(ProviderState.Ready, provider.State);
 
         var shutdownResult = await provider.ShutdownAsync();
         Assert.True(shutdownResult.IsSuccess);
@@ -121,8 +134,11 @@ public class GmailApiIntegrationTests : IDisposable
 
     /// <summary>
     /// Tests provider lifecycle in integration environment
+    /// NOTE: This test is skipped by default as it requires real Gmail OAuth credentials.
+    /// To run this test locally, set GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET environment variables
+    /// and remove the Skip attribute.
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Requires real Gmail OAuth credentials - see CLAUDE.md for local setup instructions")]
     public async Task ProviderLifecycle_InIntegrationEnvironment_CompletesCorrectly()
     {
         // Arrange
@@ -132,15 +148,17 @@ public class GmailApiIntegrationTests : IDisposable
         {
             // Act - Full lifecycle test
 
-            // 1. Initialize
+            // 1. Initialize with real credentials
             var initResult = await provider.InitializeAsync(_testConfig);
+            Assert.True(initResult.IsSuccess);
 
             // 2. Verify provider properties
             Assert.Equal("Gmail", provider.Name);
             Assert.Equal("1.0.0", provider.Version);
 
-            // 3. Test health check (if provider supports it)
-            // Note: Health check may not be accessible in integration test context
+            // 3. Test health check
+            var healthResult = await provider.HealthCheckAsync();
+            Assert.True(healthResult.IsSuccess);
 
             // 4. Shutdown
             var shutdownResult = await provider.ShutdownAsync();
