@@ -187,9 +187,10 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     /// <summary>
     /// Connect to Gmail using OAuth2 authentication
     /// </summary>
-    public async Task ConnectAsync()
+    /// <returns>A result indicating success or failure</returns>
+    public async Task<Result<bool>> ConnectAsync()
     {
-        var result = await ExecuteOperationAsync("Connect", async (cancellationToken) =>
+        return await ExecuteOperationAsync("Connect", async (cancellationToken) =>
         {
             if (Configuration == null)
             {
@@ -211,21 +212,16 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
 
             return Result<bool>.Success(true);
         });
-
-        if (result.IsFailure)
-        {
-            throw new InvalidOperationException($"Failed to connect to Gmail: {result.Error.Message}", result.Error.InnerException);
-        }
     }
 
     /// <summary>
     /// List emails with filtering and pagination options
     /// </summary>
     /// <param name="options">Search and filter options</param>
-    /// <returns>List of email summaries</returns>
-    public async Task<IReadOnlyList<EmailSummary>> ListAsync(ListOptions options)
+    /// <returns>A result containing the list of email summaries</returns>
+    public async Task<Result<IReadOnlyList<EmailSummary>>> ListAsync(ListOptions options)
     {
-        var result = await ExecuteOperationAsync("List", async (cancellationToken) =>
+        return await ExecuteOperationAsync("List", async (cancellationToken) =>
         {
             if (_gmailService == null)
             {
@@ -271,23 +267,16 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             var summaries = await GetMessageSummariesAsync(messageList.Messages, cancellationToken);
             return Result<IReadOnlyList<EmailSummary>>.Success(summaries);
         });
-
-        if (result.IsFailure)
-        {
-            throw new InvalidOperationException($"Failed to list emails: {result.Error.Message}", result.Error.InnerException);
-        }
-
-        return result.Value;
     }
 
     /// <summary>
     /// Get full email content including headers and body
     /// </summary>
     /// <param name="id">Email ID</param>
-    /// <returns>Complete email details</returns>
-    public async Task<EmailFull> GetAsync(string id)
+    /// <returns>A result containing the complete email details</returns>
+    public async Task<Result<EmailFull>> GetAsync(string id)
     {
-        var result = await ExecuteOperationAsync("Get", async (cancellationToken) =>
+        return await ExecuteOperationAsync("Get", async (cancellationToken) =>
         {
             if (_gmailService == null)
             {
@@ -318,22 +307,16 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             var emailFull = MapToEmailFull(messageResult.Value);
             return Result<EmailFull>.Success(emailFull);
         });
-
-        if (result.IsFailure)
-        {
-            throw new InvalidOperationException($"Failed to get email: {result.Error.Message}", result.Error.InnerException);
-        }
-
-        return result.Value;
     }
 
     /// <summary>
     /// Perform batch operations on multiple emails (labels, trash, etc.)
     /// </summary>
     /// <param name="request">Batch modification request</param>
-    public async Task BatchModifyAsync(BatchModifyRequest request)
+    /// <returns>A result indicating success or failure</returns>
+    public async Task<Result<bool>> BatchModifyAsync(BatchModifyRequest request)
     {
-        var result = await ExecuteOperationAsync("BatchModify", async (cancellationToken) =>
+        return await ExecuteOperationAsync("BatchModify", async (cancellationToken) =>
         {
             if (_gmailService == null)
             {
@@ -379,20 +362,16 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
 
             return Result<bool>.Success(true);
         });
-
-        if (result.IsFailure)
-        {
-            throw new InvalidOperationException($"Failed to batch modify emails: {result.Error.Message}", result.Error.InnerException);
-        }
     }
 
     /// <summary>
     /// Hard delete email (use sparingly, prefer trash)
     /// </summary>
     /// <param name="id">Email ID</param>
-    public async Task DeleteAsync(string id)
+    /// <returns>A result indicating success or failure</returns>
+    public async Task<Result<bool>> DeleteAsync(string id)
     {
-        var result = await ExecuteOperationAsync("Delete", async (cancellationToken) =>
+        return await ExecuteOperationAsync("Delete", async (cancellationToken) =>
         {
             if (_gmailService == null)
             {
@@ -415,20 +394,16 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
 
             return deleteResult;
         });
-
-        if (result.IsFailure)
-        {
-            throw new InvalidOperationException($"Failed to delete email: {result.Error.Message}", result.Error.InnerException);
-        }
     }
 
     /// <summary>
     /// Report email as spam (provider-dependent)
     /// </summary>
     /// <param name="id">Email ID</param>
-    public async Task ReportSpamAsync(string id)
+    /// <returns>A result indicating success or failure</returns>
+    public async Task<Result<bool>> ReportSpamAsync(string id)
     {
-        var result = await ExecuteOperationAsync("ReportSpam", async (cancellationToken) =>
+        return await ExecuteOperationAsync("ReportSpam", async (cancellationToken) =>
         {
             if (_gmailService == null)
             {
@@ -452,20 +427,16 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
 
             return spamResult;
         });
-
-        if (result.IsFailure)
-        {
-            throw new InvalidOperationException($"Failed to report spam: {result.Error.Message}", result.Error.InnerException);
-        }
     }
 
     /// <summary>
     /// Report email as phishing (provider-dependent)
     /// </summary>
     /// <param name="id">Email ID</param>
-    public async Task ReportPhishingAsync(string id)
+    /// <returns>A result indicating success or failure</returns>
+    public async Task<Result<bool>> ReportPhishingAsync(string id)
     {
-        var result = await ExecuteOperationAsync("ReportPhishing", async (cancellationToken) =>
+        return await ExecuteOperationAsync("ReportPhishing", async (cancellationToken) =>
         {
             if (_gmailService == null)
             {
@@ -490,20 +461,15 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
 
             return phishingResult;
         });
-
-        if (result.IsFailure)
-        {
-            throw new InvalidOperationException($"Failed to report phishing: {result.Error.Message}", result.Error.InnerException);
-        }
     }
 
     /// <summary>
     /// Get authenticated user information
     /// </summary>
-    /// <returns>Authenticated user details or null if not authenticated</returns>
-    public async Task<AuthenticatedUserInfo?> GetAuthenticatedUserAsync()
+    /// <returns>A result containing authenticated user details or null if not authenticated</returns>
+    public async Task<Result<AuthenticatedUserInfo?>> GetAuthenticatedUserAsync()
     {
-        var result = await ExecuteOperationAsync("GetAuthenticatedUser", async (cancellationToken) =>
+        return await ExecuteOperationAsync("GetAuthenticatedUser", async (cancellationToken) =>
         {
             if (_gmailService == null)
             {
@@ -533,8 +499,6 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
 
             return Result<AuthenticatedUserInfo?>.Success(userInfo);
         });
-
-        return result.IsSuccess ? result.Value : null;
     }
 
     /// <summary>
