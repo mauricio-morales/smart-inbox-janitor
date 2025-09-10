@@ -3,6 +3,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Google.Apis.Requests;
 using Google;
 using TrashMailPanda.Shared.Base;
@@ -18,17 +19,17 @@ namespace TrashMailPanda.Providers.Email.Services;
 public class GmailRateLimitHandler : IGmailRateLimitHandler
 {
     private readonly ILogger<GmailRateLimitHandler> _logger;
-    private readonly GmailProviderConfig _config;
+    private readonly IOptionsMonitor<GmailProviderConfig> _configOptions;
     private readonly Random _random = new();
 
     /// <summary>
     /// Initializes a new instance of the GmailRateLimitHandler
     /// </summary>
-    /// <param name="config">The Gmail provider configuration</param>
+    /// <param name="configOptions">The Gmail provider configuration options</param>
     /// <param name="logger">Logger for the rate limit handler</param>
-    public GmailRateLimitHandler(GmailProviderConfig config, ILogger<GmailRateLimitHandler> logger)
+    public GmailRateLimitHandler(IOptionsMonitor<GmailProviderConfig> configOptions, ILogger<GmailRateLimitHandler> logger)
     {
-        _config = config ?? throw new ArgumentNullException(nameof(config));
+        _configOptions = configOptions ?? throw new ArgumentNullException(nameof(configOptions));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -58,9 +59,10 @@ public class GmailRateLimitHandler : IGmailRateLimitHandler
         Func<Task<Result<T>>> operation,
         CancellationToken cancellationToken = default)
     {
-        var maxAttempts = _config.MaxRetries;
-        var baseDelay = _config.BaseRetryDelay;
-        var maxDelay = _config.MaxRetryDelay;
+        var config = _configOptions.CurrentValue;
+        var maxAttempts = config.MaxRetries;
+        var baseDelay = config.BaseRetryDelay;
+        var maxDelay = config.MaxRetryDelay;
 
         ProviderError? lastError = null;
 
