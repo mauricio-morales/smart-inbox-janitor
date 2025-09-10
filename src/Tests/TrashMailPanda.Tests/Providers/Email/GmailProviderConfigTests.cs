@@ -45,11 +45,11 @@ public class GmailProviderConfigTests
     /// Tests that DataAnnotations validation works correctly for required fields
     /// </summary>
     [Theory]
-    [InlineData("", "valid_secret", false, "ClientId")]
-    [InlineData("valid_id", "", false, "ClientSecret")]
-    [InlineData("valid_id", "valid_secret", true, null)]
-    [InlineData(null, "valid_secret", false, "ClientId")]
-    [InlineData("valid_id", null, false, "ClientSecret")]
+    [InlineData("", "valid_secret_12345", false, "ClientId")]
+    [InlineData("valid_id_12345", "", false, "ClientSecret")]
+    [InlineData("valid_id_12345", "valid_secret_12345", true, null)]
+    [InlineData(null, "valid_secret_12345", false, "ClientId")]
+    [InlineData("valid_id_12345", null, false, "ClientSecret")]
     public void DataAnnotationsValidation_RequiredFields(string? clientId, string? clientSecret, bool shouldBeValid, string? expectedErrorField)
     {
         // Arrange

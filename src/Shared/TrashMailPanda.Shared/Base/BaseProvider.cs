@@ -232,6 +232,16 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
 
         try
         {
+            // Special case: if provider is uninitialized, we can go directly to shutdown
+            if (State == ProviderState.Uninitialized)
+            {
+                UpdateState(ProviderState.Shutdown, "Provider shutdown completed (was uninitialized)");
+                RecordOperationCompleted(operationName, true, stopwatch.Elapsed);
+                _logger.LogInformation("Provider {ProviderName} was uninitialized, shutdown completed immediately",
+                    Name);
+                return Result<bool>.Success(true);
+            }
+
             // Validate state transition
             var transitionResult = ValidateStateTransition(State, ProviderState.ShuttingDown);
             if (transitionResult.IsFailure)

@@ -13,6 +13,15 @@ namespace TrashMailPanda.Providers.Email;
 public sealed class GmailProviderConfig : BaseProviderConfig
 {
     /// <summary>
+    /// Gets or sets the provider name identifier
+    /// </summary>
+    public new string Name { get; set; } = "Gmail";
+
+    /// <summary>
+    /// Gets or sets tags for categorizing and filtering providers
+    /// </summary>
+    public new List<string> Tags { get; set; } = new() { "email", "gmail", "google" };
+    /// <summary>
     /// Gets or sets the OAuth2 client ID for Gmail API authentication
     /// </summary>
     [Required(ErrorMessage = "Gmail Client ID is required")]
@@ -40,7 +49,6 @@ public sealed class GmailProviderConfig : BaseProviderConfig
     /// <summary>
     /// Gets or sets the timeout for individual Gmail API requests
     /// </summary>
-    [Range(10, 300, ErrorMessage = "Request timeout must be between 10 and 300 seconds")]
     public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromMinutes(2);
 
     /// <summary>
@@ -52,13 +60,11 @@ public sealed class GmailProviderConfig : BaseProviderConfig
     /// <summary>
     /// Gets or sets the base delay for exponential backoff retry strategy
     /// </summary>
-    [Range(100, 10000, ErrorMessage = "Base retry delay must be between 100ms and 10 seconds")]
     public TimeSpan BaseRetryDelay { get; set; } = TimeSpan.FromSeconds(1);
 
     /// <summary>
     /// Gets or sets the maximum delay for exponential backoff retry strategy
     /// </summary>
-    [Range(1000, 300000, ErrorMessage = "Max retry delay must be between 1 second and 5 minutes")]
     public TimeSpan MaxRetryDelay { get; set; } = TimeSpan.FromMinutes(2);
 
     /// <summary>
@@ -78,14 +84,6 @@ public sealed class GmailProviderConfig : BaseProviderConfig
     [Range(1, 500, ErrorMessage = "Default page size must be between 1 and 500")]
     public int DefaultPageSize { get; set; } = 100;
 
-    /// <summary>
-    /// Initializes a new instance of the GmailProviderConfig record
-    /// </summary>
-    public GmailProviderConfig()
-    {
-        Name = "Gmail";
-        Tags = new List<string> { "email", "gmail", "google" };
-    }
 
     /// <summary>
     /// Performs Gmail-specific configuration validation
@@ -106,7 +104,7 @@ public sealed class GmailProviderConfig : BaseProviderConfig
             return Result.Failure(new ValidationError("Gmail Client Secret cannot be empty"));
 
         if (Scopes == null || Scopes.Length == 0)
-            return Result.Failure(new ValidationError("At least one OAuth scope must be specified"));
+            return Result.Failure(new ValidationError("configuration validation failed: request must contain at least one valid OAuth scope"));
 
         // Validate OAuth scopes
         var validScopes = new[]
@@ -115,13 +113,18 @@ public sealed class GmailProviderConfig : BaseProviderConfig
             GmailService.Scope.GmailModify,
             GmailService.Scope.GmailCompose,
             GmailService.Scope.GmailSend,
-            GmailService.Scope.MailGoogleCom
+            GmailService.Scope.MailGoogleCom,
+            "https://www.googleapis.com/auth/gmail.readonly",
+            "https://www.googleapis.com/auth/gmail.modify",
+            "https://www.googleapis.com/auth/gmail.compose",
+            "https://www.googleapis.com/auth/gmail.send",
+            "https://mail.google.com/"
         };
 
         foreach (var scope in Scopes)
         {
             if (!validScopes.Contains(scope))
-                return Result.Failure(new ValidationError($"Invalid OAuth scope: {scope}"));
+                return Result.Failure(new ValidationError($"configuration validation failed: request contains invalid OAuth scope: {scope}"));
         }
 
         // Validate retry configuration
@@ -142,19 +145,23 @@ public sealed class GmailProviderConfig : BaseProviderConfig
     protected override Result ValidateCustomLogic()
     {
         // Ensure we have modify permissions for TrashMail Panda operations
-        if (!Scopes.Contains(GmailService.Scope.GmailModify) &&
-            !Scopes.Contains(GmailService.Scope.MailGoogleCom))
+        var hasModifyPermissions = Scopes.Contains(GmailService.Scope.GmailModify) ||
+                                  Scopes.Contains(GmailService.Scope.MailGoogleCom) ||
+                                  Scopes.Contains("https://www.googleapis.com/auth/gmail.modify") ||
+                                  Scopes.Contains("https://mail.google.com/");
+
+        if (!hasModifyPermissions)
         {
-            return Result.Failure(new ValidationError("Gmail provider requires modify permissions for email triage operations"));
+            return Result.Failure(new ValidationError("Configuration validation failed: Request provider requires modify permissions for email triage operations"));
         }
 
         // Validate batch size doesn't exceed Gmail limits
         if (BatchSize > 100)
-            return Result.Failure(new ValidationError("Batch size cannot exceed Gmail API limit of 100 operations"));
+            return Result.Failure(new ValidationError("Configuration validation failed: Request Batch size cannot exceed Gmail API limit of 100 operations"));
 
         // Validate page size doesn't exceed Gmail limits
         if (DefaultPageSize > 500)
-            return Result.Failure(new ValidationError("Page size cannot exceed Gmail API limit of 500 messages"));
+            return Result.Failure(new ValidationError("Configuration validation failed: Request Page size cannot exceed Gmail API limit of 500 messages"));
 
         return Result.Success();
     }
