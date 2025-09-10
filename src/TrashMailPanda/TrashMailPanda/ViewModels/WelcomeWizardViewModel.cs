@@ -180,6 +180,8 @@ public partial class WelcomeWizardViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenOpenAiDashboardAsync()
     {
+        await Task.CompletedTask;
+
         // Open OpenAI dashboard in default browser
         try
         {

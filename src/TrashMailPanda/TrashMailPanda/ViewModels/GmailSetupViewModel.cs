@@ -227,6 +227,8 @@ public partial class GmailSetupViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenGoogleCloudConsoleAsync()
     {
+        await Task.CompletedTask;
+
         try
         {
             const string url = "https://console.cloud.google.com/apis/credentials";
@@ -255,6 +257,8 @@ public partial class GmailSetupViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenGmailApiDocsAsync()
     {
+        await Task.CompletedTask;
+
         try
         {
             const string url = "https://developers.google.com/gmail/api/guides";

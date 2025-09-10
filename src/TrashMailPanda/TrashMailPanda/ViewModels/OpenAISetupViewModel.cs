@@ -101,6 +101,8 @@ public partial class OpenAISetupViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenOpenAIDashboardAsync()
     {
+        await Task.CompletedTask;
+
         try
         {
             var url = "https://platform.openai.com/api-keys";

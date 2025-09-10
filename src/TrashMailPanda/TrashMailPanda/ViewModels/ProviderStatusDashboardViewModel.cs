@@ -251,6 +251,8 @@ public partial class ProviderStatusDashboardViewModel : ViewModelBase
     /// </summary>
     private async Task UpdateOverallDashboardStateAsync()
     {
+        await Task.CompletedTask;
+
         try
         {
             // Count healthy providers
@@ -319,6 +321,8 @@ public partial class ProviderStatusDashboardViewModel : ViewModelBase
     [RelayCommand]
     private async Task AccessMainDashboardAsync()
     {
+        await Task.CompletedTask;
+
         if (!CanAccessMainDashboard)
         {
             _logger.LogWarning("Attempted to access main dashboard but providers not ready");

@@ -93,6 +93,8 @@ public class ApplicationService : IApplicationService
     {
         _logger.LogInformation("Starting application shutdown");
 
+        await Task.CompletedTask;
+
         try
         {
             // Shutdown providers in reverse order

@@ -306,6 +306,8 @@ public partial class ProviderStatusCardViewModel : ViewModelBase
     [RelayCommand]
     private async Task ResetProviderAsync()
     {
+        await Task.CompletedTask;
+
         if (IsLoading)
             return;
 
