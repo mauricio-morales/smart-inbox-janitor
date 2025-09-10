@@ -148,7 +148,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             // Test basic connectivity by getting user profile
             var profileResult = await _rateLimitHandler.ExecuteWithRetryAsync(async () =>
             {
-                var profile = await _gmailService.Users.GetProfile(GmailConstants.Api.USER_ID_ME).ExecuteAsync(cancellationToken);
+                var profile = await _gmailService.Users.GetProfile(GmailApiConstants.USER_ID_ME).ExecuteAsync(cancellationToken);
                 return profile;
             }, cancellationToken);
 
@@ -230,21 +230,21 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             if (_gmailService == null)
             {
                 return Result<IReadOnlyList<EmailSummary>>.Failure(
-                    new InvalidOperationError(GmailConstants.ErrorMessages.SERVICE_NOT_INITIALIZED));
+                    new InvalidOperationError(GmailErrorMessages.SERVICE_NOT_INITIALIZED));
             }
 
             var listResult = await _rateLimitHandler.ExecuteWithRetryAsync(async () =>
             {
-                var request = _gmailService.Users.Messages.List(GmailConstants.Api.USER_ID_ME);
+                var request = _gmailService.Users.Messages.List(GmailApiConstants.USER_ID_ME);
 
                 // Apply search options
                 if (!string.IsNullOrEmpty(options.Query))
                     request.Q = options.Query;
 
                 if (options.MaxResults.HasValue)
-                    request.MaxResults = Math.Min(options.MaxResults.Value, GmailConstants.Quotas.MAX_LIST_RESULTS);
+                    request.MaxResults = Math.Min(options.MaxResults.Value, GmailQuotas.MAX_LIST_RESULTS);
                 else
-                    request.MaxResults = Configuration?.DefaultPageSize ?? GmailConstants.Quotas.DEFAULT_LIST_RESULTS;
+                    request.MaxResults = Configuration?.DefaultPageSize ?? GmailQuotas.DEFAULT_LIST_RESULTS;
 
                 if (!string.IsNullOrEmpty(options.PageToken))
                     request.PageToken = options.PageToken;
@@ -292,18 +292,18 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             if (_gmailService == null)
             {
                 return Result<EmailFull>.Failure(
-                    new InvalidOperationError(GmailConstants.ErrorMessages.SERVICE_NOT_INITIALIZED));
+                    new InvalidOperationError(GmailErrorMessages.SERVICE_NOT_INITIALIZED));
             }
 
             if (string.IsNullOrWhiteSpace(id))
             {
                 return Result<EmailFull>.Failure(
-                    new ValidationError(string.Format(GmailConstants.ErrorMessages.INVALID_MESSAGE_ID, id)));
+                    new ValidationError(string.Format(GmailErrorMessages.INVALID_MESSAGE_ID, id)));
             }
 
             var messageResult = await _rateLimitHandler.ExecuteWithRetryAsync(async () =>
             {
-                var request = _gmailService.Users.Messages.Get(GmailConstants.Api.USER_ID_ME, id);
+                var request = _gmailService.Users.Messages.Get(GmailApiConstants.USER_ID_ME, id);
                 request.Format = UsersResource.MessagesResource.GetRequest.FormatEnum.Full;
 
                 var message = await request.ExecuteAsync(cancellationToken);
@@ -338,7 +338,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             if (_gmailService == null)
             {
                 return Result<bool>.Failure(
-                    new InvalidOperationError(GmailConstants.ErrorMessages.SERVICE_NOT_INITIALIZED));
+                    new InvalidOperationError(GmailErrorMessages.SERVICE_NOT_INITIALIZED));
             }
 
             if (request.EmailIds == null || !request.EmailIds.Any())
@@ -347,7 +347,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             }
 
             // Split into batches if necessary
-            var batchSize = Configuration?.BatchSize ?? GmailConstants.Quotas.RECOMMENDED_BATCH_SIZE;
+            var batchSize = Configuration?.BatchSize ?? GmailQuotas.RECOMMENDED_BATCH_SIZE;
             var batches = request.EmailIds.Batch(batchSize);
 
             foreach (var batch in batches)
@@ -365,7 +365,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
                     if (request.RemoveLabelIds?.Any() == true)
                         batchRequest.RemoveLabelIds = request.RemoveLabelIds.ToList();
 
-                    await _gmailService.Users.Messages.BatchModify(batchRequest, GmailConstants.Api.USER_ID_ME)
+                    await _gmailService.Users.Messages.BatchModify(batchRequest, GmailApiConstants.USER_ID_ME)
                         .ExecuteAsync(cancellationToken);
 
                     return true;
@@ -397,18 +397,18 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             if (_gmailService == null)
             {
                 return Result<bool>.Failure(
-                    new InvalidOperationError(GmailConstants.ErrorMessages.SERVICE_NOT_INITIALIZED));
+                    new InvalidOperationError(GmailErrorMessages.SERVICE_NOT_INITIALIZED));
             }
 
             if (string.IsNullOrWhiteSpace(id))
             {
                 return Result<bool>.Failure(
-                    new ValidationError(string.Format(GmailConstants.ErrorMessages.INVALID_MESSAGE_ID, id)));
+                    new ValidationError(string.Format(GmailErrorMessages.INVALID_MESSAGE_ID, id)));
             }
 
             var deleteResult = await _rateLimitHandler.ExecuteWithRetryAsync(async () =>
             {
-                await _gmailService.Users.Messages.Delete(GmailConstants.Api.USER_ID_ME, id)
+                await _gmailService.Users.Messages.Delete(GmailApiConstants.USER_ID_ME, id)
                     .ExecuteAsync(cancellationToken);
                 return true;
             }, cancellationToken);
@@ -433,18 +433,18 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             if (_gmailService == null)
             {
                 return Result<bool>.Failure(
-                    new InvalidOperationError(GmailConstants.ErrorMessages.SERVICE_NOT_INITIALIZED));
+                    new InvalidOperationError(GmailErrorMessages.SERVICE_NOT_INITIALIZED));
             }
 
             var spamResult = await _rateLimitHandler.ExecuteWithRetryAsync(async () =>
             {
                 var modifyRequest = new ModifyMessageRequest
                 {
-                    AddLabelIds = new List<string> { GmailConstants.Labels.SPAM },
-                    RemoveLabelIds = new List<string> { GmailConstants.Labels.INBOX }
+                    AddLabelIds = new List<string> { GmailLabels.SPAM },
+                    RemoveLabelIds = new List<string> { GmailLabels.INBOX }
                 };
 
-                await _gmailService.Users.Messages.Modify(modifyRequest, GmailConstants.Api.USER_ID_ME, id)
+                await _gmailService.Users.Messages.Modify(modifyRequest, GmailApiConstants.USER_ID_ME, id)
                     .ExecuteAsync(cancellationToken);
 
                 return true;
@@ -470,7 +470,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             if (_gmailService == null)
             {
                 return Result<bool>.Failure(
-                    new InvalidOperationError(GmailConstants.ErrorMessages.SERVICE_NOT_INITIALIZED));
+                    new InvalidOperationError(GmailErrorMessages.SERVICE_NOT_INITIALIZED));
             }
 
             // Gmail doesn't have explicit phishing API, so we fall back to spam labeling
@@ -478,11 +478,11 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             {
                 var modifyRequest = new ModifyMessageRequest
                 {
-                    AddLabelIds = new List<string> { GmailConstants.Labels.SPAM },
-                    RemoveLabelIds = new List<string> { GmailConstants.Labels.INBOX }
+                    AddLabelIds = new List<string> { GmailLabels.SPAM },
+                    RemoveLabelIds = new List<string> { GmailLabels.INBOX }
                 };
 
-                await _gmailService.Users.Messages.Modify(modifyRequest, GmailConstants.Api.USER_ID_ME, id)
+                await _gmailService.Users.Messages.Modify(modifyRequest, GmailApiConstants.USER_ID_ME, id)
                     .ExecuteAsync(cancellationToken);
 
                 return true;
@@ -512,7 +512,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
 
             var profileResult = await _rateLimitHandler.ExecuteWithRetryAsync(async () =>
             {
-                var profile = await _gmailService.Users.GetProfile(GmailConstants.Api.USER_ID_ME)
+                var profile = await _gmailService.Users.GetProfile(GmailApiConstants.USER_ID_ME)
                     .ExecuteAsync(cancellationToken);
                 return profile;
             }, cancellationToken);
@@ -566,8 +566,8 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     {
         try
         {
-            var accessTokenResult = await _secureStorageManager.RetrieveCredentialAsync(GmailConstants.StorageKeys.ACCESS_TOKEN);
-            var refreshTokenResult = await _secureStorageManager.RetrieveCredentialAsync(GmailConstants.StorageKeys.REFRESH_TOKEN);
+            var accessTokenResult = await _secureStorageManager.RetrieveCredentialAsync(GmailStorageKeys.ACCESS_TOKEN);
+            var refreshTokenResult = await _secureStorageManager.RetrieveCredentialAsync(GmailStorageKeys.REFRESH_TOKEN);
 
             // If we have stored tokens, attempt to use them
             if (accessTokenResult.IsSuccess && refreshTokenResult.IsSuccess)
@@ -659,7 +659,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
 
             var result = await _rateLimitHandler.ExecuteWithRetryAsync(async () =>
             {
-                var profile = await _gmailService.Users.GetProfile(GmailConstants.Api.USER_ID_ME)
+                var profile = await _gmailService.Users.GetProfile(GmailApiConstants.USER_ID_ME)
                     .ExecuteAsync(cancellationToken);
                 return profile != null && !string.IsNullOrEmpty(profile.EmailAddress);
             }, cancellationToken);
@@ -682,18 +682,18 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             if (credential.Token != null)
             {
                 await _secureStorageManager.StoreCredentialAsync(
-                    GmailConstants.StorageKeys.ACCESS_TOKEN,
+                    GmailStorageKeys.ACCESS_TOKEN,
                     credential.Token.AccessToken);
 
                 if (!string.IsNullOrEmpty(credential.Token.RefreshToken))
                 {
                     await _secureStorageManager.StoreCredentialAsync(
-                        GmailConstants.StorageKeys.REFRESH_TOKEN,
+                        GmailStorageKeys.REFRESH_TOKEN,
                         credential.Token.RefreshToken);
                 }
 
                 await _secureStorageManager.StoreCredentialAsync(
-                    GmailConstants.StorageKeys.TOKEN_EXPIRY,
+                    GmailStorageKeys.TOKEN_EXPIRY,
                     credential.Token.ExpiresInSeconds?.ToString() ?? "0");
             }
         }
@@ -726,7 +726,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
                 var result = await _rateLimitHandler.ExecuteWithRetryAsync(async () =>
                 {
                     var fullMessage = await _gmailService!.Users.Messages
-                        .Get(GmailConstants.Api.USER_ID_ME, message.Id)
+                        .Get(GmailApiConstants.USER_ID_ME, message.Id)
                         .ExecuteAsync(cancellationToken);
                     return fullMessage;
                 }, cancellationToken);
@@ -815,7 +815,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     {
         if (payload == null) return null;
 
-        if (payload.MimeType == GmailConstants.MimeTypes.TEXT_PLAIN && payload.Body?.Data != null)
+        if (payload.MimeType == GmailMimeTypes.TEXT_PLAIN && payload.Body?.Data != null)
         {
             return DecodeBase64String(payload.Body.Data);
         }
@@ -840,7 +840,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     {
         if (payload == null) return null;
 
-        if (payload.MimeType == GmailConstants.MimeTypes.TEXT_HTML && payload.Body?.Data != null)
+        if (payload.MimeType == GmailMimeTypes.TEXT_HTML && payload.Body?.Data != null)
         {
             return DecodeBase64String(payload.Body.Data);
         }
@@ -880,7 +880,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             attachments.Add(new EmailAttachment
             {
                 FileName = part.Filename ?? "unknown",
-                MimeType = part.MimeType ?? GmailConstants.MimeTypes.APPLICATION_OCTET_STREAM,
+                MimeType = part.MimeType ?? GmailMimeTypes.APPLICATION_OCTET_STREAM,
                 Size = part.Body?.Size ?? 0,
                 AttachmentId = part.Body?.AttachmentId ?? string.Empty
             });

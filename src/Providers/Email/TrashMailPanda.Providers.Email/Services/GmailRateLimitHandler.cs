@@ -169,10 +169,10 @@ public class GmailRateLimitHandler : IGmailRateLimitHandler
     {
         // Exponential backoff with jitter
         var exponentialDelay = TimeSpan.FromMilliseconds(
-            baseDelay.TotalMilliseconds * Math.Pow(GmailConstants.RateLimit.BACKOFF_MULTIPLIER, attemptNumber));
+            baseDelay.TotalMilliseconds * Math.Pow(GmailRateLimitConstants.BACKOFF_MULTIPLIER, attemptNumber));
 
         // Add jitter to avoid thundering herd
-        var jitter = _random.NextDouble() * GmailConstants.RateLimit.JITTER_FACTOR;
+        var jitter = _random.NextDouble() * GmailRateLimitConstants.JITTER_FACTOR;
         var jitteredDelay = TimeSpan.FromMilliseconds(
             exponentialDelay.TotalMilliseconds * (1.0 + jitter));
 
@@ -234,8 +234,8 @@ public class GmailRateLimitHandler : IGmailRateLimitHandler
     private static bool IsRateLimitException(GoogleApiException exception)
     {
         return exception.HttpStatusCode == HttpStatusCode.TooManyRequests ||
-               exception.Error?.Code == GmailConstants.RateLimit.HTTP_TOO_MANY_REQUESTS ||
-               (exception.Error?.Code == GmailConstants.RateLimit.HTTP_FORBIDDEN &&
+               exception.Error?.Code == GmailRateLimitConstants.HTTP_TOO_MANY_REQUESTS ||
+               (exception.Error?.Code == GmailRateLimitConstants.HTTP_FORBIDDEN &&
                 IsQuotaExceededError(exception));
     }
 
@@ -245,7 +245,7 @@ public class GmailRateLimitHandler : IGmailRateLimitHandler
     private static bool IsAuthException(GoogleApiException exception)
     {
         return exception.HttpStatusCode == HttpStatusCode.Unauthorized ||
-               exception.Error?.Code == GmailConstants.RateLimit.HTTP_UNAUTHORIZED;
+               exception.Error?.Code == GmailRateLimitConstants.HTTP_UNAUTHORIZED;
     }
 
     /// <summary>
