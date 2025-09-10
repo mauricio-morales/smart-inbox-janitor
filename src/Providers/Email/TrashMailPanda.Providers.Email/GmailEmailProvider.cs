@@ -567,9 +567,13 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
                 return Result<IReadOnlyList<EmailSummary>>.Success(Array.Empty<EmailSummary>());
             }
 
-            var detailedMessages = await GetMessagesBatchAsync(messageIds, cancellationToken);
-            var summaries = detailedMessages.Select(MapToEmailSummary).ToList();
+            var messagesResult = await GetMessagesBatchAsync(messageIds, cancellationToken);
+            if (messagesResult.IsFailure)
+            {
+                return Result<IReadOnlyList<EmailSummary>>.Failure(messagesResult.Error);
+            }
 
+            var summaries = messagesResult.Value.Select(MapToEmailSummary).ToList();
             return Result<IReadOnlyList<EmailSummary>>.Success(summaries);
         });
     }
@@ -840,9 +844,15 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
         }
 
         var messageIds = messages.Select(m => m.Id).ToList();
-        var detailedMessages = await GetMessagesBatchAsync(messageIds, cancellationToken);
+        var messagesResult = await GetMessagesBatchAsync(messageIds, cancellationToken);
 
-        return detailedMessages.Select(MapToEmailSummary).ToList();
+        if (messagesResult.IsFailure)
+        {
+            // If batch retrieval fails, return empty list to gracefully handle the error
+            return Array.Empty<EmailSummary>();
+        }
+
+        return messagesResult.Value.Select(MapToEmailSummary).ToList();
     }
 
     /// <summary>
@@ -855,18 +865,19 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     /// Each message still consumes 5 quota units, but network latency is reduced
     /// by batching up to 100 individual requests per HTTP call.
     /// </summary>
-    private async Task<IReadOnlyList<Message>> GetMessagesBatchAsync(
+    private async Task<Result<IReadOnlyList<Message>>> GetMessagesBatchAsync(
         IReadOnlyList<string> messageIds,
         CancellationToken cancellationToken)
     {
         if (messageIds == null || !messageIds.Any())
         {
-            return Array.Empty<Message>();
+            return Result<IReadOnlyList<Message>>.Success(Array.Empty<Message>());
         }
 
         if (_gmailService == null)
         {
-            throw new InvalidOperationException(GmailErrorMessages.SERVICE_NOT_INITIALIZED);
+            return Result<IReadOnlyList<Message>>.Failure(
+                new InvalidOperationError(GmailErrorMessages.SERVICE_NOT_INITIALIZED));
         }
 
         var allMessages = new List<Message>();
@@ -877,11 +888,15 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
 
         foreach (var batch in batches)
         {
-            var batchMessages = await ExecuteMessageBatchAsync(batch.ToList(), cancellationToken);
-            allMessages.AddRange(batchMessages);
+            var batchResult = await ExecuteMessageBatchAsync(batch.ToList(), cancellationToken);
+            if (batchResult.IsFailure)
+            {
+                return Result<IReadOnlyList<Message>>.Failure(batchResult.Error);
+            }
+            allMessages.AddRange(batchResult.Value);
         }
 
-        return allMessages;
+        return Result<IReadOnlyList<Message>>.Success(allMessages);
     }
 
     /// <summary>
@@ -895,7 +910,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     /// Benefits: Reduced HTTP round-trips and connection overhead
     /// Limitations: Same quota consumption as individual requests
     /// </summary>
-    private async Task<IReadOnlyList<Message>> ExecuteMessageBatchAsync(
+    private async Task<Result<IReadOnlyList<Message>>> ExecuteMessageBatchAsync(
         IReadOnlyList<string> messageIds,
         CancellationToken cancellationToken)
     {
@@ -924,7 +939,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             // Queue individual Get requests for each message ID
             for (int i = 0; i < messageIds.Count; i++)
             {
-                var getRequest = _gmailService.Users.Messages.Get(GmailApiConstants.USER_ID_ME, messageIds[i]);
+                var getRequest = _gmailService!.Users.Messages.Get(GmailApiConstants.USER_ID_ME, messageIds[i]);
                 // Use metadata format for efficiency - contains headers and basic info without full body
                 getRequest.Format = UsersResource.MessagesResource.GetRequest.FormatEnum.Metadata;
 
@@ -949,10 +964,10 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
 
         if (result.IsFailure)
         {
-            throw new InvalidOperationException($"Batch message retrieval failed: {result.Error}");
+            return Result<IReadOnlyList<Message>>.Failure(result.Error);
         }
 
-        return retrievedMessages;
+        return Result<IReadOnlyList<Message>>.Success(retrievedMessages);
     }
 
     /// <summary>
