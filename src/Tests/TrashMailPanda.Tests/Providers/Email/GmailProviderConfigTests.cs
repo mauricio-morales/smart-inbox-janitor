@@ -573,7 +573,7 @@ public class GmailProviderConfigTests
         // Arrange
         var config = new GmailProviderConfig
         {
-            ClientId = "test_client_id",
+            ClientId = "test_client_id_12345",
             ClientSecret = "secret_value_12345",
             ApplicationName = "Test App"
         };
@@ -583,9 +583,55 @@ public class GmailProviderConfigTests
 
         // Assert
         Assert.NotNull(sanitized);
-        Assert.Equal("test_client_id", sanitized.ClientId); // Not redacted
-        Assert.Equal("***REDACTED***", sanitized.ClientSecret); // Redacted
+        Assert.Equal("***...2345", sanitized.ClientId); // Partially masked - shows last 4 chars
+        Assert.Equal("***REDACTED***", sanitized.ClientSecret); // Fully redacted
         Assert.Equal("Test App", sanitized.ApplicationName); // Not redacted
+    }
+
+    /// <summary>
+    /// Tests GetSanitizedCopy with short ClientId (4 chars or less)
+    /// </summary>
+    [Fact]
+    public void GetSanitizedCopy_ShortClientId_FullyRedacted()
+    {
+        // Arrange
+        var config = new GmailProviderConfig
+        {
+            ClientId = "1234",
+            ClientSecret = "secret_value",
+            ApplicationName = "Test App"
+        };
+
+        // Act
+        var sanitized = config.GetSanitizedCopy() as GmailProviderConfig;
+
+        // Assert
+        Assert.NotNull(sanitized);
+        Assert.Equal("***REDACTED***", sanitized.ClientId); // Fully redacted for short IDs
+        Assert.Equal("***REDACTED***", sanitized.ClientSecret);
+    }
+
+    /// <summary>
+    /// Tests GetSanitizedCopy with empty ClientId
+    /// </summary>
+    [Fact]
+    public void GetSanitizedCopy_EmptyClientId_RemainsEmpty()
+    {
+        // Arrange
+        var config = new GmailProviderConfig
+        {
+            ClientId = "",
+            ClientSecret = "secret_value",
+            ApplicationName = "Test App"
+        };
+
+        // Act
+        var sanitized = config.GetSanitizedCopy() as GmailProviderConfig;
+
+        // Assert
+        Assert.NotNull(sanitized);
+        Assert.Equal("", sanitized.ClientId); // Empty remains empty
+        Assert.Equal("***REDACTED***", sanitized.ClientSecret);
     }
 
     /// <summary>

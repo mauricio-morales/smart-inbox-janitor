@@ -174,6 +174,17 @@ public sealed class GmailProviderConfig : BaseProviderConfig
     {
         var copy = (GmailProviderConfig)MemberwiseClone();
         copy.ClientSecret = "***REDACTED***";
+
+        // Partially mask ClientId - show only last 4 characters for identification
+        if (!string.IsNullOrEmpty(copy.ClientId) && copy.ClientId.Length > 4)
+        {
+            copy.ClientId = "***..." + copy.ClientId.Substring(copy.ClientId.Length - 4);
+        }
+        else if (!string.IsNullOrEmpty(copy.ClientId))
+        {
+            copy.ClientId = "***REDACTED***";
+        }
+
         return copy;
     }
 
