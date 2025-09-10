@@ -15,6 +15,7 @@
 
     <UserControl.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <conv:ProviderNameToLogoConverter x:Key="ProviderNameToLogoConverter"/>
     </UserControl.Resources>
 
     <Grid RowDefinitions="Auto,Auto,*,Auto" 
@@ -233,13 +234,14 @@
                                         <!-- Provider Icon -->
                                         <Border Width="40" Height="40" 
                                                 CornerRadius="20"
-                                                Background="{DynamicResource AccentBlue}"
+                                                Background="{DynamicResource BackgroundPrimary}"
+                                                BorderBrush="{DynamicResource BorderLight}"
+                                                BorderThickness="1"
                                                 VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding IconName, FallbackValue='⚙️'}"
-                                                      FontSize="20"
-                                                      HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      Foreground="White"/>
+                                            <Image Source="{Binding DisplayName, Converter={StaticResource ProviderNameToLogoConverter}}"
+                                                   Width="24" Height="24"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
                                         </Border>
 
                                         <!-- Provider Info -->
@@ -250,9 +252,10 @@
                                                       FontSize="16"
                                                       FontWeight="SemiBold"
                                                       Foreground="{DynamicResource TextPrimary}"/>
-                                            <TextBlock Text="{Binding IsRequired, StringFormat='\{0:Required;Optional\}'}"
-                                                      FontSize="11"
-                                                      Foreground="{DynamicResource TextTertiary}"/>
+                                            <TextBlock Text="{Binding Status.Status, FallbackValue='Setting up...'}"
+                                                      FontSize="12"
+                                                      FontWeight="Medium"
+                                                      Foreground="{DynamicResource TextSecondary}"/>
                                         </StackPanel>
 
                                         <!-- Status Indicator -->
@@ -340,9 +343,15 @@
                                             Margin="0,16,0,0"
                                             Padding="12,10">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="{Binding Status.IsHealthy, StringFormat='\{0:✅ Ready;⚙️ Set Up\}'}"
-                                                      FontSize="13"
-                                                      FontWeight="Medium"/>
+                                            <!-- Show appropriate button text -->
+                                            <TextBlock FontSize="13" FontWeight="Medium">
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="{}{0} {1}">
+                                                        <Binding Path="Status.IsHealthy" StringFormat="{}{0:✅;⚙️}"/>
+                                                        <Binding Path="Status.IsHealthy" StringFormat="{}{0:Successfully configured;Set up provider}"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
                                             <TextBlock Text="→" 
                                                       FontSize="13"
                                                       IsVisible="{Binding !Status.IsHealthy}"/>
