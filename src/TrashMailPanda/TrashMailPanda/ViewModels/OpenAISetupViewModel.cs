@@ -3,9 +3,9 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
-using TrashMailPanda.Models;
 using TrashMailPanda.Shared.Security;
 using TrashMailPanda.Shared;
+using TrashMailPanda.Shared.Models;
 
 namespace TrashMailPanda.ViewModels;
 

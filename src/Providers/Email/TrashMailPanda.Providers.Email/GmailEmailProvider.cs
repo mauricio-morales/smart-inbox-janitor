@@ -19,6 +19,7 @@ using TrashMailPanda.Shared.Base;
 using TrashMailPanda.Shared.Models;
 using TrashMailPanda.Shared.Security;
 using TrashMailPanda.Providers.Email.Models;
+using TrashMailPanda.Providers.Email.Store;
 using TrashMailPanda.Providers.Email.Services;
 
 namespace TrashMailPanda.Providers.Email;
@@ -99,7 +100,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             }
 
             // Attempt to retrieve existing credentials
-            var credentialResult = await TryRetrieveStoredCredentialsAsync(config);
+            var credentialResult = await CreateUserCredentialFromTokensAsync(config, cancellationToken);
             if (credentialResult.IsFailure)
             {
                 return Result<bool>.Failure(credentialResult.Error);
@@ -583,50 +584,9 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     #region Private Helper Methods
 
     /// <summary>
-    /// Attempts to retrieve stored OAuth credentials
+    /// Creates a UserCredential from stored access and refresh tokens, or initiates OAuth flow if needed.
     /// </summary>
-    private async Task<Result<bool>> TryRetrieveStoredCredentialsAsync(GmailProviderConfig config)
-    {
-        try
-        {
-            var accessTokenResult = await _secureStorageManager.RetrieveCredentialAsync(GmailStorageKeys.ACCESS_TOKEN);
-            var refreshTokenResult = await _secureStorageManager.RetrieveCredentialAsync(GmailStorageKeys.REFRESH_TOKEN);
-
-            // If we have stored tokens, attempt to use them
-            if (accessTokenResult.IsSuccess && refreshTokenResult.IsSuccess)
-            {
-                var accessToken = accessTokenResult.Value;
-                var refreshToken = refreshTokenResult.Value;
-
-                if (!string.IsNullOrEmpty(accessToken) && !string.IsNullOrEmpty(refreshToken))
-                {
-                    var credentialResult = await CreateUserCredentialFromTokensAsync(config, accessToken, refreshToken);
-                    if (credentialResult.IsSuccess)
-                    {
-                        _credential = credentialResult.Value;
-                        return Result<bool>.Success(true);
-                    }
-
-                    // If token-based credential creation failed, clear stored tokens and fall back to OAuth flow
-                    await ClearStoredTokensAsync();
-                }
-            }
-
-            return Result<bool>.Success(true);
-        }
-        catch (Exception ex)
-        {
-            return Result<bool>.Failure(ex.ToProviderError("Failed to retrieve stored credentials"));
-        }
-    }
-
-    /// <summary>
-    /// Creates a UserCredential from stored access and refresh tokens
-    /// </summary>
-    private async Task<Result<UserCredential>> CreateUserCredentialFromTokensAsync(
-        GmailProviderConfig config,
-        string accessToken,
-        string refreshToken)
+    private async Task<Result<UserCredential>> CreateUserCredentialFromTokensAsync(GmailProviderConfig config, CancellationToken cancellationToken)
     {
         try
         {
@@ -636,7 +596,6 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
                 ClientSecret = config.ClientSecret
             };
 
-            // Create the authorization code flow
             var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
             {
                 ClientSecrets = clientSecrets,
@@ -644,68 +603,42 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
                 DataStore = _dataStore
             });
 
-            // Retrieve stored token expiry
-            var tokenExpiryResult = await _secureStorageManager.RetrieveCredentialAsync(GmailStorageKeys.TOKEN_EXPIRY);
-            var expiresInSeconds = 3600; // Default to 1 hour if not stored
+            var token = await flow.LoadTokenAsync("user", cancellationToken);
 
-            if (tokenExpiryResult.IsSuccess &&
-                int.TryParse(tokenExpiryResult.Value, out var storedExpiry))
+            if (token == null)
             {
-                expiresInSeconds = storedExpiry;
-            }
-
-            // Create token response from stored tokens
-            var tokenResponse = new TokenResponse
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-                ExpiresInSeconds = expiresInSeconds,
-                TokenType = "Bearer"
-            };
-
-            // Create UserCredential from the token response
-            var userCredential = new UserCredential(flow, "user", tokenResponse);
-
-            // Test if the token is still valid by attempting to refresh if needed
-            if (tokenResponse.IsStale)
-            {
-                var refreshResult = await userCredential.RefreshTokenAsync(CancellationToken.None);
-                if (!refreshResult)
+                // No token found, so we need to run the OAuth flow.
+                var authResult = await PerformOAuthFlowAsync(config, cancellationToken);
+                if (authResult.IsFailure)
                 {
-                    return Result<UserCredential>.Failure(
-                        new AuthenticationError("Failed to refresh expired token"));
+                    return Result<UserCredential>.Failure(authResult.Error);
                 }
-
-                // Update stored tokens with refreshed values
-                await StoreCredentialsAsync(userCredential);
+            }
+            else if (token.IsStale)
+            {
+                var refreshResult = await flow.RefreshTokenAsync("user", token.RefreshToken, cancellationToken);
+                if (refreshResult == null || string.IsNullOrEmpty(refreshResult.AccessToken))
+                {
+                    // If refresh fails, we might need to re-authenticate.
+                    var authResult = await PerformOAuthFlowAsync(config, cancellationToken);
+                    if (authResult.IsFailure)
+                    {
+                        return Result<UserCredential>.Failure(authResult.Error);
+                    }
+                }
+                else
+                {
+                    token = refreshResult;
+                }
             }
 
-            return Result<UserCredential>.Success(userCredential);
+            _credential = new UserCredential(flow, "user", token);
+            return Result<UserCredential>.Success(_credential);
         }
         catch (Exception ex)
         {
             return Result<UserCredential>.Failure(
                 ex.ToProviderError("Failed to create credential from stored tokens"));
-        }
-    }
-
-    /// <summary>
-    /// Clears all stored OAuth tokens from secure storage
-    /// </summary>
-    private async Task ClearStoredTokensAsync()
-    {
-        try
-        {
-            await _secureStorageManager.RemoveCredentialAsync(GmailStorageKeys.ACCESS_TOKEN);
-            await _secureStorageManager.RemoveCredentialAsync(GmailStorageKeys.REFRESH_TOKEN);
-            await _secureStorageManager.RemoveCredentialAsync(GmailStorageKeys.TOKEN_EXPIRY);
-            await _secureStorageManager.RemoveCredentialAsync(GmailStorageKeys.TOKEN_TYPE);
-        }
-        catch (Exception ex)
-        {
-            // Log the error but don't fail - we can still proceed with OAuth flow
-            RecordMetric("token_cleanup_errors", 1);
-            _ = ex; // Suppress unused variable warning
         }
     }
 
@@ -728,9 +661,6 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
                 "user",
                 cancellationToken,
                 _dataStore);
-
-            // Store tokens securely
-            await StoreCredentialsAsync(_credential);
 
             return Result<bool>.Success(true);
         }
@@ -794,40 +724,6 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
         catch (Exception ex)
         {
             return Result<bool>.Failure(ex.ToProviderError("Gmail connection test failed"));
-        }
-    }
-
-    /// <summary>
-    /// Stores OAuth credentials securely
-    /// </summary>
-    private async Task StoreCredentialsAsync(UserCredential credential)
-    {
-        try
-        {
-            if (credential.Token != null)
-            {
-                await _secureStorageManager.StoreCredentialAsync(
-                    GmailStorageKeys.ACCESS_TOKEN,
-                    credential.Token.AccessToken);
-
-                if (!string.IsNullOrEmpty(credential.Token.RefreshToken))
-                {
-                    await _secureStorageManager.StoreCredentialAsync(
-                        GmailStorageKeys.REFRESH_TOKEN,
-                        credential.Token.RefreshToken);
-                }
-
-                await _secureStorageManager.StoreCredentialAsync(
-                    GmailStorageKeys.TOKEN_EXPIRY,
-                    credential.Token.ExpiresInSeconds?.ToString() ?? "0");
-            }
-        }
-        catch (Exception ex)
-        {
-            // Log but don't fail - we can still function without stored tokens
-            RecordMetric("credential_storage_errors", 1);
-            // Note: Exception logged via metrics, not throwing to maintain functionality
-            _ = ex; // Suppress unused variable warning
         }
     }
 

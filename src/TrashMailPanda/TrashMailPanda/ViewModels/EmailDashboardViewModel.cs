@@ -5,6 +5,7 @@ using System;
 using System.Threading.Tasks;
 using TrashMailPanda.Models;
 using TrashMailPanda.Services;
+using TrashMailPanda.Shared.Models;
 
 namespace TrashMailPanda.ViewModels;
 

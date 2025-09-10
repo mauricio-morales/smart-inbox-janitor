@@ -1,10 +1,9 @@
 using Google.Apis.Util.Store;
 using Microsoft.Extensions.Logging;
-using TrashMailPanda.Shared;
 using TrashMailPanda.Shared.Security;
-using TrashMailPanda.Models;
+using TrashMailPanda.Shared.Models;
 
-namespace TrashMailPanda.Services;
+namespace TrashMailPanda.Providers.Email.Store;
 
 /// <summary>
 /// Custom data store that integrates with our secure storage system

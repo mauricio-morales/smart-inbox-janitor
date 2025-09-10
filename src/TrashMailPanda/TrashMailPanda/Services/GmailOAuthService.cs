@@ -5,10 +5,11 @@ using Google.Apis.Util.Store;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Threading;
-using TrashMailPanda.Models;
 using TrashMailPanda.Shared;
 using TrashMailPanda.Shared.Base;
 using TrashMailPanda.Shared.Security;
+using TrashMailPanda.Shared.Models;
+using TrashMailPanda.Providers.Email.Store;
 
 namespace TrashMailPanda.Services;
 

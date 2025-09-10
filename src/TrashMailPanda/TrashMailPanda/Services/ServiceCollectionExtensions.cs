@@ -8,6 +8,7 @@ using TrashMailPanda.Providers.Storage;
 using TrashMailPanda.Shared;
 using TrashMailPanda.Shared.Security;
 using TrashMailPanda.ViewModels;
+using TrashMailPanda.Providers.Email.Store;
 
 namespace TrashMailPanda.Services;
 

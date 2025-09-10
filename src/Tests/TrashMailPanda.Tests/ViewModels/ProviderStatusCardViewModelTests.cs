@@ -1,8 +1,9 @@
 using TrashMailPanda.ViewModels;
-using TrashMailPanda.Models;
 using TrashMailPanda.Shared;
 using TrashMailPanda.Services;
 using Xunit;
+using TrashMailPanda.Shared.Models;
+using TrashMailPanda.Models;
 
 namespace TrashMailPanda.Tests.ViewModels;
 
