@@ -18,6 +18,7 @@ public class GmailEmailProviderTests : IDisposable
     private readonly Mock<ILogger<GmailEmailProvider>> _mockLogger;
     private readonly Mock<ISecureStorageManager> _mockSecureStorage;
     private readonly Mock<IGmailRateLimitHandler> _mockRateLimitHandler;
+    private readonly Mock<Google.Apis.Util.Store.IDataStore> _mockDataStore;
     private readonly GmailProviderConfig _validConfig;
 
     public GmailEmailProviderTests()
@@ -25,6 +26,7 @@ public class GmailEmailProviderTests : IDisposable
         _mockLogger = new Mock<ILogger<GmailEmailProvider>>();
         _mockSecureStorage = new Mock<ISecureStorageManager>();
         _mockRateLimitHandler = new Mock<IGmailRateLimitHandler>();
+        _mockDataStore = new Mock<Google.Apis.Util.Store.IDataStore>();
 
         _validConfig = new GmailProviderConfig();
         _validConfig.ClientId = "test_client_id_12345";
@@ -57,6 +59,7 @@ public class GmailEmailProviderTests : IDisposable
             new GmailEmailProvider(
                 _mockSecureStorage.Object,
                 _mockRateLimitHandler.Object,
+                _mockDataStore.Object,
                 null!));
     }
 
@@ -71,6 +74,7 @@ public class GmailEmailProviderTests : IDisposable
             new GmailEmailProvider(
                 null!,
                 _mockRateLimitHandler.Object,
+                _mockDataStore.Object,
                 _mockLogger.Object));
     }
 
@@ -84,6 +88,22 @@ public class GmailEmailProviderTests : IDisposable
         Assert.Throws<ArgumentNullException>(() =>
             new GmailEmailProvider(
                 _mockSecureStorage.Object,
+                null!,
+                _mockDataStore.Object,
+                _mockLogger.Object));
+    }
+
+    /// <summary>
+    /// Tests that constructor throws ArgumentNullException for null data store
+    /// </summary>
+    [Fact]
+    public void Constructor_WithNullDataStore_ThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            new GmailEmailProvider(
+                _mockSecureStorage.Object,
+                _mockRateLimitHandler.Object,
                 null!,
                 _mockLogger.Object));
     }
@@ -161,6 +181,7 @@ public class GmailEmailProviderTests : IDisposable
         return new GmailEmailProvider(
             _mockSecureStorage.Object,
             _mockRateLimitHandler.Object,
+            _mockDataStore.Object,
             _mockLogger.Object);
     }
 

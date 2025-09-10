@@ -28,6 +28,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
 {
     private readonly ISecureStorageManager _secureStorageManager;
     private readonly IGmailRateLimitHandler _rateLimitHandler;
+    private readonly IDataStore _dataStore;
     private GmailService? _gmailService;
     private UserCredential? _credential;
 
@@ -46,15 +47,18 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     /// </summary>
     /// <param name="secureStorageManager">Secure storage manager for OAuth tokens</param>
     /// <param name="rateLimitHandler">Rate limiting handler for API calls</param>
+    /// <param name="dataStore">Secure data store for OAuth token persistence</param>
     /// <param name="logger">Logger for the provider</param>
     public GmailEmailProvider(
         ISecureStorageManager secureStorageManager,
         IGmailRateLimitHandler rateLimitHandler,
+        IDataStore dataStore,
         ILogger<GmailEmailProvider> logger)
         : base(logger)
     {
         _secureStorageManager = secureStorageManager ?? throw new ArgumentNullException(nameof(secureStorageManager));
         _rateLimitHandler = rateLimitHandler ?? throw new ArgumentNullException(nameof(rateLimitHandler));
+        _dataStore = dataStore ?? throw new ArgumentNullException(nameof(dataStore));
     }
 
     #region BaseProvider Implementation
@@ -566,7 +570,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
                 config.Scopes,
                 "user",
                 cancellationToken,
-                new FileDataStore("TrashMailPanda", true));
+                _dataStore);
 
             // Store tokens securely
             await StoreCredentialsAsync(_credential);

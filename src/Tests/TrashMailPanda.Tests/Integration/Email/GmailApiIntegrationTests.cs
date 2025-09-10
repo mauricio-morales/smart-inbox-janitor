@@ -19,6 +19,7 @@ public class GmailApiIntegrationTests : IDisposable
     private readonly Mock<ILogger<GmailEmailProvider>> _mockLogger;
     private readonly Mock<ISecureStorageManager> _mockSecureStorage;
     private readonly Mock<IGmailRateLimitHandler> _mockRateLimitHandler;
+    private readonly Mock<Google.Apis.Util.Store.IDataStore> _mockDataStore;
     private readonly GmailProviderConfig _testConfig;
 
     public GmailApiIntegrationTests()
@@ -26,6 +27,7 @@ public class GmailApiIntegrationTests : IDisposable
         _mockLogger = new Mock<ILogger<GmailEmailProvider>>();
         _mockSecureStorage = new Mock<ISecureStorageManager>();
         _mockRateLimitHandler = new Mock<IGmailRateLimitHandler>();
+        _mockDataStore = new Mock<Google.Apis.Util.Store.IDataStore>();
 
         _testConfig = new GmailProviderConfig();
         _testConfig.ClientId = "test_integration_client_id";
@@ -219,6 +221,7 @@ public class GmailApiIntegrationTests : IDisposable
         return new GmailEmailProvider(
             _mockSecureStorage.Object,
             _mockRateLimitHandler.Object,
+            _mockDataStore.Object,
             _mockLogger.Object);
     }
 
