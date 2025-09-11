@@ -111,6 +111,11 @@ public abstract class BaseProvider<TConfig> : IProvider<TConfig>, IDisposable
     public bool CanAcceptOperations => _stateInfo.CanAcceptOperations && !_disposed;
 
     /// <summary>
+    /// Gets the logger instance for this provider
+    /// </summary>
+    protected ILogger Logger => _logger;
+
+    /// <summary>
     /// Gets the timestamp of the last successful operation
     /// </summary>
     public DateTime? LastSuccessfulOperation => _stateInfo.LastSuccessfulOperation;

@@ -46,6 +46,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     private readonly ISecureStorageManager _secureStorageManager;
     private readonly IGmailRateLimitHandler _rateLimitHandler;
     private readonly IDataStore _dataStore;
+    private readonly ISecurityAuditLogger _securityAuditLogger;
     private GmailService? _gmailService;
     private UserCredential? _credential;
 
@@ -65,17 +66,20 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     /// <param name="secureStorageManager">Secure storage manager for OAuth tokens</param>
     /// <param name="rateLimitHandler">Rate limiting handler for API calls</param>
     /// <param name="dataStore">Secure data store for OAuth token persistence</param>
+    /// <param name="securityAuditLogger">Security audit logger for credential operations</param>
     /// <param name="logger">Logger for the provider</param>
     public GmailEmailProvider(
         ISecureStorageManager secureStorageManager,
         IGmailRateLimitHandler rateLimitHandler,
         IDataStore dataStore,
+        ISecurityAuditLogger securityAuditLogger,
         ILogger<GmailEmailProvider> logger)
         : base(logger)
     {
         _secureStorageManager = secureStorageManager ?? throw new ArgumentNullException(nameof(secureStorageManager));
         _rateLimitHandler = rateLimitHandler ?? throw new ArgumentNullException(nameof(rateLimitHandler));
         _dataStore = dataStore ?? throw new ArgumentNullException(nameof(dataStore));
+        _securityAuditLogger = securityAuditLogger ?? throw new ArgumentNullException(nameof(securityAuditLogger));
     }
 
     #region BaseProvider Implementation
@@ -608,7 +612,11 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
                     }
 
                     // If token-based credential creation failed, clear stored tokens and fall back to OAuth flow
-                    await ClearStoredTokensAsync();
+                    var clearResult = await ClearStoredTokensAsync();
+                    if (clearResult.IsFailure)
+                    {
+                        Logger.LogWarning("Failed to clear stored tokens after credential creation failure: {Error}", clearResult.Error.Message);
+                    }
                 }
             }
 
@@ -677,7 +685,11 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
                 }
 
                 // Update stored tokens with refreshed values
-                await StoreCredentialsAsync(userCredential);
+                var storeResult = await StoreCredentialsAsync(userCredential);
+                if (storeResult.IsFailure)
+                {
+                    Logger.LogWarning("Failed to store refreshed credentials: {Error}", storeResult.Error.Message);
+                }
             }
 
             return Result<UserCredential>.Success(userCredential);
@@ -692,21 +704,77 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     /// <summary>
     /// Clears all stored OAuth tokens from secure storage
     /// </summary>
-    private async Task ClearStoredTokensAsync()
+    /// <returns>A result indicating success or failure of the clear operation</returns>
+    private async Task<Result<bool>> ClearStoredTokensAsync()
     {
-        try
+        var errors = new List<string>();
+        var operationsAttempted = 0;
+        var operationsSucceeded = 0;
+
+        var keys = new[]
         {
-            await _secureStorageManager.RemoveCredentialAsync(GmailStorageKeys.ACCESS_TOKEN);
-            await _secureStorageManager.RemoveCredentialAsync(GmailStorageKeys.REFRESH_TOKEN);
-            await _secureStorageManager.RemoveCredentialAsync(GmailStorageKeys.TOKEN_EXPIRY);
-            await _secureStorageManager.RemoveCredentialAsync(GmailStorageKeys.TOKEN_TYPE);
-        }
-        catch (Exception ex)
+            GmailStorageKeys.ACCESS_TOKEN,
+            GmailStorageKeys.REFRESH_TOKEN,
+            GmailStorageKeys.TOKEN_EXPIRY,
+            GmailStorageKeys.TOKEN_TYPE
+        };
+
+        foreach (var key in keys)
         {
-            // Log the error but don't fail - we can still proceed with OAuth flow
-            RecordMetric("token_cleanup_errors", 1);
-            _ = ex; // Suppress unused variable warning
+            operationsAttempted++;
+            try
+            {
+                await _secureStorageManager.RemoveCredentialAsync(key);
+                operationsSucceeded++;
+
+                // Log successful credential removal
+                await _securityAuditLogger.LogCredentialOperationAsync(new CredentialOperationEvent
+                {
+                    Operation = "Remove",
+                    CredentialKey = key,
+                    Success = true,
+                    UserContext = "Gmail Provider",
+                    Platform = Environment.OSVersion.Platform.ToString()
+                });
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = $"Failed to remove credential {key}: {ex.Message}";
+                errors.Add(errorMessage);
+
+                Logger.LogError(ex, "Failed to remove stored credential {Key}", key);
+                RecordMetric("token_cleanup_errors", 1);
+
+                // Log failed credential removal
+                await _securityAuditLogger.LogCredentialOperationAsync(new CredentialOperationEvent
+                {
+                    Operation = "Remove",
+                    CredentialKey = key,
+                    Success = false,
+                    ErrorMessage = ex.Message,
+                    UserContext = "Gmail Provider",
+                    Platform = Environment.OSVersion.Platform.ToString()
+                });
+            }
         }
+
+        if (errors.Count == 0)
+        {
+            RecordMetric("token_cleanup_success", 1);
+            return Result<bool>.Success(true);
+        }
+
+        // If some operations succeeded, it's a partial success
+        if (operationsSucceeded > 0)
+        {
+            var partialMessage = $"Cleared {operationsSucceeded}/{operationsAttempted} credentials. Errors: {string.Join("; ", errors)}";
+            Logger.LogWarning("Partial success clearing stored tokens: {Message}", partialMessage);
+            return Result<bool>.Success(true); // Partial success is still success for OAuth flow continuation
+        }
+
+        // Complete failure
+        var fullErrorMessage = $"Failed to clear any stored credentials: {string.Join("; ", errors)}";
+        return Result<bool>.Failure(new InvalidOperationError(fullErrorMessage));
     }
 
     /// <summary>
@@ -730,7 +798,12 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
                 _dataStore);
 
             // Store tokens securely
-            await StoreCredentialsAsync(_credential);
+            var storeResult = await StoreCredentialsAsync(_credential);
+            if (storeResult.IsFailure)
+            {
+                Logger.LogWarning("Failed to store OAuth credentials: {Error}", storeResult.Error.Message);
+                // Continue with success since OAuth flow succeeded, token storage is optional
+            }
 
             return Result<bool>.Success(true);
         }
@@ -800,34 +873,101 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     /// <summary>
     /// Stores OAuth credentials securely
     /// </summary>
-    private async Task StoreCredentialsAsync(UserCredential credential)
+    /// <param name="credential">The user credential to store</param>
+    /// <returns>A result indicating success or failure of the storage operation</returns>
+    private async Task<Result<bool>> StoreCredentialsAsync(UserCredential credential)
     {
+        if (credential?.Token == null)
+        {
+            return Result<bool>.Failure(new ValidationError("Credential or token is null"));
+        }
+
+        var errors = new List<string>();
+        var operationsAttempted = 0;
+        var operationsSucceeded = 0;
+
         try
         {
-            if (credential.Token != null)
+            // Store access token
+            operationsAttempted++;
+            await _secureStorageManager.StoreCredentialAsync(
+                GmailStorageKeys.ACCESS_TOKEN,
+                credential.Token.AccessToken);
+            operationsSucceeded++;
+
+            await _securityAuditLogger.LogCredentialOperationAsync(new CredentialOperationEvent
             {
-                await _secureStorageManager.StoreCredentialAsync(
-                    GmailStorageKeys.ACCESS_TOKEN,
-                    credential.Token.AccessToken);
+                Operation = "Store",
+                CredentialKey = GmailStorageKeys.ACCESS_TOKEN,
+                Success = true,
+                UserContext = "Gmail Provider",
+                Platform = Environment.OSVersion.Platform.ToString()
+            });
 
-                if (!string.IsNullOrEmpty(credential.Token.RefreshToken))
+            // Store refresh token if available
+            if (!string.IsNullOrEmpty(credential.Token.RefreshToken))
+            {
+                operationsAttempted++;
+                await _secureStorageManager.StoreCredentialAsync(
+                    GmailStorageKeys.REFRESH_TOKEN,
+                    credential.Token.RefreshToken);
+                operationsSucceeded++;
+
+                await _securityAuditLogger.LogCredentialOperationAsync(new CredentialOperationEvent
                 {
-                    await _secureStorageManager.StoreCredentialAsync(
-                        GmailStorageKeys.REFRESH_TOKEN,
-                        credential.Token.RefreshToken);
-                }
-
-                await _secureStorageManager.StoreCredentialAsync(
-                    GmailStorageKeys.TOKEN_EXPIRY,
-                    credential.Token.ExpiresInSeconds?.ToString() ?? "0");
+                    Operation = "Store",
+                    CredentialKey = GmailStorageKeys.REFRESH_TOKEN,
+                    Success = true,
+                    UserContext = "Gmail Provider",
+                    Platform = Environment.OSVersion.Platform.ToString()
+                });
             }
+
+            // Store token expiry
+            operationsAttempted++;
+            await _secureStorageManager.StoreCredentialAsync(
+                GmailStorageKeys.TOKEN_EXPIRY,
+                credential.Token.ExpiresInSeconds?.ToString() ?? "0");
+            operationsSucceeded++;
+
+            await _securityAuditLogger.LogCredentialOperationAsync(new CredentialOperationEvent
+            {
+                Operation = "Store",
+                CredentialKey = GmailStorageKeys.TOKEN_EXPIRY,
+                Success = true,
+                UserContext = "Gmail Provider",
+                Platform = Environment.OSVersion.Platform.ToString()
+            });
+
+            RecordMetric("credential_storage_success", 1);
+            return Result<bool>.Success(true);
         }
         catch (Exception ex)
         {
-            // Log but don't fail - we can still function without stored tokens
+            var errorMessage = $"Failed to store credential: {ex.Message}";
+            Logger.LogError(ex, "Failed to store OAuth credentials");
             RecordMetric("credential_storage_errors", 1);
-            // Note: Exception logged via metrics, not throwing to maintain functionality
-            _ = ex; // Suppress unused variable warning
+
+            // Log the failed operation
+            await _securityAuditLogger.LogCredentialOperationAsync(new CredentialOperationEvent
+            {
+                Operation = "Store",
+                CredentialKey = "Multiple",
+                Success = false,
+                ErrorMessage = ex.Message,
+                UserContext = "Gmail Provider",
+                Platform = Environment.OSVersion.Platform.ToString()
+            });
+
+            // If some operations succeeded, it's a partial success
+            if (operationsSucceeded > 0)
+            {
+                var partialMessage = $"Stored {operationsSucceeded}/{operationsAttempted} credentials. Error: {errorMessage}";
+                Logger.LogWarning("Partial success storing credentials: {Message}", partialMessage);
+                return Result<bool>.Success(true); // Partial success is acceptable
+            }
+
+            return Result<bool>.Failure(new InvalidOperationError(errorMessage));
         }
     }
 

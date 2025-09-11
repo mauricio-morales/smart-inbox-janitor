@@ -19,6 +19,7 @@ public class GmailEmailProviderTests : IDisposable
     private readonly Mock<ISecureStorageManager> _mockSecureStorage;
     private readonly Mock<IGmailRateLimitHandler> _mockRateLimitHandler;
     private readonly Mock<Google.Apis.Util.Store.IDataStore> _mockDataStore;
+    private readonly Mock<ISecurityAuditLogger> _mockSecurityAuditLogger;
     private readonly GmailProviderConfig _validConfig;
 
     public GmailEmailProviderTests()
@@ -27,6 +28,7 @@ public class GmailEmailProviderTests : IDisposable
         _mockSecureStorage = new Mock<ISecureStorageManager>();
         _mockRateLimitHandler = new Mock<IGmailRateLimitHandler>();
         _mockDataStore = new Mock<Google.Apis.Util.Store.IDataStore>();
+        _mockSecurityAuditLogger = new Mock<ISecurityAuditLogger>();
 
         _validConfig = new GmailProviderConfig();
         _validConfig.ClientId = "test_client_id_12345";
@@ -60,6 +62,7 @@ public class GmailEmailProviderTests : IDisposable
                 _mockSecureStorage.Object,
                 _mockRateLimitHandler.Object,
                 _mockDataStore.Object,
+                _mockSecurityAuditLogger.Object,
                 null!));
     }
 
@@ -75,6 +78,7 @@ public class GmailEmailProviderTests : IDisposable
                 null!,
                 _mockRateLimitHandler.Object,
                 _mockDataStore.Object,
+                _mockSecurityAuditLogger.Object,
                 _mockLogger.Object));
     }
 
@@ -90,6 +94,7 @@ public class GmailEmailProviderTests : IDisposable
                 _mockSecureStorage.Object,
                 null!,
                 _mockDataStore.Object,
+                _mockSecurityAuditLogger.Object,
                 _mockLogger.Object));
     }
 
@@ -105,6 +110,7 @@ public class GmailEmailProviderTests : IDisposable
                 _mockSecureStorage.Object,
                 _mockRateLimitHandler.Object,
                 null!,
+                _mockSecurityAuditLogger.Object,
                 _mockLogger.Object));
     }
 
@@ -281,6 +287,7 @@ public class GmailEmailProviderTests : IDisposable
             _mockSecureStorage.Object,
             _mockRateLimitHandler.Object,
             _mockDataStore.Object,
+            _mockSecurityAuditLogger.Object,
             _mockLogger.Object);
     }
 
