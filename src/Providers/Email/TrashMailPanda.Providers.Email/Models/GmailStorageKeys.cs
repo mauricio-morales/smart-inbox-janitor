@@ -23,6 +23,9 @@ public static class GmailStorageKeys
     /// <summary>Token expiration timestamp storage key</summary>
     public const string TOKEN_EXPIRY = "gmail_token_expiry";
 
+    /// <summary>Token issued UTC timestamp storage key</summary>
+    public const string TOKEN_ISSUED_UTC = "gmail_token_issued_utc";
+
     /// <summary>OAuth2 token type storage key</summary>
     public const string TOKEN_TYPE = "gmail_token_type";
 

@@ -652,14 +652,23 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
                 DataStore = _dataStore
             });
 
-            // Retrieve stored token expiry
+            // Retrieve stored token expiry and issued time
             var tokenExpiryResult = await _secureStorageManager.RetrieveCredentialAsync(GmailStorageKeys.TOKEN_EXPIRY);
+            var tokenIssuedResult = await _secureStorageManager.RetrieveCredentialAsync(GmailStorageKeys.TOKEN_ISSUED_UTC);
+
             var expiresInSeconds = 3600; // Default to 1 hour if not stored
+            var issuedUtc = DateTime.UtcNow.AddHours(-1); // Default to 1 hour ago (making it stale by default)
 
             if (tokenExpiryResult.IsSuccess &&
                 int.TryParse(tokenExpiryResult.Value, out var storedExpiry))
             {
                 expiresInSeconds = storedExpiry;
+            }
+
+            if (tokenIssuedResult.IsSuccess &&
+                DateTime.TryParse(tokenIssuedResult.Value, out var storedIssuedUtc))
+            {
+                issuedUtc = storedIssuedUtc;
             }
 
             // Create token response from stored tokens
@@ -668,6 +677,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
                 ExpiresInSeconds = expiresInSeconds,
+                IssuedUtc = issuedUtc,
                 TokenType = "Bearer"
             };
 
@@ -716,6 +726,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             GmailStorageKeys.ACCESS_TOKEN,
             GmailStorageKeys.REFRESH_TOKEN,
             GmailStorageKeys.TOKEN_EXPIRY,
+            GmailStorageKeys.TOKEN_ISSUED_UTC,
             GmailStorageKeys.TOKEN_TYPE
         };
 
@@ -934,6 +945,22 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
             {
                 Operation = "Store",
                 CredentialKey = GmailStorageKeys.TOKEN_EXPIRY,
+                Success = true,
+                UserContext = "Gmail Provider",
+                Platform = Environment.OSVersion.Platform.ToString()
+            });
+
+            // Store token issued UTC time
+            operationsAttempted++;
+            await _secureStorageManager.StoreCredentialAsync(
+                GmailStorageKeys.TOKEN_ISSUED_UTC,
+                credential.Token.IssuedUtc.ToString("O")); // Use ISO 8601 format for consistent parsing
+            operationsSucceeded++;
+
+            await _securityAuditLogger.LogCredentialOperationAsync(new CredentialOperationEvent
+            {
+                Operation = "Store",
+                CredentialKey = GmailStorageKeys.TOKEN_ISSUED_UTC,
                 Success = true,
                 UserContext = "Gmail Provider",
                 Platform = Environment.OSVersion.Platform.ToString()
