@@ -143,7 +143,12 @@ public enum ProviderType
     /// <summary>
     /// AI/LLM provider (OpenAI, Claude, local models, etc.)
     /// </summary>
-    LLM
+    LLM,
+
+    /// <summary>
+    /// Contacts provider (Google Contacts, Outlook, etc.)
+    /// </summary>
+    Contacts
 }
 
 /// <summary>
@@ -245,6 +250,14 @@ public static class ProviderCredentialTypes
     public const string StorageConnectionString = "storage_connection_string";
     public const string StorageEncryptionKey = "storage_encryption_key";
 
+    // Contacts Provider Credentials (Google People API)
+    public const string ContactsClientId = "contacts_client_id";
+    public const string ContactsClientSecret = "contacts_client_secret";
+    public const string ContactsAccessToken = "contacts_access_token";
+    public const string ContactsRefreshToken = "contacts_refresh_token";
+    public const string ContactsTokenExpiry = "contacts_token_expiry";
+    public const string ContactsSyncToken = "contacts_sync_token";
+
     /// <summary>
     /// Get all credential types for a specific provider
     /// </summary>
@@ -271,6 +284,15 @@ public static class ProviderCredentialTypes
                 StorageConnectionString,
                 StorageEncryptionKey
             },
+            ProviderType.Contacts => new[]
+            {
+                ContactsClientId,
+                ContactsClientSecret,
+                ContactsAccessToken,
+                ContactsRefreshToken,
+                ContactsTokenExpiry,
+                ContactsSyncToken
+            },
             _ => Array.Empty<string>()
         };
     }
@@ -289,6 +311,8 @@ public static class ProviderCredentialTypes
             OpenAIOrganization => true,
             StorageConnectionString => true,
             StorageEncryptionKey => true,
+            ContactsClientId => true,
+            ContactsClientSecret => true,
             _ => false
         };
     }
@@ -305,6 +329,10 @@ public static class ProviderCredentialTypes
             GmailRefreshToken => true,
             GmailTokenExpiry => true,
             GmailUserEmail => true,
+            ContactsAccessToken => true,
+            ContactsRefreshToken => true,
+            ContactsTokenExpiry => true,
+            ContactsSyncToken => true,
             _ => false
         };
     }

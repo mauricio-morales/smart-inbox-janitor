@@ -1,4 +1,6 @@
+using System.Threading;
 using System.Threading.Tasks;
+using TrashMailPanda.Shared.Base;
 
 namespace TrashMailPanda.Shared;
 
@@ -21,4 +23,19 @@ public interface IContactsProvider
     /// <param name="email">Email address to check</param>
     /// <returns>Strength of relationship</returns>
     Task<RelationshipStrength> GetRelationshipStrengthAsync(string email);
+
+    /// <summary>
+    /// Get simplified contact signal with known status and relationship strength
+    /// </summary>
+    /// <param name="emailAddress">Email address to check</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Simple contact signal with known status and relationship strength</returns>
+    Task<Result<ContactSignal>> GetContactSignalAsync(string emailAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Clear all cached contacts data
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if cache was cleared successfully</returns>
+    Task<Result<bool>> ClearCacheAsync(CancellationToken cancellationToken = default);
 }

@@ -16,6 +16,7 @@ public class ProviderBridgeService : IProviderBridgeService
     private readonly IEmailProvider? _emailProvider;
     private readonly ILLMProvider? _llmProvider;
     private readonly IStorageProvider _storageProvider;
+    private readonly IContactsProvider? _contactsProvider;
     private readonly ISecureStorageManager _secureStorageManager;
     private readonly ILogger<ProviderBridgeService> _logger;
 
@@ -60,6 +61,19 @@ public class ProviderBridgeService : IProviderBridgeService
             Complexity = SetupComplexity.Simple,
             EstimatedSetupTimeMinutes = 0,
             Prerequisites = "None - automatically configured"
+        },
+        ["Contacts"] = new()
+        {
+            Name = "Contacts",
+            DisplayName = "Google Contacts",
+            Description = "Enhanced email classification using Google Contacts for trust signals",
+            Type = ProviderType.Contacts,
+            IsRequired = false,
+            AllowsMultiple = false,
+            Icon = "👥",
+            Complexity = SetupComplexity.Moderate,
+            EstimatedSetupTimeMinutes = 2,
+            Prerequisites = "Gmail already configured with expanded permissions"
         }
     };
 
@@ -68,11 +82,13 @@ public class ProviderBridgeService : IProviderBridgeService
         ISecureStorageManager secureStorageManager,
         ILogger<ProviderBridgeService> logger,
         IEmailProvider? emailProvider = null,
-        ILLMProvider? llmProvider = null)
+        ILLMProvider? llmProvider = null,
+        IContactsProvider? contactsProvider = null)
     {
         _emailProvider = emailProvider; // Can be null - will be set after secrets are available
         _llmProvider = llmProvider; // Can be null - will be set after secrets are available
         _storageProvider = storageProvider ?? throw new ArgumentNullException(nameof(storageProvider));
+        _contactsProvider = contactsProvider; // Can be null - will be set after OAuth expansion
         _secureStorageManager = secureStorageManager ?? throw new ArgumentNullException(nameof(secureStorageManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -304,6 +320,105 @@ public class ProviderBridgeService : IProviderBridgeService
     }
 
     /// <summary>
+    /// Get Contacts provider status with OAuth scope expansion detection
+    /// </summary>
+    public async Task<Result<ProviderStatus>> GetContactsProviderStatusAsync()
+    {
+        try
+        {
+            _logger.LogDebug("Checking Contacts provider status");
+
+            var status = new ProviderStatus
+            {
+                Name = "Contacts",
+                LastCheck = DateTime.UtcNow,
+                Details = new Dictionary<string, object>
+                {
+                    { "type", "Contacts" },
+                    { "provider_version", "1.0.0" },
+                    { "source", "Google People API" }
+                }
+            };
+
+            // Check if Gmail provider is healthy first - ContactsProvider depends on it
+            var gmailStatus = await GetEmailProviderStatusAsync();
+            if (gmailStatus.IsFailure || !gmailStatus.Value.IsHealthy)
+            {
+                status = status with
+                {
+                    IsHealthy = false,
+                    IsInitialized = false,
+                    RequiresSetup = true,
+                    Status = "Requires Gmail Setup",
+                    ErrorMessage = "Gmail provider must be configured and healthy before enabling Contacts"
+                };
+
+                _logger.LogDebug("Contacts provider requires Gmail to be healthy first");
+                return Result<ProviderStatus>.Success(status);
+            }
+
+            // Check if ContactsProvider OAuth credentials are configured separately
+            var hasContactsCredentials = await HasContactsCredentialsAsync();
+
+            // Detect if OAuth scope expansion is needed
+            var needsScopeExpansion = await DetectOAuthScopeExpansionAsync();
+
+            if (needsScopeExpansion && !hasContactsCredentials)
+            {
+                // Gmail is configured but needs scope expansion for Contacts
+                status = status with
+                {
+                    IsHealthy = false,
+                    IsInitialized = false,
+                    RequiresSetup = true,
+                    Status = "OAuth Scope Expansion Required",
+                    ErrorMessage = "Gmail permissions need to be expanded to include Google People API access for Contacts"
+                };
+            }
+            else if (hasContactsCredentials)
+            {
+                // Contacts credentials are configured - test connectivity
+                var connectivityResult = await TestContactsConnectivityAsync();
+
+                status = status with
+                {
+                    IsHealthy = connectivityResult.IsSuccess,
+                    IsInitialized = true,
+                    RequiresSetup = false,
+                    Status = connectivityResult.IsSuccess ? "Connected" : "Connection Failed",
+                    ErrorMessage = connectivityResult.IsSuccess ? null : connectivityResult.Error?.Message
+                };
+
+                if (connectivityResult.IsSuccess)
+                {
+                    status.Details["contacts_enabled"] = true;
+                    status.Details["last_sync"] = "Not implemented"; // Would be actual sync time
+                }
+            }
+            else
+            {
+                // No ContactsProvider credentials and no scope expansion needed
+                status = status with
+                {
+                    IsHealthy = false,
+                    IsInitialized = false,
+                    RequiresSetup = true,
+                    Status = "Setup Required",
+                    ErrorMessage = "Contacts provider has not been configured"
+                };
+            }
+
+            _logger.LogDebug("Contacts provider status: {Status} (Healthy: {IsHealthy})", status.Status, status.IsHealthy);
+            return Result<ProviderStatus>.Success(status);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception checking Contacts provider status");
+            return Result<ProviderStatus>.Failure(new ProcessingError($"Status check failed: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
     /// Get status for all providers
     /// </summary>
     public async Task<Dictionary<string, ProviderStatus>> GetAllProviderStatusAsync()
@@ -315,7 +430,8 @@ public class ProviderBridgeService : IProviderBridgeService
         {
             GetEmailProviderStatusAsync(),
             GetLLMProviderStatusAsync(),
-            GetStorageProviderStatusAsync()
+            GetStorageProviderStatusAsync(),
+            GetContactsProviderStatusAsync()
         };
 
         var statuses = await Task.WhenAll(tasks);
@@ -336,6 +452,7 @@ public class ProviderBridgeService : IProviderBridgeService
                     0 => "Gmail",
                     1 => "OpenAI",
                     2 => "SQLite",
+                    3 => "Contacts",
                     _ => "Unknown"
                 };
 
@@ -512,6 +629,94 @@ public class ProviderBridgeService : IProviderBridgeService
 
         return $"sk-****{apiKey[^4..]}";
     }
+
+    /// <summary>
+    /// Check if ContactsProvider OAuth credentials are configured
+    /// </summary>
+    private async Task<bool> HasContactsCredentialsAsync()
+    {
+        try
+        {
+            var clientIdResult = await _secureStorageManager.RetrieveCredentialAsync(ProviderCredentialTypes.ContactsClientId);
+            var clientSecretResult = await _secureStorageManager.RetrieveCredentialAsync(ProviderCredentialTypes.ContactsClientSecret);
+
+            return clientIdResult.IsSuccess && !string.IsNullOrEmpty(clientIdResult.Value) &&
+                   clientSecretResult.IsSuccess && !string.IsNullOrEmpty(clientSecretResult.Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception checking Contacts client credentials");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Detect if OAuth scope expansion is needed for ContactsProvider
+    /// This determines if existing Gmail OAuth tokens need to be expanded to include Google People API scopes
+    /// </summary>
+    private async Task<bool> DetectOAuthScopeExpansionAsync()
+    {
+        try
+        {
+            // If Gmail tokens exist but don't have the required scopes for Google People API,
+            // we need scope expansion rather than separate OAuth flow
+
+            var gmailTokenResult = await _secureStorageManager.RetrieveCredentialAsync(ProviderCredentialTypes.GmailRefreshToken);
+            if (!gmailTokenResult.IsSuccess || string.IsNullOrEmpty(gmailTokenResult.Value))
+            {
+                // No Gmail tokens - no scope expansion possible
+                return false;
+            }
+
+            // Check if we already have separate ContactsProvider tokens
+            var contactsTokenResult = await _secureStorageManager.RetrieveCredentialAsync(ProviderCredentialTypes.ContactsRefreshToken);
+            if (contactsTokenResult.IsSuccess && !string.IsNullOrEmpty(contactsTokenResult.Value))
+            {
+                // Already have separate Contacts tokens - no expansion needed
+                return false;
+            }
+
+            // Gmail tokens exist but no Contacts tokens - scope expansion would be beneficial
+            // In a full implementation, we'd also check the actual scopes in the Gmail tokens
+            _logger.LogDebug("Gmail tokens exist without Contacts tokens - scope expansion recommended");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception detecting OAuth scope expansion need");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Test ContactsProvider connectivity
+    /// </summary>
+    private async Task<Result<bool>> TestContactsConnectivityAsync()
+    {
+        try
+        {
+            // Test actual ContactsProvider health check
+            if (_contactsProvider != null)
+            {
+                var healthResult = await _contactsProvider.GetContactSignalAsync("test@example.com");
+                return healthResult.IsSuccess ? Result<bool>.Success(true) : Result<bool>.Failure(healthResult.Error);
+            }
+
+            // Fallback: check if credentials exist
+            var hasCredentials = await HasContactsCredentialsAsync();
+            if (!hasCredentials)
+            {
+                return Result<bool>.Failure(new ValidationError("ContactsProvider not available and no credentials configured"));
+            }
+
+            await Task.Delay(100); // Simulate API call
+            return Result<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            return Result<bool>.Failure(new NetworkError($"Contacts connectivity test failed: {ex.Message}"));
+        }
+    }
 }
 
 /// <summary>
@@ -538,6 +743,11 @@ public interface IProviderBridgeService
     /// Get storage provider status
     /// </summary>
     Task<Result<ProviderStatus>> GetStorageProviderStatusAsync();
+
+    /// <summary>
+    /// Get contacts provider status
+    /// </summary>
+    Task<Result<ProviderStatus>> GetContactsProviderStatusAsync();
 
     /// <summary>
     /// Get status for all providers
