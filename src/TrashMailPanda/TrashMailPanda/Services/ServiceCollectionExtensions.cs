@@ -61,6 +61,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISecurityAuditLogger, SecurityAuditLogger>();
         services.AddSingleton<ITokenRotationService, TokenRotationService>();
 
+        // Register SecureTokenDataStore for OAuth token storage
+        services.AddSingleton<Google.Apis.Util.Store.IDataStore, SecureTokenDataStore>();
+
         return services;
     }
 

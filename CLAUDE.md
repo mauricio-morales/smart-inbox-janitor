@@ -271,6 +271,66 @@ GMAIL_REDIRECT_URI=http://localhost:8080/oauth/callback
 DATABASE_PATH=./data/app.db
 ```
 
+### Local Integration Testing Setup
+
+**IMPORTANT**: Most integration tests are skipped by default as they require real OAuth credentials. To run them locally:
+
+#### 1. Gmail OAuth Setup
+
+1. **Create Google Cloud Project**:
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select existing one
+   - Enable the Gmail API
+
+2. **Create OAuth 2.0 Credentials**:
+   - Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client IDs"
+   - Application type: "Desktop application"
+   - Note the Client ID and Client Secret
+
+3. **Set Environment Variables**:
+   ```bash
+   export GMAIL_CLIENT_ID="your_actual_client_id"
+   export GMAIL_CLIENT_SECRET="your_actual_client_secret"
+   ```
+
+4. **Enable Integration Tests**:
+   - Edit `src/Tests/TrashMailPanda.Tests/Integration/Email/GmailApiIntegrationTests.cs`
+   - Remove the `Skip = "..."` attribute from test methods
+   - Run: `dotnet test --filter "Category=Integration"`
+
+#### 2. OpenAI Testing Setup
+
+1. **Get OpenAI API Key**:
+   - Sign up at [OpenAI Platform](https://platform.openai.com/)
+   - Create an API key
+
+2. **Set Environment Variable**:
+   ```bash
+   export OPENAI_API_KEY="your_openai_api_key"
+   ```
+
+#### 3. Running Integration Tests
+
+```bash
+# Run all tests (skips integration tests requiring real credentials)
+dotnet test
+
+# Run only unit tests
+dotnet test --filter "Category=Unit"
+
+# Run integration tests (requires environment variables set)
+dotnet test --filter "Category=Integration"
+
+# Run specific Gmail integration tests
+dotnet test --filter "FullyQualifiedName~GmailApiIntegrationTests"
+```
+
+**WARNING**: Integration tests will:
+- Open browser windows for OAuth flows
+- Make real API calls to Gmail/OpenAI
+- Consume API quotas/credits
+- Require active internet connection
+
 ### Provider Debugging Examples
 
 ```bash

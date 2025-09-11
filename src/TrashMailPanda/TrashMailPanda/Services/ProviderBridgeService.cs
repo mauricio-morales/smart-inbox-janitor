@@ -160,7 +160,8 @@ public class ProviderBridgeService : IProviderBridgeService
                     {
                         try
                         {
-                            authenticatedUser = await _emailProvider.GetAuthenticatedUserAsync();
+                            var userResult = await _emailProvider.GetAuthenticatedUserAsync();
+                            authenticatedUser = userResult.IsSuccess ? userResult.Value : null;
                         }
                         catch (Exception ex)
                         {
@@ -426,13 +427,13 @@ public class ProviderBridgeService : IProviderBridgeService
                 }
 
                 // Get authenticated user info from Gmail provider
-                var authenticatedUser = await _emailProvider.GetAuthenticatedUserAsync();
-                if (authenticatedUser != null && !string.IsNullOrEmpty(authenticatedUser.Email))
+                var authenticatedUserResult = await _emailProvider.GetAuthenticatedUserAsync();
+                if (authenticatedUserResult.IsSuccess && authenticatedUserResult.Value != null && !string.IsNullOrEmpty(authenticatedUserResult.Value.Email))
                 {
                     // Store user email in credentials for future reference
-                    await _secureStorageManager.StoreCredentialAsync(ProviderCredentialTypes.GmailUserEmail, authenticatedUser.Email);
+                    await _secureStorageManager.StoreCredentialAsync(ProviderCredentialTypes.GmailUserEmail, authenticatedUserResult.Value.Email);
 
-                    return Result<string>.Success(authenticatedUser.Email);
+                    return Result<string>.Success(authenticatedUserResult.Value.Email);
                 }
             }
 

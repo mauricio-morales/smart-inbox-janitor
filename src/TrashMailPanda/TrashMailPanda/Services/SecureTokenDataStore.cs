@@ -93,12 +93,12 @@ public class SecureTokenDataStore : IDataStore, IDisposable
                 }
             }
 
-            return default(T);
+            return default(T)!;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to retrieve OAuth token for key {Key}", key);
-            return default(T);
+            return default(T)!;
         }
         finally
         {

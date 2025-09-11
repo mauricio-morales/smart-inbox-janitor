@@ -148,7 +148,8 @@ public class ProviderStatusService : IProviderStatusService
                 {
                     try
                     {
-                        authenticatedUser = await gmailProvider.GetAuthenticatedUserAsync();
+                        var userResult = await gmailProvider.GetAuthenticatedUserAsync();
+                        authenticatedUser = userResult.IsSuccess ? userResult.Value : null;
                         _logger.LogDebug("Retrieved authenticated user info for Gmail: {Email}",
                             authenticatedUser?.Email ?? "None");
                     }
