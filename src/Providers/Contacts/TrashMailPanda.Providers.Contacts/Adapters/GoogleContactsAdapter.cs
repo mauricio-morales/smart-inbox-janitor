@@ -8,7 +8,6 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.PeopleService.v1;
 using Google.Apis.PeopleService.v1.Data;
 using Google.Apis.Services;
-using Google.Apis.Util.Store;
 using Google;
 using Microsoft.Extensions.Logging;
 using PhoneNumbers;
@@ -25,6 +24,7 @@ namespace TrashMailPanda.Providers.Contacts.Adapters;
 /// </summary>
 public class GoogleContactsAdapter : IContactSourceAdapter
 {
+    private readonly IGoogleOAuthService _googleOAuthService;
     private readonly ISecureStorageManager _secureStorageManager;
     private readonly ISecurityAuditLogger _securityAuditLogger;
     private readonly ILogger<GoogleContactsAdapter> _logger;
@@ -34,9 +34,6 @@ public class GoogleContactsAdapter : IContactSourceAdapter
     // Google People API constants
     private const string PERSON_FIELDS = "names,emailAddresses,phoneNumbers,organizations,photos,metadata";
     private const int MAX_PAGE_SIZE = 2000; // Google People API limit
-    private const string SYNC_TOKEN_KEY = "GooglePeopleSyncToken";
-    private const string CONTACTS_OAUTH_TOKEN_KEY = "GoogleContactsAccessToken";
-    private const string CONTACTS_REFRESH_TOKEN_KEY = "GoogleContactsRefreshToken";
 
     /// <summary>
     /// The contact source type this adapter handles
@@ -59,11 +56,13 @@ public class GoogleContactsAdapter : IContactSourceAdapter
     public bool SupportsIncrementalSync => true;
 
     public GoogleContactsAdapter(
+        IGoogleOAuthService googleOAuthService,
         ISecureStorageManager secureStorageManager,
         ISecurityAuditLogger securityAuditLogger,
         ContactsProviderConfig config,
         ILogger<GoogleContactsAdapter> logger)
     {
+        _googleOAuthService = googleOAuthService ?? throw new ArgumentNullException(nameof(googleOAuthService));
         _secureStorageManager = secureStorageManager ?? throw new ArgumentNullException(nameof(secureStorageManager));
         _securityAuditLogger = securityAuditLogger ?? throw new ArgumentNullException(nameof(securityAuditLogger));
         _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -173,7 +172,7 @@ public class GoogleContactsAdapter : IContactSourceAdapter
         try
         {
             // Get stored sync token
-            var syncTokenResult = await _secureStorageManager.RetrieveCredentialAsync(SYNC_TOKEN_KEY);
+            var syncTokenResult = await _secureStorageManager.RetrieveCredentialAsync(ContactsStorageKeys.SYNC_TOKEN);
 
             var status = new AdapterSyncStatus
             {
@@ -255,30 +254,32 @@ public class GoogleContactsAdapter : IContactSourceAdapter
     {
         try
         {
-            // For now, use a simplified approach - in production we'd use the shared OAuth service
-            // This is a placeholder that demonstrates the pattern
-            var clientSecrets = new ClientSecrets
-            {
-                ClientId = _config.ClientId,
-                ClientSecret = _config.ClientSecret
-            };
+            _logger.LogDebug("Creating Google People API service using secure OAuth service");
 
-            // Create simple data store (in production, use secure storage)
-            var dataStore = new NullDataStore();
-
-            var credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
-                clientSecrets,
+            // Get UserCredential through the shared OAuth service
+            var credentialResult = await _googleOAuthService.GetUserCredentialAsync(
                 _config.Scopes,
-                "user",
-                cancellationToken,
-                dataStore);
+                ContactsStorageKeys.KEY_PREFIX,
+                _config.ClientId,
+                _config.ClientSecret,
+                cancellationToken);
 
+            if (credentialResult.IsFailure)
+            {
+                _logger.LogWarning("Failed to get OAuth credentials: {Error}", credentialResult.Error.Message);
+                return Result<PeopleServiceService>.Failure(credentialResult.Error);
+            }
+
+            var credential = credentialResult.Value;
+
+            // Create the People API service
             var service = new PeopleServiceService(new BaseClientService.Initializer()
             {
                 HttpClientInitializer = credential,
                 ApplicationName = _config.ApplicationName
             });
 
+            _logger.LogDebug("Successfully created Google People API service");
             return Result<PeopleServiceService>.Success(service);
         }
         catch (Exception ex)

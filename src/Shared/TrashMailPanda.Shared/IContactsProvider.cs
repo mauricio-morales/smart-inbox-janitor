@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using TrashMailPanda.Shared.Base;
@@ -38,4 +39,27 @@ public interface IContactsProvider
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if cache was cleared successfully</returns>
     Task<Result<bool>> ClearCacheAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get contact information by email address
+    /// </summary>
+    /// <param name="emailAddress">Email address to look up</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Contact information if found</returns>
+    Task<Result<BasicContactInfo?>> GetContactByEmailAsync(string emailAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get all contacts from the provider
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of all contacts</returns>
+    Task<Result<IReadOnlyList<BasicContactInfo>>> GetAllContactsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get detailed trust signal for a contact
+    /// </summary>
+    /// <param name="emailAddress">Email address to get trust signal for</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Trust signal details</returns>
+    Task<Result<TrustSignalInfo>> GetTrustSignalAsync(string emailAddress, CancellationToken cancellationToken = default);
 }

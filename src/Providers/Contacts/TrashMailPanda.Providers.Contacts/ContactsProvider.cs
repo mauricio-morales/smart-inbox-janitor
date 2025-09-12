@@ -605,6 +605,172 @@ public class ContactsProvider : BaseProvider<ContactsProviderConfig>, IContactsP
     }
 
     /// <summary>
+    /// Get contact information by email address
+    /// </summary>
+    /// <param name="emailAddress">Email address to look up</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Contact information if found</returns>
+    public async Task<Result<BasicContactInfo?>> GetContactByEmailAsync(string emailAddress, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(emailAddress))
+            return Result<BasicContactInfo?>.Failure(new ValidationError("Email address cannot be empty"));
+
+        try
+        {
+            var normalizedEmail = emailAddress.ToLowerInvariant();
+
+            // Try cache first
+            var cachedContactResult = await _cacheManager.GetContactByEmailAsync(normalizedEmail);
+            if (cachedContactResult.IsSuccess && cachedContactResult.Value != null)
+            {
+                return Result<BasicContactInfo?>.Success(MapToBasicContactInfo(cachedContactResult.Value));
+            }
+
+            // Fallback: check if known without full contact data
+            var isKnown = await IsKnownAsync(emailAddress);
+            if (!isKnown)
+            {
+                return Result<BasicContactInfo?>.Success(null);
+            }
+
+            // Create minimal contact info for known contacts
+            var basicInfo = new BasicContactInfo
+            {
+                PrimaryEmail = normalizedEmail,
+                DisplayName = normalizedEmail, // Use email as display name if no contact found
+                Strength = await GetRelationshipStrengthAsync(emailAddress)
+            };
+
+            return Result<BasicContactInfo?>.Success(basicInfo);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Exception getting contact by email: {Email}", emailAddress);
+            return Result<BasicContactInfo?>.Failure(new ProcessingError($"Failed to get contact: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
+    /// Get all contacts from the provider
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of all contacts</returns>
+    public async Task<Result<IReadOnlyList<BasicContactInfo>>> GetAllContactsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Get contacts from all enabled adapters
+            var allContacts = new List<BasicContactInfo>();
+
+            foreach (var adapter in _adapters.Where(a => a.IsEnabled))
+            {
+                try
+                {
+                    var adapterResult = await adapter.FetchContactsAsync(null, cancellationToken);
+                    if (adapterResult.IsSuccess && adapterResult.Value.Contacts != null)
+                    {
+                        var basicContacts = adapterResult.Value.Contacts.Select(MapToBasicContactInfo);
+                        allContacts.AddRange(basicContacts);
+                    }
+                }
+                catch (Exception adapterEx)
+                {
+                    Logger.LogWarning(adapterEx, "Failed to get contacts from adapter {AdapterType}", adapter.SourceType);
+                }
+            }
+
+            return Result<IReadOnlyList<BasicContactInfo>>.Success(allContacts.AsReadOnly());
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Exception getting all contacts");
+            return Result<IReadOnlyList<BasicContactInfo>>.Failure(new ProcessingError($"Failed to get contacts: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
+    /// Get detailed trust signal for a contact
+    /// </summary>
+    /// <param name="emailAddress">Email address to get trust signal for</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Trust signal details</returns>
+    public async Task<Result<TrustSignalInfo>> GetTrustSignalAsync(string emailAddress, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(emailAddress))
+            return Result<TrustSignalInfo>.Failure(new ValidationError("Email address cannot be empty"));
+
+        try
+        {
+            var normalizedEmail = emailAddress.ToLowerInvariant();
+
+            // Get contact info
+            var contactResult = await GetContactByEmailAsync(normalizedEmail, cancellationToken);
+            if (contactResult.IsFailure)
+            {
+                return Result<TrustSignalInfo>.Failure(contactResult.Error);
+            }
+
+            var isKnown = contactResult.Value != null;
+            var strength = isKnown ? contactResult.Value!.Strength : TrashMailPanda.Shared.RelationshipStrength.None;
+
+            // Calculate trust signal using the trust calculator
+            var trustInfo = new TrustSignalInfo
+            {
+                EmailAddress = normalizedEmail,
+                ContactId = contactResult.Value?.Id ?? string.Empty,
+                Known = isKnown,
+                Strength = strength,
+                Score = contactResult.Value?.TrustScore ?? 0.0,
+                Justification = new List<string>
+                {
+                    isKnown ? "Contact found in address book" : "Contact not found",
+                    $"Relationship strength: {strength}"
+                }
+            };
+
+            return Result<TrustSignalInfo>.Success(trustInfo);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Exception getting trust signal for email: {Email}", emailAddress);
+            return Result<TrustSignalInfo>.Failure(new ProcessingError($"Failed to get trust signal: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
+    /// Map internal Contact model to external BasicContactInfo
+    /// </summary>
+    private BasicContactInfo MapToBasicContactInfo(Contact contact)
+    {
+        return new BasicContactInfo
+        {
+            Id = contact.Id,
+            PrimaryEmail = contact.PrimaryEmail,
+            AllEmails = contact.AllEmails.AsReadOnly(),
+            DisplayName = contact.DisplayName,
+            GivenName = contact.GivenName,
+            FamilyName = contact.FamilyName,
+            OrganizationName = contact.OrganizationName,
+            OrganizationTitle = contact.OrganizationTitle,
+            Strength = MapToSharedRelationshipStrength(contact.RelationshipStrength),
+            TrustScore = contact.RelationshipStrength
+        };
+    }
+
+    /// <summary>
+    /// Map internal relationship strength to shared enum
+    /// </summary>
+    private TrashMailPanda.Shared.RelationshipStrength MapToSharedRelationshipStrength(double score)
+    {
+        return score switch
+        {
+            >= 0.8 => TrashMailPanda.Shared.RelationshipStrength.Strong,
+            >= 0.3 => TrashMailPanda.Shared.RelationshipStrength.Weak,
+            _ => TrashMailPanda.Shared.RelationshipStrength.None
+        };
+    }
+
+    /// <summary>
     /// Releases resources
     /// </summary>
     protected override void Dispose(bool disposing)

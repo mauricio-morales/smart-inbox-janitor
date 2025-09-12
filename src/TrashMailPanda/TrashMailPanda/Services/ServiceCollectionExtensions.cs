@@ -61,6 +61,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISecurityAuditLogger, SecurityAuditLogger>();
         services.AddSingleton<ITokenRotationService, TokenRotationService>();
 
+        // Register unified Google OAuth service for all Google APIs (Gmail, Contacts, etc.)
+        services.AddSingleton<IGoogleOAuthService, GoogleOAuthService>();
+
         // Register SecureTokenDataStore for OAuth token storage
         services.AddSingleton<Google.Apis.Util.Store.IDataStore, SecureTokenDataStore>();
 
@@ -100,9 +103,6 @@ public static class ServiceCollectionExtensions
         // Add provider bridge service for connecting legacy providers to new architecture
         services.AddSingleton<IProviderBridgeService, ProviderBridgeService>();
 
-        // Add Gmail OAuth authentication service
-        services.AddSingleton<IGmailOAuthService, GmailOAuthService>();
-
         // Add background health monitoring service
         services.AddHostedService<ProviderHealthMonitorService>();
 
@@ -134,7 +134,7 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<ProviderStatusDashboardViewModel>(),
             provider.GetRequiredService<EmailDashboardViewModel>(),
             provider,
-            provider.GetRequiredService<IGmailOAuthService>(),
+            provider.GetRequiredService<IGoogleOAuthService>(),
             provider.GetRequiredService<ILogger<MainWindowViewModel>>()
         ));
 
