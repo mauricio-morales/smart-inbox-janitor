@@ -10,10 +10,10 @@ using Google.Apis.PeopleService.v1.Data;
 using Google.Apis.Services;
 using Google;
 using Microsoft.Extensions.Logging;
-using PhoneNumbers;
 using TrashMailPanda.Shared.Base;
 using TrashMailPanda.Shared.Models;
 using TrashMailPanda.Shared.Security;
+using TrashMailPanda.Shared.Services;
 using TrashMailPanda.Providers.Contacts.Models;
 
 namespace TrashMailPanda.Providers.Contacts.Adapters;
@@ -28,7 +28,7 @@ public class GoogleContactsAdapter : IContactSourceAdapter
     private readonly ISecureStorageManager _secureStorageManager;
     private readonly ISecurityAuditLogger _securityAuditLogger;
     private readonly ILogger<GoogleContactsAdapter> _logger;
-    private readonly PhoneNumberUtil _phoneNumberUtil;
+    private readonly IPhoneNumberService _phoneNumberService;
     private readonly ContactsProviderConfig _config;
 
     // Google People API constants
@@ -60,14 +60,15 @@ public class GoogleContactsAdapter : IContactSourceAdapter
         ISecureStorageManager secureStorageManager,
         ISecurityAuditLogger securityAuditLogger,
         ContactsProviderConfig config,
+        IPhoneNumberService phoneNumberService,
         ILogger<GoogleContactsAdapter> logger)
     {
         _googleOAuthService = googleOAuthService ?? throw new ArgumentNullException(nameof(googleOAuthService));
         _secureStorageManager = secureStorageManager ?? throw new ArgumentNullException(nameof(secureStorageManager));
         _securityAuditLogger = securityAuditLogger ?? throw new ArgumentNullException(nameof(securityAuditLogger));
         _config = config ?? throw new ArgumentNullException(nameof(config));
+        _phoneNumberService = phoneNumberService ?? throw new ArgumentNullException(nameof(phoneNumberService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _phoneNumberUtil = PhoneNumberUtil.GetInstance();
     }
 
     /// <summary>
@@ -418,23 +419,7 @@ public class GoogleContactsAdapter : IContactSourceAdapter
 
     private string NormalizePhoneNumber(string? phoneNumber)
     {
-        if (string.IsNullOrWhiteSpace(phoneNumber))
-            return string.Empty;
-
-        try
-        {
-            // Default to US region for parsing - in production, might detect from user settings
-            var parsed = _phoneNumberUtil.Parse(phoneNumber, "US");
-            if (_phoneNumberUtil.IsValidNumber(parsed))
-            {
-                return _phoneNumberUtil.Format(parsed, PhoneNumberFormat.E164);
-            }
-        }
-        catch (NumberParseException ex)
-        {
-            _logger.LogDebug("Failed to parse phone number {PhoneNumber}: {Error}", phoneNumber, ex.Message);
-        }
-
-        return string.Empty;
+        // Use the injected singleton service for optimal performance
+        return _phoneNumberService.NormalizePhoneNumber(phoneNumber, "US");
     }
 }

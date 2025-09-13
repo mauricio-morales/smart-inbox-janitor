@@ -7,6 +7,7 @@ using TrashMailPanda.Providers.LLM;
 using TrashMailPanda.Providers.Storage;
 using TrashMailPanda.Shared;
 using TrashMailPanda.Shared.Security;
+using TrashMailPanda.Shared.Services;
 using TrashMailPanda.ViewModels;
 
 namespace TrashMailPanda.Services;
@@ -66,6 +67,9 @@ public static class ServiceCollectionExtensions
 
         // Register SecureTokenDataStore for OAuth token storage
         services.AddSingleton<Google.Apis.Util.Store.IDataStore, SecureTokenDataStore>();
+
+        // Register phone number service for optimal performance
+        services.AddSingleton<IPhoneNumberService, PhoneNumberService>();
 
         return services;
     }
