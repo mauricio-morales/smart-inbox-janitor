@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using TrashMailPanda.Shared;
 using TrashMailPanda.Shared.Base;
+using TrashMailPanda.Shared.Models;
 using TrashMailPanda.Providers.Contacts.Models;
 
 namespace TrashMailPanda.Providers.Contacts.Services;
@@ -20,6 +22,7 @@ namespace TrashMailPanda.Providers.Contacts.Services;
 public class ContactsCacheManager
 {
     private readonly IMemoryCache _memoryCache;
+    private readonly IStorageProvider _storageProvider;
     private readonly ILogger<ContactsCacheManager> _logger;
     private readonly ContactsProviderConfig _config;
     private readonly SemaphoreSlim _cacheLock;
@@ -38,10 +41,12 @@ public class ContactsCacheManager
 
     public ContactsCacheManager(
         IMemoryCache memoryCache,
+        IStorageProvider storageProvider,
         IOptions<ContactsProviderConfig> config,
         ILogger<ContactsCacheManager> logger)
     {
         _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
+        _storageProvider = storageProvider ?? throw new ArgumentNullException(nameof(storageProvider));
         _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _cacheLock = new SemaphoreSlim(1, 1);
@@ -394,45 +399,185 @@ public class ContactsCacheManager
 
     private async Task<Result<Contact?>> GetContactFromSqliteCacheAsync(string contactId, CancellationToken cancellationToken)
     {
-        // Placeholder for SQLite integration - would use storage provider
-        // This would query the SQLite database for cached contacts
-        return Result<Contact?>.Success(null);
+        try
+        {
+            var basicContact = await _storageProvider.GetContactAsync(contactId);
+            if (basicContact == null)
+                return Result<Contact?>.Success(null);
+
+            // Convert BasicContactInfo to Contact
+            var contact = new Contact
+            {
+                Id = basicContact.Id,
+                PrimaryEmail = basicContact.PrimaryEmail,
+                AllEmails = basicContact.AllEmails.ToList(),
+                DisplayName = basicContact.DisplayName,
+                GivenName = basicContact.GivenName,
+                FamilyName = basicContact.FamilyName,
+                OrganizationName = basicContact.OrganizationName,
+                OrganizationTitle = basicContact.OrganizationTitle,
+                RelationshipStrength = basicContact.TrustScore,
+                // Set reasonable defaults for other fields
+                PhoneNumbers = new List<string>(),
+                SourceIdentities = new List<SourceIdentity>(),
+                LastModifiedUtc = DateTime.UtcNow,
+                LastSyncedUtc = DateTime.UtcNow,
+                Metadata = new Dictionary<string, string>()
+            };
+
+            return Result<Contact?>.Success(contact);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving contact from SQLite cache: {ContactId}", contactId);
+            return Result<Contact?>.Failure(ex.ToProviderError("SQLite cache retrieval failed"));
+        }
     }
 
     private async Task<Result<string?>> GetContactIdByEmailFromSqliteAsync(string email, CancellationToken cancellationToken)
     {
-        // Placeholder for SQLite email index lookup
-        return Result<string?>.Success(null);
+        try
+        {
+            var contactId = await _storageProvider.GetContactIdByEmailAsync(email.ToLowerInvariant());
+            return Result<string?>.Success(contactId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving contact ID by email from SQLite cache: {Email}", email);
+            return Result<string?>.Failure(ex.ToProviderError("SQLite email index lookup failed"));
+        }
     }
 
     private async Task<Result<bool>> CacheContactInSqliteAsync(Contact contact, CancellationToken cancellationToken)
     {
-        // Placeholder for SQLite caching implementation
-        return Result<bool>.Success(true);
+        try
+        {
+            // Convert Contact to BasicContactInfo
+            var basicContact = new BasicContactInfo
+            {
+                Id = contact.Id,
+                PrimaryEmail = contact.PrimaryEmail,
+                AllEmails = contact.AllEmails,
+                DisplayName = contact.DisplayName,
+                GivenName = contact.GivenName,
+                FamilyName = contact.FamilyName,
+                OrganizationName = contact.OrganizationName,
+                OrganizationTitle = contact.OrganizationTitle,
+                TrustScore = contact.RelationshipStrength,
+                Strength = DetermineRelationshipStrength(contact.RelationshipStrength)
+            };
+
+            await _storageProvider.SetContactAsync(basicContact);
+            return Result<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error caching contact in SQLite: {ContactId}", contact.Id);
+            return Result<bool>.Failure(ex.ToProviderError("SQLite contact caching failed"));
+        }
     }
 
     private async Task<Result<TrustSignal?>> GetTrustSignalFromSqliteAsync(string contactId, CancellationToken cancellationToken)
     {
-        // Placeholder for SQLite trust signal lookup
-        return Result<TrustSignal?>.Success(null);
+        try
+        {
+            var trustSignalInfo = await _storageProvider.GetTrustSignalAsync(contactId);
+            if (trustSignalInfo == null)
+                return Result<TrustSignal?>.Success(null);
+
+            // Convert TrustSignalInfo to TrustSignal
+            var trustSignal = new TrustSignal
+            {
+                ContactId = trustSignalInfo.ContactId,
+                Strength = trustSignalInfo.Strength,
+                Score = trustSignalInfo.Score,
+                LastInteractionDate = trustSignalInfo.LastInteractionDate,
+                Justification = trustSignalInfo.Justification.ToList(),
+                ComputedAt = trustSignalInfo.ComputedAt,
+                InteractionCount = trustSignalInfo.InteractionCount,
+                RecencyScore = 0.0, // Not available in TrustSignalInfo
+                FrequencyScore = 0.0 // Not available in TrustSignalInfo
+            };
+
+            return Result<TrustSignal?>.Success(trustSignal);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving trust signal from SQLite cache: {ContactId}", contactId);
+            return Result<TrustSignal?>.Failure(ex.ToProviderError("SQLite trust signal retrieval failed"));
+        }
     }
 
     private async Task<Result<bool>> CacheTrustSignalInSqliteAsync(TrustSignal trustSignal, CancellationToken cancellationToken)
     {
-        // Placeholder for SQLite trust signal caching
-        return Result<bool>.Success(true);
+        try
+        {
+            // Convert TrustSignal to TrustSignalInfo
+            var trustSignalInfo = new TrustSignalInfo
+            {
+                ContactId = trustSignal.ContactId,
+                Strength = trustSignal.Strength,
+                Score = trustSignal.Score,
+                LastInteractionDate = trustSignal.LastInteractionDate,
+                Justification = trustSignal.Justification,
+                ComputedAt = trustSignal.ComputedAt,
+                InteractionCount = trustSignal.InteractionCount,
+                EmailAddress = string.Empty, // Not available in TrustSignal
+                Known = true,
+                SourceType = "Contacts"
+            };
+
+            await _storageProvider.SetTrustSignalAsync(trustSignalInfo);
+            return Result<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error caching trust signal in SQLite: {ContactId}", trustSignal.ContactId);
+            return Result<bool>.Failure(ex.ToProviderError("SQLite trust signal caching failed"));
+        }
     }
 
     private async Task<Result<bool>> InvalidateContactInSqliteAsync(string contactId, CancellationToken cancellationToken)
     {
-        // Placeholder for SQLite cache invalidation
-        return Result<bool>.Success(true);
+        try
+        {
+            await _storageProvider.RemoveContactAsync(contactId);
+            return Result<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error invalidating contact in SQLite cache: {ContactId}", contactId);
+            return Result<bool>.Failure(ex.ToProviderError("SQLite cache invalidation failed"));
+        }
     }
 
     private async Task<Result<bool>> ClearSqliteCacheAsync(CancellationToken cancellationToken)
     {
-        // Placeholder for SQLite cache clearing
-        return Result<bool>.Success(true);
+        try
+        {
+            await _storageProvider.ClearContactsCacheAsync();
+            return Result<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error clearing SQLite cache");
+            return Result<bool>.Failure(ex.ToProviderError("SQLite cache clearing failed"));
+        }
+    }
+
+    /// <summary>
+    /// Helper method to convert trust score to relationship strength enum
+    /// </summary>
+    private static RelationshipStrength DetermineRelationshipStrength(double score)
+    {
+        return score switch
+        {
+            >= 0.8 => RelationshipStrength.High,
+            >= 0.5 => RelationshipStrength.Medium,
+            >= 0.2 => RelationshipStrength.Low,
+            > 0.0 => RelationshipStrength.Weak,
+            _ => RelationshipStrength.None
+        };
     }
 }
 
