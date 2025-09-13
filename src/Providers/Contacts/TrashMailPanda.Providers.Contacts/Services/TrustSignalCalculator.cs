@@ -98,7 +98,7 @@ public class TrustSignalCalculator
     }
 
     /// <summary>
-    /// Batch calculates trust signals for multiple contacts efficiently
+    /// Batch calculates trust signals for multiple contacts efficiently using parallel processing
     /// </summary>
     public async Task<Result<Dictionary<string, TrustSignal>>> CalculateBatchTrustSignalsAsync(
         IEnumerable<Contact> contacts,
@@ -114,39 +114,71 @@ public class TrustSignalCalculator
 
         try
         {
-            var results = new Dictionary<string, TrustSignal>();
+            // Thread-safe collections for parallel processing
+            var results = new System.Collections.Concurrent.ConcurrentDictionary<string, TrustSignal>();
             var successCount = 0;
+            var totalCount = contactList.Count;
 
-            foreach (var contact in contactList)
+            _logger.LogInformation("Starting parallel batch trust signal calculation for {TotalCount} contacts with max concurrency of 10", totalCount);
+
+            // Use Parallel.ForEachAsync with concurrency limit
+            var parallelOptions = new ParallelOptions
             {
-                if (cancellationToken.IsCancellationRequested)
-                    break;
+                MaxDegreeOfParallelism = 10, // Limit to 10 parallel operations
+                CancellationToken = cancellationToken
+            };
 
-                var history = interactionHistories?.GetValueOrDefault(contact.Id);
-                var result = await CalculateTrustSignalAsync(contact, history, cancellationToken);
-
-                if (result.IsSuccess)
+            await Parallel.ForEachAsync(contactList, parallelOptions, async (contact, ct) =>
+            {
+                try
                 {
-                    results[contact.Id] = result.Value;
-                    successCount++;
+                    // Create a linked cancellation token that combines the main token with the parallel operation token
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, ct);
+                    var linkedToken = linkedCts.Token;
+
+                    var history = interactionHistories?.GetValueOrDefault(contact.Id);
+                    var result = await CalculateTrustSignalAsync(contact, history, linkedToken);
+
+                    if (result.IsSuccess)
+                    {
+                        results.TryAdd(contact.Id, result.Value);
+                        Interlocked.Increment(ref successCount);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to calculate trust signal for contact {ContactId}: {Error}",
+                            contact.Id, result.Error.Message);
+                    }
                 }
-                else
+                catch (OperationCanceledException) when (ct.IsCancellationRequested || cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning("Failed to calculate trust signal for contact {ContactId}: {Error}",
-                        contact.Id, result.Error.Message);
+                    // Expected when cancellation is requested - don't log as error
+                    _logger.LogDebug("Trust signal calculation cancelled for contact {ContactId}", contact.Id);
                 }
-            }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unexpected error calculating trust signal for contact {ContactId}", contact.Id);
+                }
+            });
 
-            _logger.LogInformation("Batch calculated trust signals for {SuccessCount} out of {TotalCount} contacts",
-                successCount, contactList.Count);
+            _logger.LogInformation("Parallel batch calculated trust signals for {SuccessCount} out of {TotalCount} contacts",
+                successCount, totalCount);
 
-            return Result<Dictionary<string, TrustSignal>>.Success(results);
+            // Convert ConcurrentDictionary to regular Dictionary for return
+            return Result<Dictionary<string, TrustSignal>>.Success(
+                new Dictionary<string, TrustSignal>(results));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogInformation("Batch trust signal calculation was cancelled");
+            return Result<Dictionary<string, TrustSignal>>.Failure(
+                new ValidationError("Batch trust signal calculation was cancelled"));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in batch trust signal calculation");
+            _logger.LogError(ex, "Error in parallel batch trust signal calculation");
             return Result<Dictionary<string, TrustSignal>>.Failure(
-                ex.ToProviderError("Batch trust signal calculation failed"));
+                ex.ToProviderError("Parallel batch trust signal calculation failed"));
         }
     }
 
