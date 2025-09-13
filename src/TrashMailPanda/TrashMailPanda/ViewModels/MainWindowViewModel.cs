@@ -6,6 +6,7 @@ using System;
 using System.Threading.Tasks;
 using TrashMailPanda.Views;
 using TrashMailPanda.Services;
+using TrashMailPanda.Shared.Security;
 
 namespace TrashMailPanda.ViewModels;
 
@@ -18,7 +19,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly ProviderStatusDashboardViewModel _providerDashboardViewModel;
     private readonly EmailDashboardViewModel _emailDashboardViewModel;
     private readonly IServiceProvider _serviceProvider;
-    private readonly IGmailOAuthService _gmailOAuthService;
+    private readonly IGoogleOAuthService _googleOAuthService;
     private readonly ILogger<MainWindowViewModel> _logger;
 
     // Navigation State
@@ -45,13 +46,13 @@ public partial class MainWindowViewModel : ViewModelBase
         ProviderStatusDashboardViewModel providerDashboardViewModel,
         EmailDashboardViewModel emailDashboardViewModel,
         IServiceProvider serviceProvider,
-        IGmailOAuthService gmailOAuthService,
+        IGoogleOAuthService googleOAuthService,
         ILogger<MainWindowViewModel> logger)
     {
         _providerDashboardViewModel = providerDashboardViewModel ?? throw new ArgumentNullException(nameof(providerDashboardViewModel));
         _emailDashboardViewModel = emailDashboardViewModel ?? throw new ArgumentNullException(nameof(emailDashboardViewModel));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _gmailOAuthService = gmailOAuthService ?? throw new ArgumentNullException(nameof(gmailOAuthService));
+        _googleOAuthService = googleOAuthService ?? throw new ArgumentNullException(nameof(googleOAuthService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // Subscribe to provider dashboard events
@@ -312,7 +313,11 @@ public partial class MainWindowViewModel : ViewModelBase
                     _logger.LogInformation("Initiating Gmail OAuth authentication in browser");
                     NavigationStatus = "Opening browser for Gmail sign-in...";
 
-                    var authResult = await _gmailOAuthService.AuthenticateAsync();
+                    var authResult = await _googleOAuthService.AuthenticateWithBrowserAsync(
+                        new[] { "https://www.googleapis.com/auth/gmail.modify" },
+                        "gmail_",
+                        "", // Client ID and secret will be retrieved from secure storage
+                        "");
 
                     if (authResult.IsSuccess)
                     {

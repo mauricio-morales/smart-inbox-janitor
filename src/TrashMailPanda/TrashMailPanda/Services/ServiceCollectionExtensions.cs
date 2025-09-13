@@ -7,6 +7,7 @@ using TrashMailPanda.Providers.LLM;
 using TrashMailPanda.Providers.Storage;
 using TrashMailPanda.Shared;
 using TrashMailPanda.Shared.Security;
+using TrashMailPanda.Shared.Services;
 using TrashMailPanda.ViewModels;
 
 namespace TrashMailPanda.Services;
@@ -61,8 +62,14 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISecurityAuditLogger, SecurityAuditLogger>();
         services.AddSingleton<ITokenRotationService, TokenRotationService>();
 
+        // Register unified Google OAuth service for all Google APIs (Gmail, Contacts, etc.)
+        services.AddSingleton<IGoogleOAuthService, GoogleOAuthService>();
+
         // Register SecureTokenDataStore for OAuth token storage
         services.AddSingleton<Google.Apis.Util.Store.IDataStore, SecureTokenDataStore>();
+
+        // Register phone number service for optimal performance
+        services.AddSingleton<IPhoneNumberService, PhoneNumberService>();
 
         return services;
     }
@@ -100,9 +107,6 @@ public static class ServiceCollectionExtensions
         // Add provider bridge service for connecting legacy providers to new architecture
         services.AddSingleton<IProviderBridgeService, ProviderBridgeService>();
 
-        // Add Gmail OAuth authentication service
-        services.AddSingleton<IGmailOAuthService, GmailOAuthService>();
-
         // Add background health monitoring service
         services.AddHostedService<ProviderHealthMonitorService>();
 
@@ -134,7 +138,7 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<ProviderStatusDashboardViewModel>(),
             provider.GetRequiredService<EmailDashboardViewModel>(),
             provider,
-            provider.GetRequiredService<IGmailOAuthService>(),
+            provider.GetRequiredService<IGoogleOAuthService>(),
             provider.GetRequiredService<ILogger<MainWindowViewModel>>()
         ));
 

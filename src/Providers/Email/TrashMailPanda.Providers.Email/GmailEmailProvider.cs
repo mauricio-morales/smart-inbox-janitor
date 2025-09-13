@@ -47,6 +47,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     private readonly IGmailRateLimitHandler _rateLimitHandler;
     private readonly IDataStore _dataStore;
     private readonly ISecurityAuditLogger _securityAuditLogger;
+    private readonly IGoogleOAuthService _googleOAuthService;
     private GmailService? _gmailService;
     private UserCredential? _credential;
 
@@ -73,6 +74,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
         IGmailRateLimitHandler rateLimitHandler,
         IDataStore dataStore,
         ISecurityAuditLogger securityAuditLogger,
+        IGoogleOAuthService googleOAuthService,
         ILogger<GmailEmailProvider> logger)
         : base(logger)
     {
@@ -80,6 +82,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
         _rateLimitHandler = rateLimitHandler ?? throw new ArgumentNullException(nameof(rateLimitHandler));
         _dataStore = dataStore ?? throw new ArgumentNullException(nameof(dataStore));
         _securityAuditLogger = securityAuditLogger ?? throw new ArgumentNullException(nameof(securityAuditLogger));
+        _googleOAuthService = googleOAuthService ?? throw new ArgumentNullException(nameof(googleOAuthService));
     }
 
     #region BaseProvider Implementation
@@ -593,33 +596,36 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
     {
         try
         {
-            var accessTokenResult = await _secureStorageManager.RetrieveCredentialAsync(GmailStorageKeys.ACCESS_TOKEN);
-            var refreshTokenResult = await _secureStorageManager.RetrieveCredentialAsync(GmailStorageKeys.REFRESH_TOKEN);
+            var scopes = new[] { GmailService.Scope.GmailModify };
 
-            // If we have stored tokens, attempt to use them
-            if (accessTokenResult.IsSuccess && refreshTokenResult.IsSuccess)
+            // Check if we have valid tokens for Google services (shared between Gmail and Contacts)
+            var hasValidTokensResult = await _googleOAuthService.HasValidTokensAsync(
+                scopes, "google_", CancellationToken.None);
+
+            if (hasValidTokensResult.IsFailure)
             {
-                var accessToken = accessTokenResult.Value;
-                var refreshToken = refreshTokenResult.Value;
-
-                if (!string.IsNullOrEmpty(accessToken) && !string.IsNullOrEmpty(refreshToken))
-                {
-                    var credentialResult = await CreateUserCredentialFromTokensAsync(config, accessToken, refreshToken);
-                    if (credentialResult.IsSuccess)
-                    {
-                        _credential = credentialResult.Value;
-                        return Result<bool>.Success(true);
-                    }
-
-                    // If token-based credential creation failed, clear stored tokens and fall back to OAuth flow
-                    var clearResult = await ClearStoredTokensAsync();
-                    if (clearResult.IsFailure)
-                    {
-                        Logger.LogWarning("Failed to clear stored tokens after credential creation failure: {Error}", clearResult.Error.Message);
-                    }
-                }
+                Logger.LogDebug("Failed to check token validity: {Error}", hasValidTokensResult.Error.Message);
+                return Result<bool>.Success(false);
             }
 
+            if (!hasValidTokensResult.Value)
+            {
+                Logger.LogDebug("No valid stored Gmail credentials found");
+                return Result<bool>.Success(false);
+            }
+
+            // Get the UserCredential from the shared OAuth service
+            var credentialResult = await _googleOAuthService.GetUserCredentialAsync(
+                scopes, "google_", config.ClientId, config.ClientSecret, CancellationToken.None);
+
+            if (credentialResult.IsFailure)
+            {
+                Logger.LogWarning("Failed to get UserCredential: {Error}", credentialResult.Error.Message);
+                return Result<bool>.Success(false);
+            }
+
+            _credential = credentialResult.Value;
+            Logger.LogDebug("Successfully retrieved stored Gmail credentials via shared OAuth service");
             return Result<bool>.Success(true);
         }
         catch (Exception ex)

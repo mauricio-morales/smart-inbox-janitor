@@ -28,7 +28,7 @@ services:
       - DISPLAY=:99
     command: >
       dotnet test --configuration Release --no-build
-      --filter "Category=Unit|Category=Integration&!Platform=Windows&!Platform=macOS"
+      --filter "Platform!=Windows&Platform!=macOS"
       --verbosity normal
       --logger "console;verbosity=detailed"
       --collect:"XPlat Code Coverage"
