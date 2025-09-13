@@ -257,9 +257,10 @@ public class GoogleContactsAdapter : IContactSourceAdapter
             _logger.LogDebug("Creating Google People API service using secure OAuth service");
 
             // Get UserCredential through the shared OAuth service
+            // Use "google_" prefix to share OAuth credentials between Gmail and Contacts providers
             var credentialResult = await _googleOAuthService.GetUserCredentialAsync(
                 _config.Scopes,
-                ContactsStorageKeys.KEY_PREFIX,
+                "google_", // Shared prefix for all Google services
                 _config.ClientId,
                 _config.ClientSecret,
                 cancellationToken);

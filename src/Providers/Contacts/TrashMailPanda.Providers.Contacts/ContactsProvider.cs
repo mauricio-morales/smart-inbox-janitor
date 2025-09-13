@@ -593,15 +593,95 @@ public class ContactsProvider : BaseProvider<ContactsProviderConfig>, IContactsP
 
     private async Task<string?> GetStoredSyncTokenAsync(ContactSourceType sourceType)
     {
-        // This would retrieve sync tokens from secure storage in full implementation
-        await Task.CompletedTask;
-        return null;
+        try
+        {
+            string syncTokenKey = GetSyncTokenKey(sourceType);
+            
+            var result = await _secureStorageManager.RetrieveCredentialAsync(syncTokenKey);
+            if (result.IsSuccess && !string.IsNullOrWhiteSpace(result.Value))
+            {
+                Logger.LogDebug("Retrieved sync token for {SourceType}: {HasToken}", 
+                    sourceType, !string.IsNullOrEmpty(result.Value));
+                return result.Value;
+            }
+
+            Logger.LogDebug("No sync token found for {SourceType}", sourceType);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning("Failed to retrieve sync token for {SourceType}: {Error}", 
+                sourceType, ex.Message);
+            return null;
+        }
     }
 
     private async Task StoreSyncTokenAsync(ContactSourceType sourceType, string syncToken)
     {
-        // This would store sync tokens in secure storage in full implementation
-        await Task.CompletedTask;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(syncToken))
+            {
+                Logger.LogWarning("Attempted to store empty sync token for {SourceType}", sourceType);
+                return;
+            }
+
+            string syncTokenKey = GetSyncTokenKey(sourceType);
+            
+            var result = await _secureStorageManager.StoreCredentialAsync(syncTokenKey, syncToken);
+            if (result.IsSuccess)
+            {
+                Logger.LogDebug("Stored sync token for {SourceType}", sourceType);
+                
+                // Log security audit event
+                await _securityAuditLogger.LogCredentialOperationAsync(
+                    "StoreSyncToken", 
+                    syncTokenKey, 
+                    true, 
+                    "Sync token stored successfully");
+            }
+            else
+            {
+                Logger.LogError("Failed to store sync token for {SourceType}: {Error}", 
+                    sourceType, result.Error?.Message ?? "Unknown error");
+                
+                // Log security audit event for failure
+                await _securityAuditLogger.LogCredentialOperationAsync(
+                    "StoreSyncToken", 
+                    syncTokenKey, 
+                    false, 
+                    result.Error?.Message ?? "Failed to store sync token");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Exception storing sync token for {SourceType}: {Error}", 
+                sourceType, ex.Message);
+                
+            // Log security audit event for exception
+            await _securityAuditLogger.LogCredentialOperationAsync(
+                "StoreSyncToken", 
+                GetSyncTokenKey(sourceType), 
+                false, 
+                $"Exception: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Gets the secure storage key for sync tokens based on source type
+    /// </summary>
+    /// <param name="sourceType">The contact source type</param>
+    /// <returns>The storage key for the sync token</returns>
+    private static string GetSyncTokenKey(ContactSourceType sourceType)
+    {
+        return sourceType switch
+        {
+            ContactSourceType.Google => "GoogleContactsSyncToken_Google",
+            ContactSourceType.Outlook => "GoogleContactsSyncToken_Outlook", // Future implementation
+            ContactSourceType.Exchange => "GoogleContactsSyncToken_Exchange", // Future implementation
+            ContactSourceType.Local => "GoogleContactsSyncToken_Local", // Future implementation
+            _ => $"GoogleContactsSyncToken_{sourceType}"
+        };
     }
 
     /// <summary>

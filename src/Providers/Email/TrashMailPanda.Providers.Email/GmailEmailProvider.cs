@@ -598,9 +598,9 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
         {
             var scopes = new[] { GmailService.Scope.GmailModify };
 
-            // Check if we have valid tokens for Gmail
+            // Check if we have valid tokens for Google services (shared between Gmail and Contacts)
             var hasValidTokensResult = await _googleOAuthService.HasValidTokensAsync(
-                scopes, GmailStorageKeys.KEY_PREFIX, CancellationToken.None);
+                scopes, "google_", CancellationToken.None);
 
             if (hasValidTokensResult.IsFailure)
             {
@@ -616,7 +616,7 @@ public class GmailEmailProvider : BaseProvider<GmailProviderConfig>, IEmailProvi
 
             // Get the UserCredential from the shared OAuth service
             var credentialResult = await _googleOAuthService.GetUserCredentialAsync(
-                scopes, GmailStorageKeys.KEY_PREFIX, config.ClientId, config.ClientSecret, CancellationToken.None);
+                scopes, "google_", config.ClientId, config.ClientSecret, CancellationToken.None);
 
             if (credentialResult.IsFailure)
             {
